@@ -493,3 +493,76 @@ async def set_duplicate_threshold(request: Request, threshold: float):
     # Store user preference (you might want to add this to user settings in database)
     # For now, this is just a placeholder
     return {"message": f"Duplicate detection threshold set to {threshold}"}
+
+
+@router.get("/inventory")
+async def get_inventory(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+
+    result = supabase.table("inventory").select("*").eq("user_id", user_id).execute()
+
+    return {"inventory": result.data}
+
+class InventoryUpdate(BaseModel):
+    name: Optional[str]
+    price: Optional[float]
+
+@router.put("/inventory/edit/{item_id}")
+async def update_inventory_item(item_id: str, request: Request, update: InventoryUpdate):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+
+    update_data = {k: v for k, v in update.dict().items() if v is not None}
+    if not update_data:
+        raise HTTPException(400, "No data provided for update")
+
+    result = supabase.table("inventory").update(update_data).eq("id", item_id).eq("user_id", user_id).execute()
+
+    if not result.data:
+        raise HTTPException(500, "Failed to update item")
+
+    return {"message": "Item updated", "item": result.data[0]}
+
+@router.delete("/inventory/delete/{item_id}")
+async def delete_inventory_item(item_id: str, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+
+    result = supabase.table("inventory").delete().eq("id", item_id).eq("user_id", user_id).execute()
+
+    if not result.data:
+        raise HTTPException(500, "Failed to delete item")
+
+    return {"message": "Item deleted"}
+
+class SpecialInstructions(BaseModel):
+    special_instructions: str
+
+@router.post("/inventory/special-instructions")
+async def save_special_instructions(request: Request, data: SpecialInstructions):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    result = supabase.table("users").update({
+        "special_instructions": data.special_instructions
+    }).eq("id", user_id).execute()
+
+    if not result.data:
+        raise HTTPException(status_code=500, detail="Failed to save instructions")
+
+    return {"message": "Special instructions saved"}
+
+@router.get("/inventory/special-instructions")
+async def get_special_instructions(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    result = supabase.table("users").select("special_instructions").eq("id", user_id).single().execute()
+
+    return {"special_instructions": result.data.get("special_instructions", "")}

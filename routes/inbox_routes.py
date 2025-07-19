@@ -7,7 +7,11 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Optional, Set
 import threading
 import time
-
+import re
+import httpx
+import logging
+from typing import Optional, Dict, List
+from email.utils import parsedate_to_datetime
 import httpx
 from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 from pydantic import BaseModel
@@ -19,8 +23,8 @@ from routes.draft_routes import InventoryMatcher, create_draft_with_gpt
 router = APIRouter()
 
 # ─── Global state for tracking processed emails ──────────────────────────────────────
-processed_message_ids: Dict[str, Set[str]] = {}  # user_id -> set of processed message IDs
-monitoring_tasks: Dict[str, bool] = {}  # user_id -> is_monitoring boolean
+active_monitoring_tasks: Set[str] = set()
+
 
 # ─── Response Models ──────────────────────────────────────────────────
 class ProcessedEmail(BaseModel):
@@ -47,79 +51,292 @@ class NewEmailNotification(BaseModel):
     total_new: int
 
 # ─── Email monitoring system ──────────────────────────────────────────────────
+
+async def stop_monitoring_task_only(user_id: str):
+    """
+    Stops tracking background monitoring for the user.
+    Does NOT cancel actual asyncio tasks (not stored).
+    Does NOT update DB.
+    """
+    if user_id in active_monitoring_tasks:
+        active_monitoring_tasks.remove(user_id)
+        logging.info(f"[shutdown] Stopped tracking monitoring for user {user_id}")
+
+
+async def is_message_already_processed(user_id: str, message_id: str) -> bool:
+    """Check if we've already processed this email"""
+    try:
+        result = supabase.table("drafts").select("id").eq("user_id", user_id).eq("message_id", message_id).limit(1).execute()
+        return len(result.data) > 0
+    except Exception as e:
+        logging.error(f"Error checking if message processed: {str(e)}")
+        return False
+    
+    
 async def start_email_monitoring(user_id: str):
     """
     Start continuous email monitoring for a user
     """
-    if monitoring_tasks.get(user_id, False):
-        return {"status": "already_monitoring", "user_id": user_id}
-    
-    monitoring_tasks[user_id] = True
-    
-    # Initialize processed message IDs for this user
-    if user_id not in processed_message_ids:
-        processed_message_ids[user_id] = await get_existing_message_ids(user_id)
-    
-    # Start background monitoring task
-    asyncio.create_task(monitor_user_emails(user_id))
-    
-    return {"status": "monitoring_started", "user_id": user_id}
+    try:
+        # Check current status from database
+        result = supabase.table("users").select("is_monitoring").eq("id", user_id).execute()
+        if result.data and result.data[0].get("is_monitoring"):
+            return {"status": "already_monitoring", "user_id": user_id}
+        
+        # Update database to mark as monitoring
+        supabase.table("users").update({
+            "is_monitoring": True,
+            "monitoring_started_at": datetime.utcnow().isoformat(),
+            "last_email_check": datetime.utcnow().isoformat()
+        }).eq("id", user_id).execute()
+        
+        # Start background monitoring task
+        asyncio.create_task(monitor_user_emails(user_id))
+        
+        return {"status": "monitoring_started", "user_id": user_id}
+        
+    except Exception as e:
+        logging.error(f"Error starting monitoring for user {user_id}: {str(e)}")
+        return {"status": "error", "user_id": user_id, "error": str(e)}
 
 async def stop_email_monitoring(user_id: str):
     """
     Stop email monitoring for a user
     """
-    monitoring_tasks[user_id] = False
-    return {"status": "monitoring_stopped", "user_id": user_id}
-
+    try:
+        # Update database to mark as not monitoring
+        supabase.table("users").update({
+            "is_monitoring": False,
+            "last_email_check": datetime.utcnow().isoformat()
+        }).eq("id", user_id).execute()
+        
+        
+        return {"status": "monitoring_stopped", "user_id": user_id}
+        
+    except Exception as e:
+        logging.error(f"Error stopping monitoring for user {user_id}: {str(e)}")
+        return {"status": "error", "user_id": user_id, "error": str(e)}
+    
 async def monitor_user_emails(user_id: str):
     """
-    Continuously monitor emails for a specific user
+    Continuously monitor emails for a specific user with better error handling
+    
     """
+    if user_id in active_monitoring_tasks:
+        logging.info(f"Monitoring already active for user {user_id}")
+        return
+    
+    active_monitoring_tasks.add(user_id)
+    
     logging.info(f"Starting email monitoring for user {user_id}")
     
-    while monitoring_tasks.get(user_id, False):
+    consecutive_errors = 0
+    max_consecutive_errors = 3
+    
+    while True:
         try:
+            # Check if monitoring is still enabled in database
+            result = supabase.table("users").select("is_monitoring").eq("id", user_id).execute()
+            if not result.data or not result.data[0].get("is_monitoring"):
+                logging.info(f"Monitoring disabled for user {user_id}, stopping...")
+                break
+            
+            # Update last check time (this prevents stale detection)
+            supabase.table("users").update({
+                "last_email_check": datetime.utcnow().isoformat()
+            }).eq("id", user_id).execute()
+            
+            # Reset error counter on successful database update
+            consecutive_errors = 0
+            
             # Check for new emails
             new_emails = await check_for_new_emails(user_id)
             
             if new_emails:
                 logging.info(f"Found {len(new_emails)} new emails for user {user_id}")
                 
-                # Process each new email
                 for email in new_emails:
                     try:
+                        # Skip if already processed
+                        if await is_message_already_processed(user_id, email['message_id']):
+                            logging.info(f"Skipping already processed email {email['message_id']}")
+                            continue
+                            
                         await process_and_store_email(user_id, email)
-                        # Add to processed set
-                        processed_message_ids[user_id].add(email['message_id'])
                     except Exception as e:
                         logging.error(f"Error processing email {email['message_id']}: {str(e)}")
             
-            # Wait before next check (30 seconds)
-            await asyncio.sleep(30) #CHANGE TO 1 HOUR AFTER TESTING IS FINISHED!! TODO
+            # Wait before next check
+            await asyncio.sleep(3600) #CHANGE TO AN HOUR 
             
         except Exception as e:
-            logging.error(f"Error in email monitoring for user {user_id}: {str(e)}")
-            await asyncio.sleep(60)  # Wait longer if there's an error
+            consecutive_errors += 1
+            logging.error(f"Error in email monitoring for user {user_id} (attempt {consecutive_errors}): {str(e)}")
+            
+            if consecutive_errors >= max_consecutive_errors:
+                logging.error(f"Too many consecutive errors for user {user_id}, stopping monitoring")
+                await stop_email_monitoring(user_id)
+                break
+            
+            # Wait longer after errors
+            await asyncio.sleep(60)
+        
+        active_monitoring_tasks.discard(user_id)
+
     
     logging.info(f"Stopped email monitoring for user {user_id}")
-
-async def get_existing_message_ids(user_id: str) -> Set[str]:
+    
+    
+async def get_user_monitoring_status(user_id: str) -> Dict:
     """
-    Get all message IDs that have already been processed for this user
+    Get monitoring status from database
     """
     try:
-        result = supabase.table("drafts").select("message_id").eq("user_id", user_id).execute()
-        existing_ids = set()
+        result = supabase.table("users").select(
+            "is_monitoring", "last_email_check", "monitoring_started_at", "created_at"
+        ).eq("id", user_id).execute()
         
-        for row in result.data:
-            if row.get("message_id"):
-                existing_ids.add(row["message_id"])
+        if not result.data:
+            return {
+                "is_monitoring": False,
+                "last_email_check": None,
+                "monitoring_started_at": None,
+                "account_created_at": None
+            }
         
-        return existing_ids
+        user_data = result.data[0]
+        return {
+            "is_monitoring": user_data.get("is_monitoring", False),
+            "last_email_check": user_data.get("last_email_check"),
+            "monitoring_started_at": user_data.get("monitoring_started_at"),
+            "account_created_at": user_data.get("created_at")
+        }
     except Exception as e:
-        logging.error(f"Error fetching existing message IDs: {str(e)}")
-        return set()
+        logging.error(f"Error getting monitoring status for user {user_id}: {str(e)}")
+        return {
+            "is_monitoring": False,
+            "last_email_check": None,
+            "monitoring_started_at": None,
+            "account_created_at": None
+        }
+    
+async def restore_monitoring_on_startup():
+    """
+    Restore monitoring for users who were being monitored before server restart
+    Call this when your server starts up
+    """
+    try:
+        result = supabase.table("users").select("id").eq("is_monitoring", True).execute()
+        print(result) 
+        for user_data in result.data:
+            user_id = user_data["id"]
+            logging.info(f"Restoring monitoring for user {user_id}")
+            
+            # Start monitoring task
+            asyncio.create_task(monitor_user_emails(user_id))
+            
+    except Exception as e:
+        logging.error(f"Error restoring monitoring on startup: {str(e)}")
+
+
+# ─── API Endpoints ──────────────────────────────────────────────────
+@router.post("/start-monitoring")
+async def start_monitoring(request: Request):
+    """
+    Start continuous email monitoring for the current user
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    result = await start_email_monitoring(user_id)
+    return result
+
+@router.post("/stop-monitoring")
+async def stop_monitoring(request: Request):
+    """
+    Stop email monitoring for the current user
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    result = await stop_email_monitoring(user_id)
+    return result
+
+@router.get("/monitoring-status", response_model=MonitoringStatus)
+async def get_monitoring_status(request: Request):
+    """
+    Get current monitoring status for the user
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Get status from database
+    status_data = await get_user_monitoring_status(user_id)
+    
+    # Count emails processed today
+    today = datetime.utcnow().date()
+    today_start = datetime.combine(today, datetime.min.time())
+    
+    result = supabase.table("drafts").select("id").eq("user_id", user_id).gte("created_at", today_start.isoformat()).execute()
+    emails_today = len(result.data)
+    
+    return MonitoringStatus(
+        is_monitoring=status_data["is_monitoring"],
+        user_id=user_id,
+        emails_processed_today=emails_today,
+        last_check=status_data["last_email_check"],
+        account_created_at=status_data["account_created_at"]
+    )
+async def cleanup_stale_monitoring():
+    """
+    Restart monitoring for users whose monitoring tasks have died
+    """
+    try:
+        # Find users marked as monitoring but haven't checked in recently
+        cutoff_time = datetime.utcnow() - timedelta(minutes=720)
+        
+        result = supabase.table("users").select("id", "last_email_check").eq("is_monitoring", True).execute()
+        
+        for user_data in result.data:
+            user_id = user_data["id"]
+            last_check = user_data.get("last_email_check")
+            
+            should_restart = False
+            
+            if last_check:
+                last_check_dt = datetime.fromisoformat(last_check)
+                if last_check_dt.tzinfo is None:
+                    last_check_dt = last_check_dt.replace(tzinfo=timezone.utc)
+                
+                if last_check_dt < cutoff_time.replace(tzinfo=timezone.utc):
+                    should_restart = True
+            else:
+                should_restart = True
+            
+            if should_restart:
+                logging.info(f"Restarting failed monitoring for user {user_id}")
+                # Don't stop first - just start a new monitoring task
+                # The new task will update last_email_check immediately
+                asyncio.create_task(monitor_user_emails(user_id))
+                
+    except Exception as e:
+        logging.error(f"Error cleaning up stale monitoring: {str(e)}")
+async def periodic_cleanup():
+    """
+    Run cleanup every 12 hours minutes
+    """
+    while True:
+        await asyncio.sleep(900)  # 15 minutes
+        await cleanup_stale_monitoring()
+
+
+async def get_existing_message_ids(user_id: str) -> Set[str]:
+    """This function is no longer needed, but keeping for compatibility"""
+    return set()
+    
 async def get_user_account_creation_date(user_id: str) -> Optional[datetime]:
     """
     Get when the user account was created to filter emails
@@ -155,7 +372,7 @@ async def check_for_new_emails(user_id: str) -> List[Dict]:
         # Build query to get emails after account creation
         query_params = {
             "maxResults": 50,
-            "labelIds": "INBOX",
+            #"labelIds": "INBOX", -- Deprecated -- using primary inbox now
             "format": "metadata"
         }
         
@@ -163,7 +380,7 @@ async def check_for_new_emails(user_id: str) -> List[Dict]:
         if account_created:
             # Format date for Gmail search (YYYY/MM/DD)
             after_date = account_created.strftime("%Y/%m/%d")
-            query_params["q"] = f"after:{after_date}"
+            query_params["q"] = f"category:primary -label:^auto after:{after_date}"
         
         async with httpx.AsyncClient() as client:
             r = await client.get(
@@ -183,7 +400,7 @@ async def check_for_new_emails(user_id: str) -> List[Dict]:
                 msg_id = msg["id"]
                 
                 # Skip if already processed
-                if msg_id in processed_message_ids.get(user_id, set()):
+                if await is_message_already_processed(user_id, msg_id):
                     continue
                 
                 # Fetch full email details
@@ -212,10 +429,14 @@ async def check_for_new_emails(user_id: str) -> List[Dict]:
         logging.error(f"Error checking for new emails: {str(e)}")
         return []
 
+
 async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: str) -> Optional[Dict]:
     """
-    Fetch detailed email information from Gmail
+    Fetch detailed email information from Gmail with enhanced bot detection
     """
+    detector = BotEmailDetector()
+    customer_detector = CustomerDetector()
+    
     try:
         r = await client.get(
             f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}",
@@ -237,26 +458,31 @@ async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: 
         date_header = next((h["value"] for h in headers_list if h["name"] == "Date"), None)
         if date_header:
             try:
-                from email.utils import parsedate_to_datetime
                 received_at = parsedate_to_datetime(date_header).isoformat()
             except:
                 pass
-        
-        # Skip automated emails
-        bot_senders = [
-            "no-reply", "noreply", "notifications@", "calendar@", "automated@",
-            "do-not-reply", "support@", "help@", "system@", "admin@",
-            "bounce", "mailer-daemon", "postmaster"
-        ]
-        
-        if any(bot_id in sender.lower() for bot_id in bot_senders):
-            return None
         
         # Extract body
         raw_body = extract_email_body(full_msg)
         if not raw_body or len(raw_body.strip()) < 10:
             return None
         
+        # Enhanced bot detection
+        if detector.is_bot_email(sender, subject, raw_body, headers_list):
+            logging.info(f"Skipping bot email from {sender}: {subject}")
+            return None
+        
+        # Customer classification
+        customer_status = customer_detector.analyze_customer_status(raw_body)
+        
+        # Optional: Skip prospects if you only want to respond to customers
+        if customer_status == 'unknown':
+            logging.info(f"Skipping prospect email from because unknown -- Sender:{sender}: {subject}")
+            return None
+        
+        logging.info(f"Email classified as '{customer_status}' from {sender}: {subject}")
+        
+        logging.info(f"Email passed bot detection - Subject: {subject[:50]}...") #restart
         return {
             "message_id": msg_id,
             "subject": subject,
@@ -301,12 +527,13 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
     """
     try:
         # Fetch user data
+        logging.info(f"Generating draft for user {user_id}, subject: {subject[:50]}...")
         tone = fetch_tone_profile(user_id)
         user_row = supabase.table("users").select("signature", "brand_summary").eq("id", user_id).execute()
         row = user_row.data[0] if user_row.data else {}
         signature_block = row.get("signature", "")
         brand_summary = row.get("brand_summary", "")
-        
+        special_instructions = row.get("special_instructions", "")
         # Fetch and match inventory
         inventory_result = supabase.table("inventory").select("*").eq("user_id", user_id).execute()
         inventory = inventory_result.data or []
@@ -358,6 +585,9 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         {brand_summary or "No brand information available."}
 
         {inventory_context}
+        
+        Business-Specific Rules (Include if relevant to the reply):
+        {special_instructions or "No specific rules provided."}
 
         INSTRUCTIONS:
         - Write a helpful, natural reply that sounds like a real person
@@ -385,60 +615,10 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         return draft_text, matched_items if matched_items else None
         
     except Exception as e:
-        logging.error(f"Error generating draft: {str(e)}")
-        return f"Error generating draft: {str(e)}", None
-
-# ─── API Endpoints ──────────────────────────────────────────────────
-@router.post("/start-monitoring")
-async def start_monitoring(request: Request):
-    """
-    Start continuous email monitoring for the current user
-    """
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    result = await start_email_monitoring(user_id)
-    return result
-
-@router.post("/stop-monitoring")
-async def stop_monitoring(request: Request):
-    """
-    Stop email monitoring for the current user
-    """
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    result = await stop_email_monitoring(user_id)
-    return result
-
-@router.get("/monitoring-status", response_model=MonitoringStatus)
-async def get_monitoring_status(request: Request):
-    """
-    Get current monitoring status for the user
-    """
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    
-    # Get account creation date
-    account_created = await get_user_account_creation_date(user_id)
-    
-    # Count emails processed today
-    today = datetime.utcnow().date()
-    today_start = datetime.combine(today, datetime.min.time())
-    
-    result = supabase.table("drafts").select("id").eq("user_id", user_id).gte("created_at", today_start.isoformat()).execute()
-    emails_today = len(result.data)
-    
-    return MonitoringStatus(
-        is_monitoring=monitoring_tasks.get(user_id, False),
-        user_id=user_id,
-        emails_processed_today=emails_today,
-        last_check=datetime.utcnow().isoformat(),
-        account_created_at=account_created.isoformat() if account_created else None
-    )
+        logging.error(f"Draft generation failed for user {user_id}: {str(e)}")
+        logging.error(f"Subject: {subject}")
+        logging.error(f"Sender: {sender_name}") #restarting
+        raise e
 
 @router.get("/recent-drafts")
 async def get_recent_drafts(request: Request, limit: int = 10):
@@ -455,24 +635,47 @@ async def get_recent_drafts(request: Request, limit: int = 10):
         "drafts": result.data,
         "total": len(result.data)
     }
-
-# ─── Auto-start monitoring when user logs in ──────────────────────────────────────
+    
 @router.post("/auto-start-monitoring")
 async def auto_start_monitoring_on_login(request: Request):
     """
-    Automatically start monitoring when user logs in (call this after successful login)
+    Automatically start monitoring when user logs in
     """
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    # Check if monitoring is already running
-    if not monitoring_tasks.get(user_id, False):
+    # Check current status from database
+    status_data = await get_user_monitoring_status(user_id)
+    
+    if not status_data["is_monitoring"]:
         result = await start_email_monitoring(user_id)
         return {"message": "Email monitoring started automatically", "result": result}
     else:
         return {"message": "Email monitoring already active", "user_id": user_id}
+
+@router.get("/all-monitoring-users")
+async def get_all_monitoring_users(request: Request):
+    """
+    Get all users currently being monitored (for debugging)
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     
+    try:
+        result = supabase.table("users").select(
+            "id", "is_monitoring", "last_email_check", "monitoring_started_at"
+        ).eq("is_monitoring", True).execute()
+        
+        return {
+            "monitoring_users": result.data,
+            "total_count": len(result.data)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting monitoring users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     
 from datetime import datetime, timezone
 
@@ -759,3 +962,439 @@ def extract_sender_name(sender: str) -> str:
     
     # Otherwise, assume it's already just a name - take first word
     return sender.strip().split()[0] if sender.strip() else ""
+
+
+
+
+
+
+
+
+
+
+
+class BotEmailDetector:
+    def __init__(self):
+        # Expanded bot sender patterns
+        self.bot_sender_patterns = [
+            r'no-?reply',
+            r'noreply',
+            r'notifications?@',
+            r'do[-_.]?not[-_.]?reply'
+            r'calendar@',
+            r'automated?@',
+            r'do-?not-?reply',
+            r'support@',
+            r'help@',
+            r'system@',
+            r'admin@',
+            r'bounce',
+            r'mailer-?daemon',
+            r'postmaster',
+            r'marketing@',
+            r'newsletter',
+            r'campaigns?@',
+            r'alerts?@',
+            r'updates?@',
+            r'info@',
+            r'service@',
+            r'team@',
+            r'security@',
+            r'billing@',
+            r'invoices?@',
+            r'receipts?@',
+            r'orders?@',
+            r'shipping@',
+            r'delivery@',
+            r'tracking@',
+            r'api@',
+            r'bot@',
+            r'auto@',
+            r'robot@',
+            r'no[-_.]?reply',
+            r'do[-_.]?not[-_.]?reply',
+            r'auto[-_.]?reply',
+            r'donotreply',
+            r'automated?',
+            r'notifications?',
+            r'support',
+            r'help',
+            r'system',
+            r'admin',
+            r'bounce',
+            r'mailer[-_.]?daemon',
+            r'postmaster',
+            r'marketing',
+            r'newsletter',
+            r'campaigns?',
+            r'alerts?',
+            r'updates?',
+            r'info',
+            r'service',
+            r'team',
+            r'security',
+            r'billing',
+            r'invoices?',
+            r'receipts?',
+            r'orders?',
+            r'shipping',
+            r'delivery',
+            r'tracking',
+            r'api',
+            r'bot',
+            r'robot'
+        ]
+        
+        # Bot subject patterns
+        self.bot_subject_patterns = [
+            r'\[automated\]',
+            r'\[system\]',
+            r'\[notification\]',
+            r'unsubscribe',
+            r're:\s*out of office',
+            r'delivery status notification',
+            r'mail delivery failed',
+            r'automatic reply',
+            r'auto-?reply',
+            r'newsletter',
+            r'digest',
+            r'weekly\s+report',
+            r'monthly\s+report',
+            r'daily\s+summary',
+            r'password\s+reset',
+            r'account\s+verification',
+            r'confirm\s+your',
+            r'your\s+order',
+            r'receipt\s+for',
+            r'invoice\s+#',
+            r'payment\s+confirmation',
+            r'shipping\s+notification'
+        ]
+        
+        # Bot body patterns
+        self.bot_body_patterns = [
+            r'this\s+is\s+an\s+automated\s+message',
+            r'do\s+not\s+reply\s+to\s+this\s+email',
+            r'automatically\s+generated',
+            r'unsubscribe\s+link',
+            r'click\s+here\s+to\s+unsubscribe',
+            r'if\s+you\s+no\s+longer\s+wish\s+to\s+receive',
+            r'this\s+email\s+was\s+sent\s+automatically',
+            r'please\s+do\s+not\s+respond\s+to\s+this\s+email',
+            r'system\s+notification',
+            r'automated\s+notification',
+            r'tracking\s+number',
+            r'order\s+confirmation',
+            r'payment\s+received',
+            r'account\s+created',
+            r'password\s+has\s+been\s+reset',
+            r'this\s+is\s+an\s+automated\s+message',
+            r'do\s+not\s+reply\s+to\s+this\s+email',
+            r'this\s+email\s+was\s+sent\s+automatically',
+            r'please\s+do\s+not\s+respond\s+to\s+this\s+email',
+            r'automatically\s+generated',
+            r'unsubscribe\s+(here|link|below)',
+            r'click\s+here\s+to\s+unsubscribe',
+            r'if\s+you\s+no\s+longer\s+wish\s+to\s+receive',
+            r'tracking\s+number',
+            r'your\s+order\s+(has\s+been|is)\s+confirmed',
+            r'order\s+confirmation',
+            r'payment\s+(received|confirmed)',
+            r'your\s+receipt',
+            r'password\s+(reset|change)\s+requested',
+            r'password\s+has\s+been\s+(reset|changed)',
+            r'confirm\s+your\s+email\s+address',
+            r'account\s+(verification|activated|created)',
+            r'please\s+verify\s+your\s+email',
+            r'security\s+alert',
+            r'unusual\s+login\s+attempt',
+            r'your\s+subscription\s+has\s+been\s+(renewed|cancelled)',
+            r'delivery\s+status',
+            r'failed\s+delivery\s+attempt',
+            r'your\s+package\s+is\s+on\s+its\s+way',
+            r'download\s+your\s+report',
+            r'here\s+is\s+your\s+weekly\s+summary',
+            r'here\s+is\s+your\s+daily\s+report',
+            r'new\s+comment\s+on\s+your\s+post',
+            r'you\s+have\s+a\s+new\s+message',
+            r'don’t\s+miss\s+out\s+on',
+            r'special\s+offer\s+just\s+for\s+you',
+            r'limited\s+time\s+deal',
+            r'thank\s+you\s+for\s+registering',
+            r'your\s+information\s+was\s+successfully\s+submitted',
+            r'we[’\']?ll\s+follow\s+up\s+with\s+you',
+            r'application\s+(received|submitted)',
+            r'explore\s+our\s+open\s+roles',
+            r'nvidia[’\']?s\s+university\s+recruiting\s+team'
+        ]
+        
+        # Headers that indicate automated emails
+        self.bot_headers = [
+            'auto-submitted',
+            'x-auto-response-suppress',
+            'x-autoreply',
+            'x-autorespond',
+            'precedence',
+            'x-mailer-type'
+        ]
+
+    def is_bot_sender(self, sender: str) -> bool:
+        """
+        Check if sender appears to be a bot based on email address patterns and known bot domains.
+        """
+        # Extract only the email address (e.g., 'donotreply@nvidia.com')
+        sender_email = email.utils.parseaddr(sender)[1].lower()
+
+        # Match flexible sender patterns like 'donotreply', 'do.not.reply', 'no-reply', etc.
+        for pattern in self.bot_sender_patterns:
+            if re.search(pattern, sender_email):
+                return True
+
+        # Match against known marketing/automation email domains
+        bot_domains = [
+            'mailgun.org',
+            'sendgrid.net',
+            'amazonses.com',
+            'mailchimp.com',
+            'constantcontact.com',
+            'campaignmonitor.com',
+            'intercom.io',
+            'zendesk.com',
+            'freshdesk.com',
+            'helpscout.net',
+            'nvidia.com'  # add this if you regularly get automated mail from NVIDIA
+        ]
+
+        for domain in bot_domains:
+            if sender_email.endswith(domain):
+                return True
+
+        return False
+
+    
+    def is_bot_subject(self, subject: str) -> bool:
+        """Check if subject line indicates automated email"""
+        subject_lower = subject.lower()
+        
+        for pattern in self.bot_subject_patterns:
+            if re.search(pattern, subject_lower):
+                return True
+        
+        return False
+    
+    def is_bot_body(self, body: str) -> bool:
+        """Check if email body contains automated message indicators"""
+        body_lower = body.lower()
+        
+        for pattern in self.bot_body_patterns:
+            if re.search(pattern, body_lower):
+                return True
+        
+        return False
+    
+    def check_bot_headers(self, headers_list: List[Dict]) -> bool:
+        """Check for headers that indicate automated emails"""
+        header_dict = {h["name"].lower(): h["value"].lower() for h in headers_list}
+        
+        # Check for auto-submitted header
+        if header_dict.get('auto-submitted', '').startswith('auto-'):
+            return True
+        
+        # Check for precedence header
+        precedence = header_dict.get('precedence', '')
+        if precedence in ['bulk', 'list', 'junk']:
+            return True
+        
+        # Check for list headers (mailing lists)
+        list_headers = ['list-id', 'list-unsubscribe', 'list-subscribe']
+        if any(header in header_dict for header in list_headers):
+            return True
+        
+        # Check for marketing automation headers
+        marketing_headers = ['x-campaign', 'x-mailgun', 'x-sg-', 'x-sendgrid']
+        for header_name in header_dict:
+            if any(marker in header_name for marker in marketing_headers):
+                return True
+        
+        return False
+    
+    def analyze_reply_patterns(self, body: str) -> bool:
+        """Analyze if email shows conversational patterns (indicates human)"""
+        human_patterns = [
+            r'thanks?\s+for',
+            r'thank\s+you',
+            r'i\s+think',
+            r'i\s+believe',
+            r'in\s+my\s+opinion',
+            r'what\s+do\s+you\s+think',
+            r'let\s+me\s+know',
+            r'talk\s+soon',
+            r'best\s+regards',
+            r'kind\s+regards',
+            r'sincerely',
+            r'cheers',
+            r'hope\s+this\s+helps',
+            r'looking\s+forward',
+            r'please\s+let\s+me\s+know',
+            r'i\s+hope\s+you',
+            r'how\s+are\s+you'
+        ]
+        
+        body_lower = body.lower()
+        human_score = sum(1 for pattern in human_patterns if re.search(pattern, body_lower))
+        
+        # If we find multiple human patterns, likely not a bot
+        return human_score >= 2
+    
+    def is_bot_email(self, sender: str, subject: str, body: str, headers_list: List[Dict]) -> bool:
+        """
+        Comprehensive bot detection combining multiple signals
+        Returns True if email is likely from a bot
+        """
+        bot_signals = 0
+        
+        # Check sender
+        if self.is_bot_sender(sender):
+            bot_signals += 3  # Strong signal
+        
+        # Check subject
+        if self.is_bot_subject(subject):
+            bot_signals += 2
+        
+        # Check body
+        if self.is_bot_body(body):
+            bot_signals += 2
+        
+        # Check headers
+        if self.check_bot_headers(headers_list):
+            bot_signals += 2
+        
+        # Check for human conversational patterns (negative signal)
+        if self.analyze_reply_patterns(body):
+            bot_signals -= 2
+        
+        # Check email length (very short emails are often automated)
+        if len(body.strip()) < 50:
+            bot_signals += 1
+        
+        # Check for excessive links (common in marketing emails)
+        link_count = len(re.findall(r'https?://', body))
+        if link_count > 3:
+            bot_signals += 1
+        
+        return bot_signals >= 3
+
+
+
+class CustomerDetector:
+    def __init__(self):
+        self.customer_indicators = [
+            r'my\s+order',
+            r'order\s+#?\d+',
+            r'tracking\s+number',
+            r'invoice\s+#?\d+',
+            r'receipt',
+            r'purchased',
+            r'bought',
+            r'payment',
+            r'refund',
+            r'return',
+            r'exchange',
+            r'warranty',
+            r'delivery',
+            r'shipping',
+            r'received\s+my',
+            r'got\s+my',
+            r'when\s+will\s+my.*arrive',
+            r'where\s+is\s+my'
+        ]
+        
+        self.existing_relationship = [
+            r'as\s+discussed',
+            r'per\s+our\s+conversation',
+            r'following\s+up',
+            r'as\s+promised',
+            r'like\s+we\s+talked\s+about',
+            r'from\s+our\s+meeting',
+            r'you\s+mentioned',
+            r'when\s+we\s+spoke',
+            r'our\s+previous\s+order',
+            r'usual\s+order',
+            r'same\s+as\s+last\s+time',
+            # New patterns from examples
+            r'i\s+messaged\s+earlier',
+            r'i\s+am.*mom',
+            r'i\s+was\s+with\s+.*\s+when\s+we',
+            r'returning\s+them',
+            r'picked\s+up\s+the',
+            r'we\s+are.*minutes\s+out',
+            r'coming\s+back',
+            r'drop\s+off',
+            r'pickup\s+.*\s+pedestals',
+            r'returning\s+.*\s+pedestals'
+        ]
+        
+        self.prospect_indicators = [
+            r'i\s+am\s+interested\s+in',
+            r'can\s+you\s+tell\s+me\s+about',
+            r'what\s+do\s+you\s+charge',
+            r'do\s+you\s+offer',
+            r'i\s+found\s+your',
+            r'saw\s+your\s+website',
+            r'looking\s+for',
+            r'need\s+a\s+quote',
+            r'price\s+list',
+            r'more\s+information',
+            r'first\s+time',
+            r'new\s+to\s+your',
+            r'heard\s+about\s+you',
+            # New patterns from examples
+            r'wanted\s+to\s+rent',
+            r'would\s+like\s+to\s+rent',
+            r'would\s+like\s+to\s+inquire',
+            r'inquire\s+about',
+            r'can\s+you\s+provide',
+            r'do\s+you\s+have',
+            r'planning\s+.*\s+wedding',
+            r'looking\s+at\s+.*\s+renting',
+            r'rental\s+inquiry',
+            r'quote\s+for',
+            r'pricing\s+for',
+            r'availability\s+for',
+            r'total\s+cost',
+            r'delivery.*fees',
+            r'pickup.*fees',
+            r'rental.*rates'
+        ]
+    
+    def analyze_customer_status(self, body: str) -> str:
+        """
+        Analyze email body to determine if sender is likely a customer or prospect
+        Returns: 'customer', 'prospect', or 'unknown'
+        """
+        body_lower = body.lower()
+        
+        customer_score = 0
+        prospect_score = 0
+        
+        # Check for customer indicators
+        for pattern in self.customer_indicators:
+            if re.search(pattern, body_lower):
+                customer_score += 1
+        
+        # Check for existing relationship indicators
+        for pattern in self.existing_relationship:
+            if re.search(pattern, body_lower):
+                customer_score += 1
+        
+        # Check for prospect indicators
+        for pattern in self.prospect_indicators:
+            if re.search(pattern, body_lower):
+                prospect_score += 1
+        
+        if customer_score > prospect_score and customer_score > 0:
+            return 'customer'
+        elif prospect_score > customer_score and prospect_score > 0:
+            return 'prospect'
+        else:
+            return 'unknown'

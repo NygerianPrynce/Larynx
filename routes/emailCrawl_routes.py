@@ -104,3 +104,206 @@ async def crawl_emails(request: Request):
 
 
 
+
+@router.post("/set-generic-tone")
+async def set_generic_tone(request: Request):
+    """
+    Sets a generic tone profile for users who don't grant email access.
+    This provides a baseline professional tone that can be used for email generation.
+    """
+    email = request.session.get("user_email")
+    if not email:
+        raise HTTPException(status_code=401, detail="User not authenticated -- lacking Email")    
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")    
+    
+    # Create a generic professional tone profile matching your exact format
+    generic_tone_profile = {
+        "avg_sentences_per_email": 3.5,
+        "top_words": [
+            ["please", 15],
+            ["thank", 12],
+            ["regards", 10],
+            ["best", 10],
+            ["hope", 8],
+            ["you", 8],
+            ["well", 7],
+            ["let", 6],
+            ["know", 6],
+            ["time", 5],
+            ["appreciate", 5],
+            ["looking", 4],
+            ["forward", 4],
+            ["hearing", 4],
+            ["questions", 4]
+        ],
+        "top_nouns": [
+            ["regards", 12],
+            ["time", 8],
+            ["questions", 6],
+            ["information", 5],
+            ["assistance", 5],
+            ["opportunity", 4],
+            ["response", 4],
+            ["consideration", 4],
+            ["support", 3],
+            ["help", 3]
+        ],
+        "top_verbs": [
+            ["please", 15],
+            ["thank", 12],
+            ["hope", 8],
+            ["let", 6],
+            ["know", 6],
+            ["appreciate", 5],
+            ["looking", 4],
+            ["hearing", 4],
+            ["reach", 3],
+            ["contact", 3]
+        ],
+        "top_adjectives": [
+            ["best", 10],
+            ["available", 5],
+            ["additional", 4],
+            ["necessary", 3],
+            ["important", 3],
+            ["specific", 3],
+            ["further", 3],
+            ["relevant", 2],
+            ["appropriate", 2],
+            ["professional", 2]
+        ],
+        "formality_score": 0.65,
+        "politeness_analysis": {
+            "politeness_level": 2.1,
+            "directness_level": 0.4,
+            "communication_style": "polite"
+        },
+        "emotional_tone": {
+            "enthusiasm": 0.6,
+            "concern": 0.1,
+            "gratitude": 1.2,
+            "apologetic": 0.2,
+            "exclamation_frequency": 0.3,
+            "question_frequency": 0.4,
+            "dominant_emotion": "gratitude"
+        },
+        "communication_patterns": {
+            "preferred_opening": "professional_greeting",
+            "avg_paragraphs": 2.5,
+            "avg_sentence_length": 15.8
+        }
+    }
+    
+    try:
+        # Store the generic tone profile (convert to JSON string to match your format)
+        store_tone_profile(user_id, generic_tone_profile)
+        
+        # Optionally set a generic signature if none exists
+        user_data = supabase.table("users").select("signature, name").eq("id", user_id).execute()
+        current_signature = user_data.data[0].get("signature") if user_data.data else None
+        user_name = user_data.data[0].get("name") if user_data.data else None
+        
+        if not current_signature:
+            # Use the user's name from the database for the signature
+            if user_name:
+                generic_signature = f"Best regards,\n{user_name}"
+            else:
+                # Fallback to email-based name if no name in database
+                name_part = email.split('@')[0]
+                formatted_name = name_part.replace('.', ' ').replace('_', ' ').title()
+                generic_signature = f"Best regards,\n{formatted_name}"
+            
+            supabase.table("users").update({"signature": generic_signature}).eq("id", user_id).execute()
+        else:
+            generic_signature = current_signature
+
+        return {
+            "status": "success",
+            "message": "Generic tone profile set successfully",
+            "tone_profile": generic_tone_profile,
+            "signature_set": generic_signature,
+            "profile_type": "generic"
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to set generic tone profile: {str(e)}"
+        )
+        
+from pydantic import BaseModel
+
+class SignatureUpdateRequest(BaseModel):
+    signature: str
+
+@router.get("/signature")
+async def get_signature(request: Request):
+    """
+    Fetches the current signature for the authenticated user.
+    """
+    email = request.session.get("user_email")
+    if not email:
+        raise HTTPException(status_code=401, detail="User not authenticated -- lacking Email")
+    
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")
+    
+    try:
+        # Fetch user's signature from database
+        user_data = supabase.table("users").select("signature, name").eq("id", user_id).execute()
+        
+        if not user_data.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user_info = user_data.data[0]
+        current_signature = user_info.get("signature")
+        user_name = user_info.get("name")
+        
+        return {
+            "signature": current_signature,
+            "user_name": user_name,
+            "has_signature": current_signature is not None
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to fetch signature: {str(e)}"
+        )
+
+@router.put("/signature")
+async def update_signature(request: Request, signature_data: SignatureUpdateRequest):
+    """
+    Updates the signature for the authenticated user.
+    """
+    email = request.session.get("user_email")
+    if not email:
+        raise HTTPException(status_code=401, detail="User not authenticated -- lacking Email")
+    
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")
+    
+    try:
+        # Update the user's signature
+        result = supabase.table("users").update({
+            "signature": signature_data.signature
+        }).eq("id", user_id).execute()
+        
+        if not result.data:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        return {
+            "status": "success",
+            "message": "Signature updated successfully",
+            "signature": signature_data.signature
+        }
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to update signature: {str(e)}"
+        )

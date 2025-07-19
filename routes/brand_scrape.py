@@ -5,6 +5,9 @@ from functions import scrape_brand_context, store_brand_context
 import httpx
 import json
 from typing import Optional
+from config import supabase
+from typing import Dict
+from functions import store_brand_context
 
 router = APIRouter()
 
@@ -24,6 +27,8 @@ async def upload_brand_summary(request: Request, brand_data: BrandSummaryUpload)
     This endpoint allows users to directly provide their brand information
     including name, summary, industry, target audience, values, and tone.
     """
+    #print("Manual Brand Summary:", brand_data)
+    #return {"status": "Data Collected", "Data": brand_data}
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")
@@ -73,8 +78,10 @@ async def upload_brand_summary(request: Request, brand_data: BrandSummaryUpload)
         raise HTTPException(status_code=500, detail=f"Failed to store brand summary: {str(e)}")
 
 
-@router.get("/test-website-scrape")
+@router.get("/website-scrape")
 async def test_brand_scrape(request: Request, url: str = Query(...)):
+    #print("Scraping:", url)
+    #return {"status": "scraped", "url": url}
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")
@@ -93,3 +100,31 @@ async def test_brand_scrape(request: Request, url: str = Query(...)):
     
     return {"status": "SUCCESS", "summary": brand_summary["brand_summary"]}
 
+
+@router.get("/get-brand-summary")
+async def get_brand_summary(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    response = supabase.table("users").select("brand_summary").eq("id", user_id).execute()
+
+    if not response.data or not response.data[0].get("brand_summary"):
+        return {"summary": "No summary found."}
+
+    summary = response.data[0]["brand_summary"]  # ✅ treat as string
+    return {"summary": summary}
+
+class BrandSummaryPayload(BaseModel):
+    summary: str
+    
+@router.post("/update-brand-summary")
+async def update_brand_summary(request: Request, payload: BrandSummaryPayload):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    # payload.summary should now be a str
+    store_brand_context(user_id, {"brand_summary": payload.summary})
+
+    return {"status": "success", "message": "Brand summary updated"}

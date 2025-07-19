@@ -4,10 +4,10 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request, HTTPException
 from starlette.middleware.sessions import SessionMiddleware
-from dotenv import load_dotenv
 
 from config import supabase, oauth  # Shared objects from your config
 
+from pydantic import BaseModel
 
 router = APIRouter()
 
@@ -24,7 +24,7 @@ async def login(request: Request):
         request, 
         redirect_uri,
         access_type="offline", 
-        prompt="consent",
+        #prompt="consent",
     )
 
 # Step 2: Google sends the user back here (with a code)
@@ -41,54 +41,121 @@ async def auth_callback(request: Request):
         # Get user info
         resp = await oauth.google.get('https://www.googleapis.com/oauth2/v2/userinfo', token=token)
         user = resp.json()
-        #logging.info("RAW TOKEN RESPONSE: %s", token)
-        #logging.info("User info: %s", user)
         
-        # After you get user info and token
         email = user.get("email")
         name = user.get("name")
 
         # 1. Upsert user
-        existing_user = supabase.table("users").select("id").eq("email", email).execute()
+        existing_user = supabase.table("users").select("id", "has_onboarded").eq("email", email).execute()
+
         if existing_user.data:
             user_id = existing_user.data[0]["id"]
+            has_onboarded = existing_user.data[0]["has_onboarded"]
+
         else:
-            new_user = supabase.table("users").insert({"email": email, "name": name}).execute()
+            new_user = supabase.table("users").insert({
+                "email": email,
+                "name": name,
+                "has_onboarded": False  # default to false on signup
+            }).execute()
             user_id = new_user.data[0]["id"]
-            
-        #Put in session storage to use for crawling and other stuff
+            has_onboarded = False
+
+        # 2. Save session
         request.session["user_email"] = email
         request.session["user_id"] = user_id
-        
-        # 2. Store tokens
+
+        # 3. Store tokens
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=token["expires_in"])
+
+        # Fetch existing token row to preserve refresh_token if needed
+        existing_token_data = supabase.table("tokens").select("refresh_token").eq("user_id", user_id).execute()
+        existing_refresh_token = existing_token_data.data[0]["refresh_token"] if existing_token_data.data else None
+
+        # Use new refresh_token if present, otherwise fallback to existing
+        refresh_token_to_store = token.get("refresh_token") or existing_refresh_token
+        print("AYYYEYEYEYEYE" + refresh_token_to_store)
+        # Upsert token
         supabase.table("tokens").upsert({
             "user_id": user_id,
             "access_token": token["access_token"],
-            "refresh_token": token.get("refresh_token"),
+            "refresh_token": refresh_token_to_store,
             "scope": token.get("scope"),
             "expires_at": expires_at.isoformat(),
         }, on_conflict=["user_id"]).execute()
 
-        # Prepare the response - convert any datetime objects to ISO strings
-        response_data = {
-            "access_token": token.get("access_token"),
-            "refresh_token": token.get("refresh_token"),
-            "user_email": user.get("email"),
-            "user_name": user.get("name"),
-            "token_type": token.get("token_type"),
-            "expires_in": token.get("expires_in"),
-            "expires_in": token.get("expires_in"),
-            "expires_at": expires_at.isoformat(),  # This is already a timestamp (1751996034)
-        }
-        await start_monitoring_after_login(user_id)
-        return response_data
-        
+
+        # 4. Redirect to appropriate page
+        from fastapi.responses import RedirectResponse
+        if has_onboarded:
+            return RedirectResponse(url="http://localhost:5173/home")
+        else:
+            return RedirectResponse(url="http://localhost:5173/onboarding")
+
     except Exception as e:
         print("Error:", str(e))
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.delete("/user/delete")
+async def delete_user_account(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
 
+    try:
+        # 1. Delete related inventory items first
+        inv_response = supabase.table("inventory").delete().eq("user_id", user_id).execute()
+
+        # 2. Delete user after related records are gone
+        user_response = supabase.table("users").delete().eq("id", user_id).execute()
+
+        if not user_response.data:
+            raise HTTPException(status_code=500, detail="Failed to delete user")
+
+        request.session.clear()
+        return {"message": "User and related data deleted successfully"}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+
+class UpdateNameRequest(BaseModel):
+    new_name: str
+
+@router.put("/user/update-name")
+async def update_user_name(payload: UpdateNameRequest, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    response = supabase.table("users").update({"name": payload.new_name}).eq("id", user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Failed to update name")
+
+    return {
+        "message": "Name updated successfully",
+        "new_name": payload.new_name
+    }
+
+@router.get("/user/name")
+async def get_user_name(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    response = supabase.table("users").select("name").eq("id", user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Failed to fetch user name")
+    
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "name": response.data[0]["name"]
+    }
+
+###Not doing this anymore only keeping 4 boiler in case needed l8r
 async def start_monitoring_after_login(user_id: str):
     """
     Call this function after successful user login to start email monitoring
@@ -99,3 +166,20 @@ async def start_monitoring_after_login(user_id: str):
         logging.info(f"Started email monitoring for user {user_id}")
     except Exception as e:
         logging.error(f"Failed to start email monitoring for user {user_id}: {str(e)}")
+
+
+@router.post("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return {"message": "Logged out"}
+
+@router.post("/finish-onboarding")
+async def finish_onboarding(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    
+    # Update onboarding flag
+    supabase.table("users").update({"has_onboarded": True}).eq("id", user_id).execute()
+
+    return {"message": "Onboarding completed"}

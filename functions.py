@@ -246,9 +246,12 @@ def analyze_communication_patterns(emails):
 
 async def scrape_brand_context(url: str) -> dict:
     try:
-        async with httpx.AsyncClient(timeout=15) as http:
+        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as http:
             # Get main page
-            r = await http.get(url)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            r = await http.get(url, headers=headers)
             soup = BeautifulSoup(r.text, "html.parser")
             
             # Extract structured content
@@ -364,12 +367,12 @@ def store_brand_context(user_id: str, brand_summary: dict):
     
     # ✅ Robust error check
     if not result.data or hasattr(result, 'error') and result.error is not None:
-        print("❌ Error storing tone profile in Supabase:")
+        print("❌ Error storing brand summary in Supabase:")
         if hasattr(result, 'error'):
             print("→", result.error)
         print("→ Full result:", result)
         return
 
-    print("✅ Tone profile stored successfully.")
+    print("✅ brand summary stored successfully.")
     
     
