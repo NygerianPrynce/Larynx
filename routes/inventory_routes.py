@@ -10,9 +10,10 @@ from io import StringIO, BytesIO
 import csv
 from difflib import SequenceMatcher
 import inflect
+from datetime import datetime, timedelta
+
 
 router = APIRouter()
-
 class InventoryItem(BaseModel):
     name: str
     price: float
@@ -23,6 +24,7 @@ async def add_inventory_item(request: Request, item: InventoryItem):
     if not user_id:
         raise HTTPException(401, "Not authenticated")
 
+    # Insert inventory item
     result = supabase.table("inventory").insert({
         "user_id": user_id,
         "name": item.name,
@@ -31,6 +33,23 @@ async def add_inventory_item(request: Request, item: InventoryItem):
 
     if not result.data:
         raise HTTPException(500, "Failed to add inventory item")
+
+    # Log to analytics
+    analytics_resp = supabase.table("analytics").select("recent_activity").eq("user_id", user_id).execute()
+    analytics_data = analytics_resp.data[0] if analytics_resp.data else {}
+    recent = analytics_data.get("recent_activity", [])
+    recent.append({
+        "type": "inventory_add",
+        "message": f"Manually added new item: '{item.name}'",
+        "timestamp": datetime.utcnow().isoformat()
+    })
+    recent = sorted(recent, key=lambda x: x["timestamp"], reverse=True)[:50]
+
+    supabase.table("analytics").upsert({
+        "user_id": user_id,
+        "recent_activity": recent,
+        "updated_at": datetime.utcnow().isoformat()
+    }).execute()
 
     return {"message": "Item added successfully", "item": result.data[0]}
 
@@ -360,40 +379,31 @@ class FileProcessor:
             "type": "Excel" if file_ext in ['xlsx', 'xls'] else "CSV",
             "supported": file_ext in [ext.lstrip('.') for ext in self.supported_extensions]
         }
-
-# Updated endpoint with upsert functionality
 @router.post("/inventory/bulk-upload")
 async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(401, "Not authenticated")
     
-    # Get file info
     processor = FileProcessor()
     file_info = processor.get_file_info(file.filename)
-    
-    # Validate file type
+
     if not file_info["supported"]:
         supported_types = ", ".join(processor.supported_extensions)
         raise HTTPException(400, f"Unsupported file type. Supported formats: {supported_types}")
     
-    # File size limits (Excel files can be larger)
     max_size = 10 * 1024 * 1024 if file_info["extension"] in ['xlsx', 'xls'] else 5 * 1024 * 1024
     if file.size > max_size:
         max_mb = max_size // (1024 * 1024)
         raise HTTPException(400, f"File too large (max {max_mb}MB for {file_info['type']} files)")
     
     try:
-        # Read file content
         content = await file.read()
-        
-        # Process file
         raw_items = processor.process_file(content, file.filename)
-        
-        # Validate items using Pydantic
+
         validated_items = []
         validation_errors = []
-        
+
         for item in raw_items:
             try:
                 validated_item = BulkInventoryItem(
@@ -407,53 +417,63 @@ async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
                 })
             except Exception as e:
                 validation_errors.append(f"Row {item['row']}: {str(e)}")
-        
+
         if validation_errors:
             error_msg = "Validation errors:\n" + "\n".join(validation_errors[:10])
             if len(validation_errors) > 10:
                 error_msg += f"\n... and {len(validation_errors) - 10} more errors"
             raise HTTPException(400, error_msg)
-        
+
         if not validated_items:
             raise HTTPException(400, "No valid items found in file")
-        
-        # Get existing inventory for duplicate detection
+
         existing_result = supabase.table("inventory").select("*").eq("user_id", user_id).execute()
         existing_items = existing_result.data or []
-        
-        # Find duplicates and determine actions
+
         detector = DuplicateDetector()
         analysis = detector.find_duplicates(validated_items, existing_items)
-        
-        # Perform database operations
+
         inserted_count = 0
         updated_count = 0
         skipped_count = 0
-        
-        # Insert new items
+
         if analysis['new_items']:
             new_records = [{"user_id": user_id, "name": item["name"], "price": item["price"]} 
                           for item in analysis['new_items']]
             insert_result = supabase.table("inventory").insert(new_records).execute()
             inserted_count = len(insert_result.data) if insert_result.data else 0
-        
-        # Update existing items
+
         for update_info in analysis['updates']:
             if update_info['action'] == 'update':
                 existing_item = update_info['existing_item']
                 new_item = update_info['new_item']
-                
-                # Update the existing item
+
                 update_result = supabase.table("inventory").update({
                     "price": new_item['price']
                 }).eq("id", existing_item['id']).execute()
-                
+
                 if update_result.data:
                     updated_count += 1
             else:
                 skipped_count += 1
-        
-        # Prepare response
+
+        # Log to analytics
+        analytics_resp = supabase.table("analytics").select("recent_activity").eq("user_id", user_id).execute()
+        analytics_data = analytics_resp.data[0] if analytics_resp.data else {}
+        recent = analytics_data.get("recent_activity", [])
+        recent.append({
+            "type": "inventory_bulk_upload",
+            "message": f"Bulk uploaded inventory via file: {file.filename}",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        recent = sorted(recent, key=lambda x: x["timestamp"], reverse=True)[:50]
+
+        supabase.table("analytics").upsert({
+            "user_id": user_id,
+            "recent_activity": recent,
+            "updated_at": datetime.utcnow().isoformat()
+        }).execute()
+
         response = {
             "message": f"Upload completed: {inserted_count} new items, {updated_count} updated, {skipped_count} skipped",
             "summary": {
@@ -468,13 +488,12 @@ async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
                 "processed_rows": len(validated_items)
             }
         }
-        
-        # Add duplicate details if any were found
+
         if analysis['duplicates']:
             response["duplicates_found"] = analysis['duplicates']
-        
+
         return response
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -508,7 +527,7 @@ async def get_inventory(request: Request):
 class InventoryUpdate(BaseModel):
     name: Optional[str]
     price: Optional[float]
-
+    
 @router.put("/inventory/edit/{item_id}")
 async def update_inventory_item(item_id: str, request: Request, update: InventoryUpdate):
     user_id = request.session.get("user_id")
@@ -519,26 +538,92 @@ async def update_inventory_item(item_id: str, request: Request, update: Inventor
     if not update_data:
         raise HTTPException(400, "No data provided for update")
 
-    result = supabase.table("inventory").update(update_data).eq("id", item_id).eq("user_id", user_id).execute()
+    # Fetch item details before updating (including current price)
+    item_resp = supabase.table("inventory").select("name, price").eq("id", item_id).eq("user_id", user_id).single().execute()
+    if not item_resp.data:
+        raise HTTPException(404, "Item not found")
+    
+    original_name = item_resp.data["name"]
+    original_price = item_resp.data["price"]
 
+    # Perform the update
+    result = supabase.table("inventory").update(update_data).eq("id", item_id).eq("user_id", user_id).execute()
     if not result.data:
         raise HTTPException(500, "Failed to update item")
 
-    return {"message": "Item updated", "item": result.data[0]}
+    # Log to analytics with readable message including before/after
+    analytics_resp = supabase.table("analytics").select("recent_activity").eq("user_id", user_id).execute()
+    analytics_data = analytics_resp.data[0] if analytics_resp.data else {}
+    recent = analytics_data.get("recent_activity", [])
 
+    # Create a readable message based on what was updated
+    if 'name' in update_data and 'price' in update_data:
+        message = f"Updated item '{original_name}' to '{update_data['name']}' and changed price from ${original_price:.2f} to ${update_data['price']:.2f}"
+    elif 'name' in update_data:
+        message = f"Renamed item '{original_name}' to '{update_data['name']}'"
+    elif 'price' in update_data:
+        message = f"Updated price for '{original_name}' from ${original_price:.2f} to ${update_data['price']:.2f}"
+    else:
+        message = f"Updated item '{original_name}'"
+
+    recent.append({
+        "type": "inventory_edit",
+        "message": message,
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+    recent = sorted(recent, key=lambda x: x["timestamp"], reverse=True)[:50]
+
+    supabase.table("analytics").upsert({
+        "user_id": user_id,
+        "recent_activity": recent,
+        "updated_at": datetime.utcnow().isoformat()
+    }).execute()
+
+    return {"message": "Item updated", "item": result.data[0]}
 @router.delete("/inventory/delete/{item_id}")
 async def delete_inventory_item(item_id: str, request: Request):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(401, "Not authenticated")
 
+    # Step 1: Fetch product name BEFORE deleting (MOVED THIS UP!)
+    try:
+        inventory_resp = supabase.table("inventory").select("name").eq("id", item_id).eq("user_id", user_id).single().execute()
+        product_name = inventory_resp.data["name"] if inventory_resp.data else "Unknown Item"
+    except Exception as e:
+        print(f"Could not fetch item name: {e}")
+        product_name = "Unknown Item"
+
+    # Step 2: Now delete the item
     result = supabase.table("inventory").delete().eq("id", item_id).eq("user_id", user_id).execute()
 
     if not result.data:
         raise HTTPException(500, "Failed to delete item")
 
-    return {"message": "Item deleted"}
+    # Step 3: Log to analytics (after successful deletion)
+    try:
+        analytics_resp = supabase.table("analytics").select("recent_activity").eq("user_id", user_id).execute()
+        analytics_data = analytics_resp.data[0] if analytics_resp.data else {}
+        recent = analytics_data.get("recent_activity", [])
 
+        recent.append({
+            "type": "inventory_delete",  # Changed from "inventory_edit"
+            "message": f"Deleted item '{product_name}'",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+        recent = sorted(recent, key=lambda x: x["timestamp"], reverse=True)[:50]
+
+        supabase.table("analytics").upsert({
+            "user_id": user_id,
+            "recent_activity": recent,
+            "updated_at": datetime.utcnow().isoformat()
+        }).execute()
+    except Exception as e:
+        print(f"Failed to log analytics: {e}")
+
+    return {"message": "Item deleted"}
 class SpecialInstructions(BaseModel):
     special_instructions: str
 
@@ -555,6 +640,22 @@ async def save_special_instructions(request: Request, data: SpecialInstructions)
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to save instructions")
 
+    # Log to analytics
+    analytics_resp = supabase.table("analytics").select("recent_activity").eq("user_id", user_id).execute()
+    analytics_data = analytics_resp.data[0] if analytics_resp.data else {}
+    recent = analytics_data.get("recent_activity", [])
+    recent.append({
+        "type": "special_instructions",
+        "message": "Updated special business instructions",
+        "timestamp": datetime.utcnow().isoformat()
+    })
+    recent = sorted(recent, key=lambda x: x["timestamp"], reverse=True)[:50]
+
+    supabase.table("analytics").upsert({
+        "user_id": user_id,
+        "recent_activity": recent,
+        "updated_at": datetime.utcnow().isoformat()
+    }).execute()
     return {"message": "Special instructions saved"}
 
 @router.get("/inventory/special-instructions")

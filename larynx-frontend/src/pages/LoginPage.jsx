@@ -514,7 +514,7 @@ const LarynxAILaunch = () => {
           <span style={styles.logoText}>Larynx AI</span>
         </div>
         <button style={styles.navButton} className="nav-button" onClick={handleLogin}>
-          Get Started
+          Log In
         </button>
       </nav>
 

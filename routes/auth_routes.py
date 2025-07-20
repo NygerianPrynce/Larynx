@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request, HTTPException
 from starlette.middleware.sessions import SessionMiddleware
+import httpx
 
 from config import supabase, oauth  # Shared objects from your config
 
@@ -103,18 +104,35 @@ async def delete_user_account(request: Request):
         raise HTTPException(status_code=401, detail="User not authenticated")
 
     try:
-        # 1. Delete related inventory items first
-        inv_response = supabase.table("inventory").delete().eq("user_id", user_id).execute()
+        # 1. Revoke user's Google token if it exists
+        token_response = supabase.table("tokens").select("refresh_token").eq("user_id", user_id).execute()
+        refresh_token = token_response.data[0]["refresh_token"] if token_response.data else None
 
-        # 2. Delete user after related records are gone
+        if refresh_token:
+            async with httpx.AsyncClient() as client:
+                revoke_response = await client.post(
+                    "https://oauth2.googleapis.com/revoke",
+                    data={"token": refresh_token},
+                    headers={"Content-Type": "application/x-www-form-urlencoded"}
+                )
+                if revoke_response.status_code != 200:
+                    print(f"[Warning] Failed to revoke Google token: {revoke_response.text}")
+
+        # 2. Delete inventory records
+        supabase.table("inventory").delete().eq("user_id", user_id).execute()
+
+        # 3. Delete tokens
+        supabase.table("tokens").delete().eq("user_id", user_id).execute()
+
+        # 4. Delete user account
         user_response = supabase.table("users").delete().eq("id", user_id).execute()
-
         if not user_response.data:
             raise HTTPException(status_code=500, detail="Failed to delete user")
 
+        # 5. Clear session
         request.session.clear()
-        return {"message": "User and related data deleted successfully"}
-    
+        return {"message": "User, tokens, and related data deleted and permissions revoked successfully"}
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
 

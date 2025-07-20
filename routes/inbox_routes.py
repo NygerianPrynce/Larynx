@@ -62,7 +62,7 @@ async def stop_monitoring_task_only(user_id: str):
         active_monitoring_tasks.remove(user_id)
         logging.info(f"[shutdown] Stopped tracking monitoring for user {user_id}")
 
-
+#ONLY NEED message_id
 async def is_message_already_processed(user_id: str, message_id: str) -> bool:
     """Check if we've already processed this email"""
     try:
@@ -237,6 +237,93 @@ async def restore_monitoring_on_startup():
             
     except Exception as e:
         logging.error(f"Error restoring monitoring on startup: {str(e)}")
+        
+async def cleanup_old_email_data():
+    """
+    Clean up old email data to prevent database bloat
+    Run this periodically (daily recommended)
+    """
+    try:
+        # 1. Clean up old drafts (keep last 7 days)
+        cutoff_date = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        
+        # Delete old drafts completely
+        old_drafts = supabase.table("drafts").delete().lt("created_at", cutoff_date).execute()
+        logging.info(f"Deleted {len(old_drafts.data) if old_drafts.data else 0} old drafts")
+        
+        # 2. Clean up recent_activity in analytics (keep last 30 days)
+        analytics_result = supabase.table("analytics").select("*").execute()
+        
+        for record in analytics_result.data:
+            recent_activity = record.get("recent_activity", [])
+            if recent_activity:
+                # Filter to keep only last 30 days
+                activity_cutoff = (datetime.utcnow() - timedelta(days=30)).isoformat()
+                cleaned_activity = [
+                    entry for entry in recent_activity 
+                    if entry.get("timestamp", "") > activity_cutoff
+                ]
+                
+                # Update if we removed any entries
+                if len(cleaned_activity) < len(recent_activity):
+                    supabase.table("analytics").update({
+                        "recent_activity": cleaned_activity
+                    }).eq("user_id", record["user_id"]).execute()
+                    
+                    logging.info(f"Cleaned {len(recent_activity) - len(cleaned_activity)} old activity entries for user {record['user_id']}")
+        
+        logging.info("Email data cleanup completed successfully")
+        
+    except Exception as e:
+        logging.error(f"Error during cleanup: {str(e)}")
+
+async def cleanup_scheduler():
+    """
+    Run cleanup daily at 2 AM UTC
+    """
+    while True:
+        try:
+            now = datetime.utcnow()
+            # Calculate next 2 AM UTC
+            next_run = now.replace(hour=2, minute=0, second=0, microsecond=0)
+            if next_run <= now:
+                next_run += timedelta(days=1)
+            
+            sleep_seconds = (next_run - now).total_seconds()
+            logging.info(f"Next cleanup scheduled for {next_run} UTC (in {sleep_seconds/3600:.1f} hours)")
+            
+            await asyncio.sleep(sleep_seconds)
+            await cleanup_old_email_data()
+            
+        except Exception as e:
+            logging.error(f"Error in cleanup scheduler: {str(e)}")
+            # Wait 1 hour before retrying
+            await asyncio.sleep(3600)
+
+
+async def restore_monitoring_and_start_cleanup():
+    """
+    Enhanced startup function that restores monitoring AND starts cleanup
+    """
+    try:
+        # Restore monitoring
+        result = supabase.table("users").select("id").eq("is_monitoring", True).execute()
+        
+        for user_data in result.data:
+            user_id = user_data["id"]
+            logging.info(f"Restoring monitoring for user {user_id}")
+            asyncio.create_task(monitor_user_emails(user_id))
+        
+        # Start cleanup scheduler
+        asyncio.create_task(cleanup_scheduler())
+        logging.info("Started automated cleanup scheduler")
+        
+        # Run initial cleanup
+        await cleanup_old_email_data()
+        
+    except Exception as e:
+        logging.error(f"Error in startup restoration: {str(e)}")
+
 
 
 # ─── API Endpoints ──────────────────────────────────────────────────
@@ -612,6 +699,35 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
             if not any(line.strip() in normalized_draft for line in normalized_signature.splitlines() if line.strip()):
                 draft_text += f"\n\n{signature_block}"
 
+        # Fetch existing analytics
+        analytics_resp = supabase.table("analytics").select("*").eq("user_id", user_id).execute()
+        analytics_data = analytics_resp.data[0] if analytics_resp.data else {}
+
+        # Recalculate recent draft activity
+        cutoff = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        recent = analytics_data.get("recent_activity", [])
+        recent = [entry for entry in recent if entry["timestamp"] > cutoff]
+        this_week = sum(1 for a in recent if a["type"] == "email_draft")
+
+        # Append new activity
+        recent.append({
+            "type": "email_draft",
+            "message": f"Draft saved for follow-up with {sender_name} about \"{subject}\"",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        recent = sorted(recent, key=lambda x: x["timestamp"], reverse=True)[:50]
+
+        # Upsert analytics
+        supabase.table("analytics").upsert({
+            "user_id": user_id,
+            "total_drafts": analytics_data.get("total_drafts", 0) + 1,
+            "drafts_this_week": this_week + 1,
+            "estimated_hours_saved": round((analytics_data.get("total_drafts", 0) + 1) * 3.5 / 60, 2),
+            "recent_activity": recent,
+            "updated_at": datetime.utcnow().isoformat()
+        }).execute()
+
+        
         return draft_text, matched_items if matched_items else None
         
     except Exception as e:

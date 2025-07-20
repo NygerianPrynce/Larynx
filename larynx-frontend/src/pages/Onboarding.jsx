@@ -1,19 +1,55 @@
-import React, { useState } from 'react'
-import SignatureEditor from './signatureEditor'; // adjust path if needed
+import React, { useState, useEffect } from 'react'
+import SignatureEditor from './signatureEditor'
 import InventoryPage from './InventoryPage'
-import { useEffect } from 'react'
 
+// Custom SVG Icons
+const Globe = () => (
+  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
+const Edit = () => (
+  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+)
+
+const Mail = () => (
+  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 3.26a2 2 0 001.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+)
+
+const Package = () => (
+  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+  </svg>
+)
+
+const Shield = () => (
+  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
+const ArrowRight = () => (
+  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+  </svg>
+)
 
 const Onboarding = () => {
   const [hasWebsite, setHasWebsite] = useState(true)
-
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [manualStep, setManualStep] = useState(0)
   const [errors, setErrors] = useState({})
   const [step, setStep] = useState('intro')
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const [brandSummary, setBrandSummary] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [signature, setSignature] = useState('')
+  const [particles, setParticles] = useState([])
   const [brandInfo, setBrandInfo] = useState({
     brand_name: '',
     business_description: '',
@@ -26,51 +62,81 @@ const Onboarding = () => {
   const api = import.meta.env.VITE_API_URL
 
   const manualSteps = [
-    { key: 'brand_name', label: 'What’s your brand name?', type: 'input', min: 1, max: 200 },
+    { key: 'brand_name', label: "What's your brand name?", type: 'input', min: 1, max: 200 },
     { key: 'business_description', label: 'What does your business do?', type: 'textarea', min: 10, max: 1000 },
     { key: 'target_audience', label: 'Who are your ideal customers?', type: 'textarea', min: 5, max: 500 },
     { key: 'industry', label: 'What industry are you in?', type: 'input', min: 2, max: 100 },
-    { key: 'business_mission', label: 'What’s your company’s mission? (Optional)', type: 'textarea', optional: true, max: 500 },
+    { key: 'business_mission', label: "What's your company's mission? (Optional)", type: 'textarea', optional: true, max: 500 },
     { key: 'key_differentiators', label: 'What makes you different? (Optional)', type: 'textarea', optional: true, max: 1000 }
   ]
-  const fetchSignature = async () => {
-  try {
-    setIsLoading(true)
-    const res = await fetch(`${api}/signature`, {
-      credentials: 'include'
-    })
-    const data = await res.json()
-    setSignature(data.signature || '')
-    setStep('signature') // Go to the signature editing step
-  } catch (err) {
-    alert('Failed to fetch signature.')
-  } finally {
-    setIsLoading(false)
-  }
-}
-const updateSignature = async () => {
-  try {
-    setIsLoading(true)
-    const res = await fetch(`${api}/signature`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include',
-      body: JSON.stringify({ signature })
-    })
 
-    if (res.ok) {
-      setStep('inventory') // 👈 move to inventory after saving signature
-    } else {
-      alert('Failed to update signature.')
+  useEffect(() => {
+    // Generate floating particles
+    const generateParticles = () => {
+      const newParticles = []
+      for (let i = 0; i < 60; i++) {
+        newParticles.push({
+          id: i,
+          x: Math.random() * 100,
+          y: Math.random() * 100,
+          size: Math.random() * 3 + 1,
+          opacity: Math.random() * 0.3 + 0.1,
+          duration: Math.random() * 20 + 15,
+          delay: Math.random() * 10
+        })
+      }
+      setParticles(newParticles)
     }
-  } catch (err) {
-    alert('Error while updating signature.')
-  } finally {
-    setIsLoading(false)
+    generateParticles()
+  }, [])
+
+  const transitionToStep = (newStep) => {
+    setIsTransitioning(true)
+    setTimeout(() => {
+      setStep(newStep)
+      setIsTransitioning(false)
+    }, 300)
   }
-}
+
+  const fetchSignature = async () => {
+    try {
+      setIsLoading(true)
+      const res = await fetch(`${api}/signature`, {
+        credentials: 'include'
+      })
+      const data = await res.json()
+      setSignature(data.signature || '')
+      transitionToStep('signature')
+    } catch (err) {
+      alert('Failed to fetch signature.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const updateSignature = async () => {
+    try {
+      setIsLoading(true)
+      const res = await fetch(`${api}/signature`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ signature })
+      })
+
+      if (res.ok) {
+        transitionToStep('inventory')
+      } else {
+        alert('Failed to update signature.')
+      }
+    } catch (err) {
+      alert('Error while updating signature.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const fetchBrandSummary = async () => {
     try {
@@ -80,7 +146,7 @@ const updateSignature = async () => {
       })
       const data = await res.json()
       setBrandSummary(data.summary || 'No summary found.')
-      setStep('summary')
+      transitionToStep('summary')
     } catch (err) {
       alert('Failed to fetch brand summary.')
     } finally {
@@ -100,16 +166,12 @@ const updateSignature = async () => {
         body: JSON.stringify({ summary: brandSummary })
       })
 
-      const data = await res.json()
-
       if (res.ok) {
-        setStep('tone')
+        transitionToStep('tone')
       } else {
-        console.error("❌ Failed to update:", data)
         alert("Failed to update brand summary.")
       }
     } catch (err) {
-      console.error("❌ Error updating summary:", err)
       alert("Error while updating brand summary.")
     } finally {
       setIsLoading(false)
@@ -151,8 +213,6 @@ const updateSignature = async () => {
       const res = await fetch(`${api}/website-scrape?url=${encodeURIComponent(normalized)}`, {
         credentials: 'include',
       })
-      const data = await res.json()
-      //alert(`Website scraped: ${JSON.stringify(data)}`)
       await fetchBrandSummary()
     } catch (err) {
       alert('Failed to scrape website.')
@@ -198,8 +258,6 @@ const updateSignature = async () => {
         body: JSON.stringify(brandInfo),
         credentials: 'include',
       })
-      const data = await res.json()
-      //alert(`Brand uploaded: ${JSON.stringify(data)}`)
       await fetchBrandSummary()
     } catch (err) {
       alert('Failed to upload brand info.')
@@ -207,289 +265,459 @@ const updateSignature = async () => {
       setIsLoading(false)
     }
   }
-useEffect(() => {
-  if (step === 'finalizing') {
-    const timer = setTimeout(() => {
-      window.location.href = '/home'
-    }, 1500)
-    return () => clearTimeout(timer)
+
+  useEffect(() => {
+    if (step === 'finalizing') {
+      const timer = setTimeout(() => {
+        window.location.href = '/home'
+      }, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [step])
+
+  const getStepIcon = () => {
+    switch (step) {
+      case 'intro': return <Globe />
+      case 'summary': return <Edit />
+      case 'tone': return <Mail />
+      case 'signature': return <Edit />
+      case 'inventory': return <Package />
+      case 'monitoringConsent': return <Shield />
+      default: return <Globe />
+    }
   }
-}, [step])
+
+  const getStepTitle = () => {
+    switch (step) {
+      case 'intro': return hasWebsite ? 'Tell us about your business' : 'Let\'s get to know you'
+      case 'summary': return 'Review your brand summary'
+      case 'tone': return 'Personalize your email tone'
+      case 'signature': return 'Create your email signature'
+      case 'inventory': return 'Add your products/services'
+      case 'monitoringConsent': return 'Enable email monitoring'
+      case 'finalizing': return 'Setting up your account'
+      default: return 'Welcome to Larynx AI'
+    }
+  }
+
   return (
     <div style={styles.container}>
+      <style>
+        {`
+          @keyframes float {
+            0% { transform: translateY(100vh) translateX(0px) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(30px) rotate(360deg); opacity: 0; }
+          }
+          
+          @keyframes floatHorizontal {
+            0% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            100% { transform: translateX(-5px); }
+          }
+          
+          @keyframes pulse {
+            0%, 100% { opacity: 0.2; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.05); }
+          }
+          
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          
+          @keyframes fadeOut {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
+          .step-content {
+            animation: fadeIn 0.5s ease-out;
+          }
+          
+          .step-content.transitioning {
+            animation: fadeOut 0.3s ease-in;
+          }
+          
+          .primary-button:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+          }
+          
+          .secondary-button:hover {
+            background: rgba(107, 114, 128, 0.8);
+            transform: scale(1.02);
+          }
+          
+          .danger-button:hover {
+            background: rgba(220, 38, 38, 0.9);
+            transform: scale(1.02);
+          }
+          
+          .success-button:hover {
+            background: rgba(16, 185, 129, 0.9);
+            transform: scale(1.02);
+          }
+          
+          .toggle-link:hover {
+            color: #a855f7;
+          }
+        `}
+      </style>
+
+      {/* Animated Background */}
+      <div style={styles.backgroundOrb1}></div>
+      <div style={styles.backgroundOrb2}></div>
+      
+      {/* Floating Particles */}
+      <div style={styles.particleContainer}>
+        {particles.map((particle) => (
+          <div
+            key={particle.id}
+            style={{
+              position: 'absolute',
+              left: `${particle.x}%`,
+              top: `${particle.y}%`,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              background: 'radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(59, 130, 246, 0.2) 50%, transparent 100%)',
+              borderRadius: '50%',
+              pointerEvents: 'none',
+              opacity: particle.opacity,
+              animation: `float ${particle.duration}s linear infinite ${particle.delay}s, floatHorizontal 4s ease-in-out infinite ${particle.delay * 0.2}s`
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Loading Overlay */}
       {isLoading && (
         <div style={styles.loadingOverlay}>
-          <img
-            src="https://i.gifer.com/ZZ5H.gif"
-            alt="Loading..."
-            style={styles.spinner}
-          />
+          <div style={styles.loadingContent}>
+            <div style={styles.spinner}></div>
+            <p style={styles.loadingText}>Processing...</p>
+          </div>
         </div>
       )}
 
-      <h2>Let’s learn about your brand</h2>
+      {/* Main Content */}
+      <div style={styles.main}>
+        {/* Header */}
+        <div style={styles.header}>
+          <div style={styles.stepIcon}>
+            {getStepIcon()}
+          </div>
+          <h1 style={styles.title}>{getStepTitle()}</h1>
+          <p style={styles.subtitle}>Let's set up your AI email assistant</p>
+        </div>
 
-      {step === 'intro' && hasWebsite && (
-        <>
-          <input
-            type="text"
-            placeholder="Enter your website URL"
-            value={websiteUrl}
-            onChange={(e) => {
-              setWebsiteUrl(e.target.value)
-              setErrors({ ...errors, websiteUrl: null })
-            }}
-            style={styles.input}
-          />
-          {errors.websiteUrl && <p style={styles.error}>{errors.websiteUrl}</p>}
-          <button onClick={handleWebsiteSubmit} style={styles.button}>Continue</button>
-          <p style={styles.toggle} onClick={() => setHasWebsite(false)}>
-            Don’t have a website? Click here instead
-          </p>
-        </>
-      )}
-
-      {step === 'intro' && !hasWebsite && (
-        <>
-          {manualStep < manualSteps.length && (
-            <>
-              <label>{manualSteps[manualStep].label}</label>
-              {manualSteps[manualStep].type === 'textarea' ? (
-                <textarea
-                  value={brandInfo[manualSteps[manualStep].key]}
-                  onChange={(e) => {
-                    setBrandInfo({ ...brandInfo, [manualSteps[manualStep].key]: e.target.value })
-                    setErrors({ ...errors, [manualSteps[manualStep].key]: null })
-                  }}
-                  style={styles.textarea}
-                />
-              ) : (
+        {/* Step Content */}
+        <div style={styles.stepContainer} className={`step-content ${isTransitioning ? 'transitioning' : ''}`}>
+          {step === 'intro' && hasWebsite && (
+            <div style={styles.card}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Website URL</label>
                 <input
                   type="text"
-                  value={brandInfo[manualSteps[manualStep].key]}
+                  placeholder="https://yourwebsite.com"
+                  value={websiteUrl}
                   onChange={(e) => {
-                    setBrandInfo({ ...brandInfo, [manualSteps[manualStep].key]: e.target.value })
-                    setErrors({ ...errors, [manualSteps[manualStep].key]: null })
+                    setWebsiteUrl(e.target.value)
+                    setErrors({ ...errors, websiteUrl: null })
                   }}
                   style={styles.input}
                 />
-              )}
-              {errors[manualSteps[manualStep].key] && (
-                <p style={styles.error}>{errors[manualSteps[manualStep].key]}</p>
-              )}
-              <button onClick={validateAndNextStep} style={styles.button}>Next</button>
-              <p style={styles.toggle} onClick={() => setHasWebsite(true)}>
-                Actually, I do have a website
+                {errors.websiteUrl && <p style={styles.error}>{errors.websiteUrl}</p>}
+              </div>
+              <button onClick={handleWebsiteSubmit} style={styles.primaryButton} className="primary-button">
+                <span>Analyze Website</span>
+                <ArrowRight />
+              </button>
+              <p style={styles.toggleLink} className="toggle-link" onClick={() => setHasWebsite(false)}>
+                Don't have a website? Fill out manually instead
               </p>
-            </>
+            </div>
           )}
-        </>
-      )}
 
-      {step === 'summary' && (
-        <>
-          <h3>Here’s your brand summary! You can edit it below.</h3>
-          <textarea
-            value={brandSummary}
-            onChange={(e) => setBrandSummary(e.target.value)}
-            style={{ ...styles.textarea, minHeight: '150px' }}
-          />
-          <button onClick={handleConfirmBrandSummary} style={styles.button}>Save & Continue</button>
-        </>
-      )}
+          {step === 'intro' && !hasWebsite && (
+            <div style={styles.card}>
+              {manualStep < manualSteps.length && (
+                <>
+                  <div style={styles.progressBar}>
+                    <div 
+                      style={{
+                        ...styles.progressFill,
+                        width: `${((manualStep + 1) / manualSteps.length) * 100}%`
+                      }}
+                    ></div>
+                  </div>
+                  <div style={styles.stepInfo}>
+                    Step {manualStep + 1} of {manualSteps.length}
+                  </div>
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>{manualSteps[manualStep].label}</label>
+                    {manualSteps[manualStep].type === 'textarea' ? (
+                      <textarea
+                        value={brandInfo[manualSteps[manualStep].key]}
+                        onChange={(e) => {
+                          setBrandInfo({ ...brandInfo, [manualSteps[manualStep].key]: e.target.value })
+                          setErrors({ ...errors, [manualSteps[manualStep].key]: null })
+                        }}
+                        style={styles.textarea}
+                        placeholder="Tell us more..."
+                      />
+                    ) : (
+                      <input
+                        type="text"
+                        value={brandInfo[manualSteps[manualStep].key]}
+                        onChange={(e) => {
+                          setBrandInfo({ ...brandInfo, [manualSteps[manualStep].key]: e.target.value })
+                          setErrors({ ...errors, [manualSteps[manualStep].key]: null })
+                        }}
+                        style={styles.input}
+                        placeholder="Enter here..."
+                      />
+                    )}
+                    {errors[manualSteps[manualStep].key] && (
+                      <p style={styles.error}>{errors[manualSteps[manualStep].key]}</p>
+                    )}
+                  </div>
+                  <button onClick={validateAndNextStep} style={styles.primaryButton} className="primary-button">
+                    <span>{manualStep === manualSteps.length - 1 ? 'Complete' : 'Next'}</span>
+                    <ArrowRight />
+                  </button>
+                  <p style={styles.toggleLink} className="toggle-link" onClick={() => setHasWebsite(true)}>
+                    Actually, I do have a website
+                  </p>
+                </>
+              )}
+            </div>
+          )}
 
-      {step === 'tone' && (
-        <>
-          <h3>Let’s personalize your email tone</h3>
-          <p>
-            We can analyze a few of your recent emails to better understand how you write — things like your tone, style, and common phrases.
-          </p>
-          <p>
-            This helps us make sure the emails we generate actually sound like you. If you skip this, the tone may sound generic.
-          </p>
+          {step === 'summary' && (
+            <div style={styles.card}>
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Your Brand Summary</label>
+                <p style={styles.description}>
+                  We've analyzed your information and created this summary. Feel free to edit it to better reflect your brand.
+                </p>
+                <textarea
+                  value={brandSummary}
+                  onChange={(e) => setBrandSummary(e.target.value)}
+                  style={styles.largeTextarea}
+                />
+              </div>
+              <button onClick={handleConfirmBrandSummary} style={styles.primaryButton} className="primary-button">
+                <span>Save & Continue</span>
+                <ArrowRight />
+              </button>
+            </div>
+          )}
 
-          <button
-            onClick={async () => {
-              try {
-                setIsLoading(true)
-                const res = await fetch(`${api}/crawl-emails`, {
-                  credentials: 'include'
-                })
-                const data = await res.json()
-                await fetchSignature()
-              } catch (err) {
-                alert('Error crawling emails.')
-              } finally {
-                setIsLoading(false)
-              }
-            }}
-            style={styles.button}
-          >
-            Yes, crawl my emails
-          </button>
+          {step === 'tone' && (
+            <div style={styles.card}>
+              <div style={styles.toneInfo}>
+                <h3 style={styles.cardTitle}>Email Tone Analysis</h3>
+                <p style={styles.description}>
+                  We can analyze your recent emails to understand your writing style, tone, and common phrases.
+                  This helps us generate emails that sound authentically like you.
+                </p>
+              </div>
+              <div style={styles.buttonGroup}>
+                <button
+                  onClick={async () => {
+                    try {
+                      setIsLoading(true)
+                      const res = await fetch(`${api}/crawl-emails`, {
+                        credentials: 'include'
+                      })
+                      await fetchSignature()
+                    } catch (err) {
+                      alert('Error crawling emails.')
+                    } finally {
+                      setIsLoading(false)
+                    }
+                  }}
+                  style={styles.primaryButton}
+                  className="primary-button"
+                >
+                  <span>Analyze My Emails</span>
+                  <ArrowRight />
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      setIsLoading(true)
+                      const res = await fetch(`${api}/set-generic-tone`, {
+                        method: 'POST',
+                        credentials: 'include'
+                      })
+                      await fetchSignature()
+                    } catch (err) {
+                      alert('Error setting generic tone.')
+                    } finally {
+                      setIsLoading(false)
+                    }
+                  }}
+                  style={styles.secondaryButton}
+                  className="secondary-button"
+                >
+                  Skip - Use Default Tone
+                </button>
+              </div>
+            </div>
+          )}
 
-          <button
-            onClick={async () => {
-              try {
-                setIsLoading(true)
-                const res = await fetch(`${api}/set-generic-tone`, {
-                  method: 'POST',
-                  credentials: 'include'
-                })
-                const data = await res.json()
-                await fetchSignature()
-              } catch (err) {
-                alert('Error setting generic tone.')
-              } finally {
-                setIsLoading(false)
-              }
-            }}
-            style={{ ...styles.button, backgroundColor: '#ccc', color: '#000' }}
-          >
-            No, just use a default tone
-          </button>
-        </>
-      )}
-      {step === 'signature' && (
-  <>
-    <h3>Edit your email signature</h3>
-    <SignatureEditor
-      value={signature}
-      setValue={setSignature}
-      onBack={() => setStep('tone')}
-      onSave={updateSignature}
-    />
-  </>
-)}
+          {step === 'signature' && (
+            <div style={styles.card}>
+              <SignatureEditor
+                value={signature}
+                setValue={setSignature}
+                onBack={() => transitionToStep('tone')}
+                onSave={updateSignature}
+              />
+            </div>
+          )}
 
-{step === 'inventory' && (
-  <>
-    <h3>Add your products or services</h3>
-    <InventoryPage
-      embedded={true}
-      onBack={() => setStep('signature')}   // 👈 go back to signature step
-      onNext={() => setStep('monitoringConsent')}    // 👈 future next step
-    />
-  </>
-)}
+          {step === 'inventory' && (
+            <div style={styles.inventoryWrapper}>
+              <InventoryPage
+                embedded={true}
+                onBack={() => transitionToStep('signature')}
+                onNext={() => transitionToStep('monitoringConsent')}
+              />
+            </div>
+          )}
 
-{step === 'monitoringConsent' && (
-  <div style={{ maxWidth: '700px', margin: 'auto' }}>
-    <h2>Can We Monitor and Draft Emails for You?</h2>
-    <p>
-      This is the heart of our service — we need your permission to monitor incoming emails and draft
-      replies on your behalf. Without this, we won’t be able to detect new messages or help you write
-      responses. If you decline, your account will be terminated.
-    </p>
+          {step === 'monitoringConsent' && (
+            <div style={styles.card}>
+              <div style={styles.consentInfo}>
+                <h3 style={styles.cardTitle}>Enable Email Monitoring</h3>
+                <p style={styles.description}>
+                  To provide AI email assistance, we need permission to monitor your inbox for new emails 
+                  and draft replies. This is essential for our service to work.
+                </p>
+                <div style={styles.warningBox}>
+                  <p style={styles.warningText}>
+                    ⚠️ Without email monitoring, we cannot detect new messages or help with responses. 
+                    Declining will result in account termination.
+                  </p>
+                </div>
+              </div>
+              <div style={styles.finalButtons}>
+                <button
+                  style={styles.dangerButton}
+                  className="danger-button"
+                  onClick={async () => {
+                    const confirmed = window.confirm(
+                      '⚠️ WARNING: This action is IRREVERSIBLE.\n\nAre you absolutely sure you want to permanently delete your account and all associated data?\n\nThis cannot be undone.'
+                    )
+                    if (!confirmed) return
 
-    <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'space-between' }}>
-  <button
-    style={{ padding: '0.5rem 1rem', background: '#f44336', color: 'white' }}
-    onClick={async () => {
-      const confirmed = window.confirm(
-        '⚠️ WARNING: This action is IRREVERSIBLE.\n\nAre you absolutely sure you want to permanently delete your account and all associated data?\n\nThis cannot be undone.'
-      )
-      if (!confirmed) return
+                    const res = await fetch(`${api}/user/delete`, {
+                      method: 'DELETE',
+                      credentials: 'include'
+                    })
+                    if (res.ok) {
+                      alert('Your account has been deleted. Goodbye 🫡')
+                      window.location.href = '/'
+                    } else {
+                      alert('Something went wrong while deleting your account.')
+                    }
+                  }}
+                >
+                  ❌ Delete Account
+                </button>
+                <button
+                  onClick={async () => {
+                    const res = await fetch(`${api}/start-monitoring`, {
+                      method: 'POST',
+                      credentials: 'include'
+                    })
 
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/user/delete`, {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-      if (res.ok) {
-        alert('Your account has been deleted. Goodbye 🫡')
-        window.location.href = '/'
-      } else {
-        alert('Something went wrong while deleting your account.')
-      }
-    }}
-  >
-    ❌ No Thanks — Delete My Account
-  </button>
+                    if (res.ok) {
+                      await fetch(`${api}/finish-onboarding`, {
+                        method: 'POST',
+                        credentials: 'include'
+                      })
+                      transitionToStep('finalizing')
+                    } else {
+                      alert('Something went wrong enabling monitoring.')
+                    }
+                  }}
+                  style={styles.successButton}
+                  className="success-button"
+                >
+                  ✅ Start Monitoring
+                </button>
+              </div>
+            </div>
+          )}
 
-  <button
-    onClick={async () => {
-  const res = await fetch(`${import.meta.env.VITE_API_URL}/start-monitoring`, {
-    method: 'POST',
-    credentials: 'include'
-  })
-
-  if (res.ok) {
-    // ✅ Mark onboarding as complete
-    await fetch(`${import.meta.env.VITE_API_URL}/finish-onboarding`, {
-      method: 'POST',
-      credentials: 'include'
-    })
-
-    setStep('finalizing')
-  } else {
-    alert('Something went wrong enabling monitoring.')
-  }
-}}
-
-  >
-    ✅ Yes, Start Monitoring!
-  </button>
-</div>
-
-  </div>
-)}
-
-
-{step === 'finalizing' && (
-  <div style={{ textAlign: 'center', padding: '4rem' }}>
-    <h2>🎉 Setting up your profile...</h2>
-    <p>Hang tight, this will only take a second.</p>
-    <img
-      src="https://i.gifer.com/ZZ5H.gif"
-      alt="Loading"
-      style={{ width: '60px', marginTop: '1.5rem' }}
-    />
-
-  </div>
-)}
-
-      
+          {step === 'finalizing' && (
+            <div style={styles.finalizingCard}>
+              <div style={styles.finalizingContent}>
+                <div style={styles.successIcon}>🎉</div>
+                <h2 style={styles.finalizingTitle}>Welcome to Larynx AI!</h2>
+                <p style={styles.finalizingText}>
+                  Your account is being set up. You'll be redirected to your dashboard shortly.
+                </p>
+                <div style={styles.spinner}></div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
 
 const styles = {
   container: {
-    maxWidth: '600px',
-    margin: '0 auto',
-    padding: '2rem',
-    fontFamily: 'sans-serif',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
+    margin: 0,
+    padding: 0,
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #1a1a1a 0%, #000000 50%, #2d2d2d 100%)',
+    color: 'white',
+    fontFamily: 'Arial, sans-serif',
     position: 'relative'
   },
-  input: {
-    padding: '10px',
-    fontSize: '16px'
+  backgroundOrb1: {
+    position: 'absolute',
+    top: '20%',
+    left: '20%',
+    width: '300px',
+    height: '300px',
+    background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)',
+    borderRadius: '50%',
+    filter: 'blur(60px)',
+    animation: 'pulse 6s ease-in-out infinite'
   },
-  textarea: {
-    padding: '10px',
-    fontSize: '16px',
-    minHeight: '60px'
+  backgroundOrb2: {
+    position: 'absolute',
+    bottom: '20%',
+    right: '20%',
+    width: '250px',
+    height: '250px',
+    background: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)',
+    borderRadius: '50%',
+    filter: 'blur(60px)',
+    animation: 'pulse 6s ease-in-out infinite 3s'
   },
-  button: {
-    padding: '12px',
-    fontSize: '16px',
-    backgroundColor: '#222',
-    color: 'white',
-    border: 'none',
-    cursor: 'pointer'
-  },
-  toggle: {
-    color: '#4285F4',
-    cursor: 'pointer',
-    textDecoration: 'underline'
-  },
-  error: {
-    color: 'red',
-    marginTop: '-0.5rem',
-    fontSize: '0.875rem'
+  particleContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    pointerEvents: 'none',
+    overflow: 'hidden'
   },
   loadingOverlay: {
     position: 'fixed',
@@ -497,15 +725,297 @@ const styles = {
     left: 0,
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    background: 'rgba(0, 0, 0, 0.8)',
+    backdropFilter: 'blur(10px)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000
   },
+  loadingContent: {
+    textAlign: 'center'
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: '18px',
+    marginTop: '20px'
+  },
+  main: {
+    position: 'relative',
+    zIndex: 10,
+    maxWidth: '800px',
+    margin: '0 auto',
+    padding: '32px',
+    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  header: {
+    textAlign: 'center',
+    marginBottom: '48px',
+    padding: '48px 0'
+  },
+  stepIcon: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '64px',
+    height: '64px',
+    background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
+    borderRadius: '50%',
+    marginBottom: '24px',
+    color: 'white'
+  },
+  title: {
+    fontSize: '36px',
+    fontWeight: 'bold',
+    marginBottom: '12px',
+    background: 'linear-gradient(45deg, #ffffff, #a855f7, #8b5cf6)',
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent'
+  },
+  subtitle: {
+    fontSize: '18px',
+    color: '#d1d5db'
+  },
+  stepContainer: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  card: {
+    width: '100%',
+    maxWidth: '600px',
+    padding: '40px',
+    background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.5), rgba(17, 24, 39, 0.5))',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '20px',
+    border: '1px solid #374151',
+    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)'
+  },
+  inventoryWrapper: {
+    width: '100%',
+    maxWidth: '1000px'
+  },
+  finalizingCard: {
+    width: '100%',
+    maxWidth: '500px',
+    padding: '60px 40px',
+    background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.2), rgba(139, 92, 246, 0.2))',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '20px',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    textAlign: 'center'
+  },
+  progressBar: {
+    width: '100%',
+    height: '8px',
+    background: 'rgba(55, 65, 81, 0.8)',
+    borderRadius: '4px',
+    marginBottom: '16px',
+    overflow: 'hidden'
+  },
+  progressFill: {
+    height: '100%',
+    background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
+    transition: 'width 0.3s ease',
+    borderRadius: '4px'
+  },
+  stepInfo: {
+    fontSize: '14px',
+    color: '#9ca3af',
+    marginBottom: '24px',
+    textAlign: 'center'
+  },
+  inputGroup: {
+    marginBottom: '32px'
+  },
+  label: {
+    display: 'block',
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#e5e7eb',
+    marginBottom: '12px'
+  },
+  description: {
+    fontSize: '14px',
+    color: '#d1d5db',
+    lineHeight: '1.6',
+    marginBottom: '20px'
+  },
+  input: {
+    width: '100%',
+    padding: '16px',
+    background: 'rgba(17, 24, 39, 0.8)',
+    border: '1px solid #374151',
+    borderRadius: '12px',
+    color: 'white',
+    fontSize: '16px',
+    transition: 'border-color 0.3s ease',
+    boxSizing: 'border-box'
+  },
+  textarea: {
+    width: '100%',
+    minHeight: '120px',
+    padding: '16px',
+    background: 'rgba(17, 24, 39, 0.8)',
+    border: '1px solid #374151',
+    borderRadius: '12px',
+    color: 'white',
+    fontSize: '16px',
+    resize: 'vertical',
+    transition: 'border-color 0.3s ease',
+    boxSizing: 'border-box'
+  },
+  largeTextarea: {
+    width: '100%',
+    minHeight: '180px',
+    padding: '16px',
+    background: 'rgba(17, 24, 39, 0.8)',
+    border: '1px solid #374151',
+    borderRadius: '12px',
+    color: 'white',
+    fontSize: '16px',
+    resize: 'vertical',
+    transition: 'border-color 0.3s ease',
+    boxSizing: 'border-box'
+  },
+  primaryButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    width: '100%',
+    padding: '16px 24px',
+    background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+    marginBottom: '16px'
+  },
+  secondaryButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '12px',
+    width: '100%',
+    padding: '16px 24px',
+    background: 'rgba(107, 114, 128, 0.6)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '500',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease'
+  },
+  dangerButton: {
+    padding: '16px 24px',
+    background: '#dc2626',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease'
+  },
+  successButton: {
+    padding: '16px 32px',
+    background: '#10b981',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease'
+  },
+  toggleLink: {
+    color: '#3b82f6',
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    fontSize: '14px',
+    textAlign: 'center',
+    transition: 'color 0.3s ease'
+  },
+  error: {
+    color: '#f87171',
+    fontSize: '14px',
+    marginTop: '8px'
+  },
+  cardTitle: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: '16px'
+  },
+  toneInfo: {
+    marginBottom: '32px'
+  },
+  buttonGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px'
+  },
+  consentInfo: {
+    marginBottom: '32px'
+  },
+  warningBox: {
+    padding: '16px',
+    background: 'rgba(245, 158, 11, 0.2)',
+    border: '1px solid rgba(245, 158, 11, 0.3)',
+    borderRadius: '12px',
+    marginTop: '20px'
+  },
+  warningText: {
+    color: '#fbbf24',
+    fontSize: '14px',
+    lineHeight: '1.5'
+  },
+  finalButtons: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '16px',
+    flexWrap: 'wrap'
+  },
+  finalizingContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center'
+  },
+  successIcon: {
+    fontSize: '64px',
+    marginBottom: '24px'
+  },
+  finalizingTitle: {
+    fontSize: '28px',
+    fontWeight: 'bold',
+    marginBottom: '16px',
+    background: 'linear-gradient(45deg, #10b981, #8b5cf6)',
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent'
+  },
+  finalizingText: {
+    fontSize: '16px',
+    color: '#d1d5db',
+    marginBottom: '32px',
+    lineHeight: '1.6'
+  },
   spinner: {
-    width: '80px',
-    height: '80px'
+    width: '40px',
+    height: '40px',
+    border: '4px solid rgba(139, 92, 246, 0.3)',
+    borderTopColor: '#8b5cf6',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite'
   }
 }
 
