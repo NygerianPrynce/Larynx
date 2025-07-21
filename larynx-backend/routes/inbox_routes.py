@@ -159,7 +159,7 @@ async def monitor_user_emails(user_id: str):
                     try:
                         # Skip if already processed
                         if await is_message_already_processed(user_id, email['message_id']):
-                            logging.info(f"Skipping already processed email {email['message_id']}")
+                            #logging.info(f"Skipping already processed email {email['message_id']}")
                             continue
                             
                         await process_and_store_email(user_id, email)
@@ -556,7 +556,7 @@ async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: 
         
         # Enhanced bot detection
         if detector.is_bot_email(sender, subject, raw_body, headers_list):
-            logging.info(f"Skipping bot email from {sender}: {subject}")
+            #logging.info(f"Skipping bot email from {sender}: {subject}")
             return None
         
         # Customer classification
@@ -564,12 +564,12 @@ async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: 
         
         # Optional: Skip prospects if you only want to respond to customers
         if customer_status == 'unknown':
-            logging.info(f"Skipping prospect email from because unknown -- Sender:{sender}: {subject}")
+            #logging.info(f"Skipping prospect email from because unknown -- Sender:{sender}: {subject}")
             return None
         
-        logging.info(f"Email classified as '{customer_status}' from {sender}: {subject}")
+        #logging.info(f"Email classified as '{customer_status}' from {sender}: {subject}")
         
-        logging.info(f"Email passed bot detection - Subject: {subject[:50]}...") #restart
+        #logging.info(f"Email passed bot detection - Subject: {subject[:50]}...") #restart
         return {
             "message_id": msg_id,
             "subject": subject,
@@ -938,7 +938,7 @@ async def process_and_store_email(user_id: str, email_data: Dict):
         cleaned_body, extracted_signature = clean_email_body(email_data['raw_body'])
         
         if not cleaned_body or len(cleaned_body.strip()) < 5:
-            logging.info(f"Skipping email with empty cleaned body: {email_data['message_id']}")
+            #logging.info(f"Skipping email with empty cleaned body: {email_data['message_id']}")
             return
         
         # Extract sender name for personalization

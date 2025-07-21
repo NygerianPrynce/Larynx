@@ -59,7 +59,7 @@ storage3==0.12.0
 StrEnum==0.4.15
 supabase==2.16.0
 supafunc==0.10.1
-talon==1.4.4
+talon==1.4.4 #THIS WILL CAUSE AN ERROR install chardet and not cchardet and then install talon without cchardet
 threadpoolctl==3.6.0
 tqdm==4.67.1
 typeguard==4.4.4
