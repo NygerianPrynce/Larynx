@@ -1,22 +1,27 @@
-
 #!/bin/bash
 
-# Exit on failure
+# Exit if anything fails
 set -e
 
-# 1. Install all dependencies except Talon
+# Step 1: Install base dependencies
 pip install -r requirements.txt
 
-# 2. Install Talon WITHOUT dependencies
+# Step 2: Install Talon with no dependencies
 pip install talon==1.4.4 --no-deps
+
+# Step 3: Install the packages Talon expects
 pip install lxml regex numpy scipy scikit-learn cssselect html5lib six
 
-# 3. Patch Talon to use chardet instead of cchardet
+# Step 4: Patch Talon utils.py to use chardet instead of cchardet
 TALON_UTILS=$(python -c "import talon.utils; print(talon.utils.__file__)")
-echo "Patching Talon utils.py at: $TALON_UTILS"
-sed -i 's/import cchardet as chardet/import chardet/g' "$TALON_UTILS"
+echo "🔧 Patching Talon at $TALON_UTILS"
 
-# 4. Confirm it's patched
+# Replace both variations
+sed -i 's/^import cchardet$/import chardet/g' "$TALON_UTILS"
+sed -i 's/^import cchardet as chardet$/import chardet/g' "$TALON_UTILS"
+
+# Verify patch applied
+echo "🔍 Verifying patch..."
 grep chardet "$TALON_UTILS"
 
-echo "✅ Finished installing and patching Talon."
+echo "✅ Talon patched successfully."
