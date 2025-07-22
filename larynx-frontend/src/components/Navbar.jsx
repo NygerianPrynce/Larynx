@@ -242,6 +242,10 @@ const Navbar = () => {
           </button>
           {dropdownOpen && (
             <div style={styles.dropdown} className="profile-dropdown">
+              <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/analytics')}>
+                <span style={{...styles.dropdownIcon, color: '#10b981'}}><TrendingUp /></span>
+                <span>Analytics</span>
+              </div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/settings')}>
                 <span style={{...styles.dropdownIcon, color: '#8b5cf6'}}><Bot /></span>
                 <span>AI Settings</span>
@@ -290,6 +294,10 @@ const Navbar = () => {
               <span>Settings</span>
             </Link>
             <div style={styles.mobileDivider}></div>
+            <div style={styles.mobileLink} onClick={() => { navigate('/analytics'); setMobileMenuOpen(false); }}>
+              <span style={{...styles.mobileLinkIcon, color: '#10b981'}}><TrendingUp /></span>
+              <span>Analytics</span>
+            </div>
             <div style={styles.mobileLink} onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}>
               <span style={{...styles.mobileLinkIcon, color: '#8b5cf6'}}><Bot /></span>
               <span>AI Settings</span>
