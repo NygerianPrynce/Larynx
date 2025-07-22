@@ -9,6 +9,11 @@ import httpx
 from config import supabase, oauth  # Shared objects from your config
 
 from pydantic import BaseModel
+import os
+from fastapi.responses import RedirectResponse
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 
 router = APIRouter()
 
@@ -89,9 +94,10 @@ async def auth_callback(request: Request):
         # 4. Redirect to appropriate page
         from fastapi.responses import RedirectResponse
         if has_onboarded:
-            return RedirectResponse(url="http://localhost:5173/home")
+            return RedirectResponse(f"{FRONTEND_URL}/home")
         else:
-            return RedirectResponse(url="http://localhost:5173/onboarding")
+            return RedirectResponse(f"{FRONTEND_URL}/onboarding")
+
 
     except Exception as e:
         print("Error:", str(e))
