@@ -1,27 +1,34 @@
 #!/bin/bash
 
-# Exit if anything fails
+# Exit immediately on error
 set -e
 
-# Step 1: Install base dependencies
+echo "📦 Installing base dependencies..."
 pip install -r requirements.txt
 
-# Step 2: Install Talon with no dependencies
+echo "📦 Installing Talon (no deps)..."
 pip install talon==1.4.4 --no-deps
 
-# Step 3: Install the packages Talon expects
+echo "📦 Installing Talon dependencies..."
 pip install lxml regex numpy scipy scikit-learn cssselect html5lib six
 
-# Step 4: Patch Talon utils.py to use chardet instead of cchardet
-TALON_UTILS=$(python -c "import talon.utils; print(talon.utils.__file__)")
-echo "🔧 Patching Talon at $TALON_UTILS"
+echo "🔍 Locating Talon utils.py..."
 
-# Replace both variations
+# Use find to locate the Talon utils.py path WITHOUT importing
+TALON_UTILS=$(find $(pip show talon | grep Location | awk '{print $2}') -type f -path "*/talon/utils.py")
+
+if [ -z "$TALON_UTILS" ]; then
+  echo "❌ Failed to locate talon/utils.py"
+  exit 1
+fi
+
+echo "🔧 Patching Talon at: $TALON_UTILS"
+
+# Replace any cchardet import with chardet
 sed -i 's/^import cchardet$/import chardet/g' "$TALON_UTILS"
 sed -i 's/^import cchardet as chardet$/import chardet/g' "$TALON_UTILS"
 
-# Verify patch applied
-echo "🔍 Verifying patch..."
+echo "✅ Patch applied. Verifying:"
 grep chardet "$TALON_UTILS"
 
-echo "✅ Talon patched successfully."
+echo "🎉 Talon is patched and ready!"
