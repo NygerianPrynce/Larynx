@@ -15,7 +15,7 @@ const Edit = () => (
   </svg>
 )
 
-const SignatureEditor = ({ value, setValue, onBack, onSave }) => {
+const SigEditor = ({ value, setValue, onBack, onSave }) => {
   const { quill, quillRef } = useQuill({
     theme: 'snow',
     modules: {
@@ -224,4 +224,4 @@ const styles = {
   }
 }
 
-export default SignatureEditor
+export default SigEditor

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import SignatureEditor from './signatureEditor'
 import InventoryPage from './InventoryPage'
+import SigEditor from './SigEditor'
+
 
 // Custom SVG Icons
 const Globe = () => (
@@ -576,7 +577,7 @@ const Onboarding = () => {
 
           {step === 'signature' && (
             <div style={styles.card}>
-              <SignatureEditor
+              <SigEditor
                 value={signature}
                 setValue={setSignature}
                 onBack={() => transitionToStep('tone')}

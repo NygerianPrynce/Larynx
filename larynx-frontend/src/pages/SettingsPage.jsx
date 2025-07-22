@@ -1,6 +1,7 @@
 // File: pages/SettingsPage.jsx
 import React, { useEffect, useState } from 'react'
-import SignatureEditor from './signatureEditor'
+import SigEditor from './SigEditor'
+
 import Navbar from '../components/Navbar'
 
 // Custom SVG Icons
@@ -349,7 +350,7 @@ const SettingsPage = () => {
             <h2 style={styles.sectionTitle}>Email Signature</h2>
           </div>
           <div style={styles.card}>
-            <SignatureEditor
+            <SigEditor
               value={signature}
               setValue={setSignature}
               onBack={() => {}}
