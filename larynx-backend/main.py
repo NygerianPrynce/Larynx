@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # or ["*"] if testing
+    allow_origins=["https://larynxai.com"],  # or ["*"] if testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
