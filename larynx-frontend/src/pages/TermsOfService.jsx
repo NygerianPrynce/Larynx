@@ -1,15 +1,14 @@
 // File: src/pages/TermsOfService.jsx
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const TermsOfService = () => {
-  const handleBackClick = () => {
-    window.location.href = '/'
-  }
+  const navigate = useNavigate()
 
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <button onClick={handleBackClick} style={styles.backLink}>← Back to Home</button>
+        <button onClick={() => navigate('/')} style={styles.backLink}>← Back to Home</button>
         
         <h1 style={styles.title}>Terms of Service</h1>
         <p style={styles.lastUpdated}>Last updated: {new Date().toLocaleDateString()}</p>
