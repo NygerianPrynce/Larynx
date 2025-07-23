@@ -1,6 +1,7 @@
 // File: components/Navbar.jsx
 import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import logoImage from '../assets/logo.png' // Import your custom logo
 
 // Custom SVG Icons
 const Home = () => (
@@ -180,6 +181,10 @@ const Navbar = () => {
             transform: scale(1.05);
           }
           
+          .navbar-logo:hover .logo-icon {
+            transform: scale(1.1);
+          }
+          
           .nav-glow::before {
             content: '';
             position: absolute;
@@ -204,7 +209,12 @@ const Navbar = () => {
             className="navbar-logo"
             onClick={() => navigate('/home')}
           >
-            <div style={styles.logoIcon} className="logo-icon">L</div>
+            <img 
+              src={logoImage}
+              alt="Larynx AI Logo"
+              style={styles.logoImage}
+              className="logo-icon"
+            />
             <span style={styles.logoText}>Larynx AI</span>
           </div>
           
@@ -340,17 +350,13 @@ const styles = {
     cursor: 'pointer',
     transition: 'all 0.3s ease'
   },
-  logoIcon: {
+  logoImage: {
     width: '32px',
     height: '32px',
-    background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
     borderRadius: '8px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 'bold',
-    fontSize: '16px',
-    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
+    objectFit: 'contain',
+    transition: 'all 0.3s ease',
+    filter: 'drop-shadow(0 4px 8px rgba(139, 92, 246, 0.3))'
   },
   logoText: {
     fontSize: '20px',
@@ -456,7 +462,7 @@ const styles = {
   },
   mobileMenu: {
     position: 'fixed',
-    top: '90px', // Adjust based on your navbar height
+    top: '90px',
     left: 0,
     right: 0,
     background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.98), rgba(0, 0, 0, 0.98))',

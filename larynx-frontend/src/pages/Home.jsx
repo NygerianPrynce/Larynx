@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import logoImage from '../assets/logo.png' // Import your custom logo
 
 // Custom SVG Icons
 const ArrowRight = () => (
@@ -235,6 +236,13 @@ const Home = () => {
             100% { transform: rotate(360deg); }
           }
           
+          @keyframes logoFloat {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.05) rotate(2deg); }
+            50% { transform: scale(1.1) rotate(0deg); }
+            75% { transform: scale(1.05) rotate(-2deg); }
+          }
+          
           .quick-action-card:hover {
             transform: scale(1.05);
             box-shadow: 0 20px 40px rgba(139, 92, 246, 0.3);
@@ -242,6 +250,15 @@ const Home = () => {
           
           .activity-item:hover {
             background: rgba(55, 65, 81, 0.7);
+          }
+          
+          .hero-logo {
+            animation: logoFloat 6s ease-in-out infinite;
+          }
+          
+          .hero-logo:hover {
+            animation-play-state: paused;
+            transform: scale(1.15) !important;
           }
         `}
       </style>
@@ -278,6 +295,17 @@ const Home = () => {
         <div style={styles.heroWelcome}>
           <div style={styles.heroContent}>
             <div style={styles.heroGlow}></div>
+            
+            {/* Hero Logo */}
+            <div style={styles.heroLogoContainer}>
+              <img 
+                src={logoImage}
+                alt="Larynx AI Logo"
+                style={styles.heroLogo}
+                className="hero-logo"
+              />
+            </div>
+            
             <h1 style={styles.heroTitle}>
               {getGreeting()}, {userName}! 
             </h1>
@@ -437,6 +465,20 @@ const styles = {
     background: 'radial-gradient(ellipse, rgba(139, 92, 246, 0.4) 0%, rgba(59, 130, 246, 0.2) 40%, transparent 70%)',
     filter: 'blur(60px)',
     zIndex: 1
+  },
+  heroLogoContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '32px'
+  },
+  heroLogo: {
+    width: '120px',
+    height: '120px',
+    borderRadius: '24px',
+    objectFit: 'contain',
+    filter: 'drop-shadow(0 10px 30px rgba(139, 92, 246, 0.5))',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease'
   },
   heroTitle: {
     fontSize: '64px',
