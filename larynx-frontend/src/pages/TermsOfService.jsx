@@ -1,12 +1,11 @@
 // File: src/pages/TermsOfService.jsx
 import React from 'react'
-import { Link } from 'react-router-dom'
 
 const TermsOfService = () => {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <Link to="/" style={styles.backLink}>← Back to Home</Link>
+        <a href="/" style={styles.backLink}>← Back to Home</a>
         
         <h1 style={styles.title}>Terms of Service</h1>
         <p style={styles.lastUpdated}>Last updated: {new Date().toLocaleDateString()}</p>

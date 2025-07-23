@@ -1,12 +1,11 @@
 // File: src/pages/PrivacyPolicy.jsx
 import React from 'react'
-import { Link } from 'react-router-dom'
 
 const PrivacyPolicy = () => {
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <Link to="/" style={styles.backLink}>← Back to Home</Link>
+        <a href="/" style={styles.backLink}>← Back to Home</a>
         
         <h1 style={styles.title}>Privacy Policy</h1>
         <p style={styles.lastUpdated}>Last updated: {new Date().toLocaleDateString()}</p>
