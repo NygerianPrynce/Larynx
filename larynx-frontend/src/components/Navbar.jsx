@@ -151,6 +151,7 @@ const Navbar = () => {
             }
           }
           
+          /* Responsive logo sizing - bigger at all breakpoints */
           @media (max-width: 768px) {
             .navbar-container {
               padding: 16px 20px !important;
@@ -159,8 +160,8 @@ const Navbar = () => {
               font-size: 18px !important;
             }
             .logo-icon {
-              width: 28px !important;
-              height: 28px !important;
+              width: 40px !important;
+              height: 40px !important;
             }
           }
           
@@ -172,9 +173,15 @@ const Navbar = () => {
               font-size: 16px !important;
             }
             .logo-icon {
-              width: 24px !important;
-              height: 24px !important;
+              width: 36px !important;
+              height: 36px !important;
             }
+          }
+          
+          /* Prevent logo compression */
+          .navbar-logo {
+            flex-shrink: 0 !important;
+            min-width: fit-content !important;
           }
           
           .navbar-logo:hover {
@@ -183,6 +190,19 @@ const Navbar = () => {
           
           .navbar-logo:hover .logo-icon {
             transform: scale(1.1);
+          }
+          
+          /* Reduce nav gap on smaller screens instead of compressing logo */
+          @media (max-width: 1200px) {
+            .desktop-nav {
+              gap: 24px !important;
+            }
+          }
+          
+          @media (max-width: 1100px) {
+            .desktop-nav {
+              gap: 16px !important;
+            }
           }
           
           .nav-glow::before {
@@ -258,7 +278,7 @@ const Navbar = () => {
               </div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/settings')}>
                 <span style={{...styles.dropdownIcon, color: '#8b5cf6'}}><Bot /></span>
-                <span>AI Settings</span>
+                <span>Settings</span>
               </div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/manage-inventory')}>
                 <span style={{...styles.dropdownIcon, color: '#3b82f6'}}><Package /></span>
@@ -341,22 +361,27 @@ const styles = {
   leftSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '48px'
+    gap: '48px',
+    flexShrink: 0, // Prevents shrinking
+    minWidth: 'fit-content' // Maintains minimum width
   },
   logo: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
     cursor: 'pointer',
-    transition: 'all 0.3s ease'
+    transition: 'all 0.3s ease',
+    flexShrink: 0, // Prevents logo from shrinking
+    minWidth: 'fit-content' // Ensures logo area doesn't compress
   },
   logoImage: {
-    width: '32px',
-    height: '32px',
-    borderRadius: '8px',
+    width: '48px', // Increased from 32px
+    height: '48px', // Increased from 32px
+    borderRadius: '12px', // Increased border radius proportionally
     objectFit: 'contain',
     transition: 'all 0.3s ease',
-    filter: 'drop-shadow(0 4px 8px rgba(139, 92, 246, 0.3))'
+    filter: 'drop-shadow(0 6px 12px rgba(139, 92, 246, 0.4))', // Enhanced shadow
+    flexShrink: 0 // Prevents image from shrinking
   },
   logoText: {
     fontSize: '20px',
@@ -364,7 +389,9 @@ const styles = {
     background: 'linear-gradient(45deg, #a855f7, #8b5cf6)',
     backgroundClip: 'text',
     WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent'
+    WebkitTextFillColor: 'transparent',
+    whiteSpace: 'nowrap', // Prevents text wrapping
+    flexShrink: 0 // Prevents text from shrinking
   },
   navLinks: {
     display: 'flex',
