@@ -2,10 +2,14 @@
 import React from 'react'
 
 const PrivacyPolicy = () => {
+  const handleBackClick = () => {
+    window.location.href = '/'
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.content}>
-        <a href="/" style={styles.backLink}>← Back to Home</a>
+        <button onClick={handleBackClick} style={styles.backLink}>← Back to Home</button>
         
         <h1 style={styles.title}>Privacy Policy</h1>
         <p style={styles.lastUpdated}>Last updated: {new Date().toLocaleDateString()}</p>
@@ -139,7 +143,9 @@ const styles = {
   },
   backLink: {
     color: '#8b5cf6',
-    textDecoration: 'none',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
     fontSize: '16px',
     marginBottom: '20px',
     display: 'inline-block'
