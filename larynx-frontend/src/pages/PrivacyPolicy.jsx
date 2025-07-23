@@ -129,11 +129,19 @@ const PrivacyPolicy = () => {
 
 const styles = {
   container: {
+    margin: 0,
+    padding: 0,
     minHeight: '100vh',
     background: 'linear-gradient(135deg, #1a1a1a 0%, #000000 50%, #2d2d2d 100%)',
     color: 'white',
     fontFamily: 'Arial, sans-serif',
-    padding: '40px 20px'
+    padding: '40px 20px',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100vw'
   },
   content: {
     maxWidth: '800px',
