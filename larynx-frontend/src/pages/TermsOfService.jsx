@@ -7,6 +7,14 @@ const TermsOfService = () => {
 
   return (
     <div style={styles.container}>
+      <style>
+        {`
+          body {
+            margin: 0;
+            padding: 0;
+          }
+        `}
+      </style>
       <div style={styles.content}>
         <button onClick={() => navigate('/')} style={styles.backLink}>← Back to Home</button>
         
@@ -164,15 +172,17 @@ const TermsOfService = () => {
 
 const styles = {
   container: {
+    margin: 0,
+    padding: 0,
     minHeight: '100vh',
     background: 'linear-gradient(135deg, #1a1a1a 0%, #000000 50%, #2d2d2d 100%)',
     color: 'white',
-    fontFamily: 'Arial, sans-serif',
-    padding: '40px 20px'
+    fontFamily: 'Arial, sans-serif'
   },
   content: {
     maxWidth: '800px',
     margin: '0 auto',
+    padding: '40px 20px',
     lineHeight: '1.6'
   },
   backLink: {
@@ -216,4 +226,5 @@ const styles = {
     color: '#d1d5db'
   }
 }
+
 export default TermsOfService
