@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-
+import logoImage from '../assets/logo.png' // Import your custom logo
 
 // Custom SVG Icons
 const ChevronRight = () => (
@@ -21,8 +21,6 @@ const Star = ({ style }) => (
   </svg>
 )
 
-
-
 const LarynxAILaunch = () => {
   const [isVisible, setIsVisible] = useState(false)
   const [currentFeature, setCurrentFeature] = useState(0)
@@ -34,8 +32,6 @@ const LarynxAILaunch = () => {
   }
 
   useEffect(() => {
-
-
     setIsVisible(true)
     const interval = setInterval(() => {
       setCurrentFeature(prev => (prev + 1) % 3)
@@ -147,21 +143,22 @@ const LarynxAILaunch = () => {
     logo: {
       display: 'flex',
       alignItems: 'center',
-      gap: '8px'
+      gap: '12px'
     },
-    logoIcon: {
-      width: '32px',
-      height: '32px',
-      background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
-      borderRadius: '8px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontWeight: 'bold'
+    logoImage: {
+      width: '40px',
+      height: '40px',
+      borderRadius: '10px',
+      objectFit: 'contain',
+      filter: 'drop-shadow(0 4px 8px rgba(139, 92, 246, 0.4))'
     },
     logoText: {
       fontSize: '20px',
-      fontWeight: 'bold'
+      fontWeight: 'bold',
+      background: 'linear-gradient(45deg, #a855f7, #8b5cf6)',
+      backgroundClip: 'text',
+      WebkitBackgroundClip: 'text',
+      WebkitTextFillColor: 'transparent'
     },
     navButton: {
       backgroundColor: '#8b5cf6',
@@ -186,6 +183,19 @@ const LarynxAILaunch = () => {
     hero: {
       textAlign: 'center',
       marginBottom: '64px'
+    },
+    heroLogoContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      marginBottom: '48px'
+    },
+    heroLogo: {
+      width: '120px',
+      height: '120px',
+      borderRadius: '24px',
+      objectFit: 'contain',
+      filter: 'drop-shadow(0 15px 35px rgba(139, 92, 246, 0.6))',
+      animation: 'logoFloat 6s ease-in-out infinite'
     },
     heroTitle: {
       fontSize: '72px',
@@ -421,6 +431,13 @@ const LarynxAILaunch = () => {
       color: '#9ca3af',
       textDecoration: 'none',
       transition: 'color 0.3s ease'
+    },
+    footerLogo: {
+      width: '24px',
+      height: '24px',
+      borderRadius: '6px',
+      objectFit: 'contain',
+      filter: 'drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3))'
     }
   }
 
@@ -428,60 +445,67 @@ const LarynxAILaunch = () => {
     <div style={styles.container}>
       <style>
         {`
-
         * {
           margin: 0;
           padding: 0;
           box-sizing: border-box;
         }
-          @keyframes pulse {
-            0%, 100% { opacity: 0.3; transform: scale(1); }
-            50% { opacity: 0.6; transform: scale(1.1); }
-          }
-          
-          @keyframes float {
-            0% { transform: translateY(100vh) translateX(0px) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-100vh) translateX(50px) rotate(360deg); opacity: 0; }
-          }
-          
-          @keyframes floatHorizontal {
-            0% { transform: translateX(-10px); }
-            50% { transform: translateX(10px); }
-            100% { transform: translateX(-10px); }
-          }
-          
-          .nav-button:hover {
-            background-color: #7c3aed !important;
-            transform: scale(1.05);
-          }
-          
-          .primary-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
-          }
-          
-          .secondary-button:hover {
-            border-color: #8b5cf6;
-            background-color: rgba(139, 92, 246, 0.2);
-          }
-          
-          .cta-button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
-          }
-          
-          .footer-link:hover {
-            color: #8b5cf6 !important;
-          }
-          
-          @media (max-width: 768px) {
-            .hero-title { font-size: 48px !important; }
-            .hero-subtitle { font-size: 18px !important; }
-            .section-title { font-size: 32px !important; }
-            .cta-title { font-size: 32px !important; }
-          }
+        
+        @keyframes pulse {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        
+        @keyframes float {
+          0% { transform: translateY(100vh) translateX(0px) rotate(0deg); opacity: 0; }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { transform: translateY(-100vh) translateX(50px) rotate(360deg); opacity: 0; }
+        }
+        
+        @keyframes floatHorizontal {
+          0% { transform: translateX(-10px); }
+          50% { transform: translateX(10px); }
+          100% { transform: translateX(-10px); }
+        }
+        
+        @keyframes logoFloat {
+          0%, 100% { transform: scale(1) rotate(0deg); }
+          25% { transform: scale(1.05) rotate(1deg); }
+          50% { transform: scale(1.1) rotate(0deg); }
+          75% { transform: scale(1.05) rotate(-1deg); }
+        }
+        
+        .nav-button:hover {
+          background-color: #7c3aed !important;
+          transform: scale(1.05);
+        }
+        
+        .primary-button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
+        }
+        
+        .secondary-button:hover {
+          border-color: #8b5cf6;
+          background-color: rgba(139, 92, 246, 0.2);
+        }
+        
+        .cta-button:hover {
+          transform: scale(1.05);
+          box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
+        }
+        
+        .footer-link:hover {
+          color: #8b5cf6 !important;
+        }
+        
+        @media (max-width: 768px) {
+          .hero-title { font-size: 48px !important; }
+          .hero-subtitle { font-size: 18px !important; }
+          .section-title { font-size: 32px !important; }
+          .cta-title { font-size: 32px !important; }
+        }
         `}
       </style>
 
@@ -510,7 +534,11 @@ const LarynxAILaunch = () => {
       {/* Navigation */}
       <nav style={styles.nav}>
         <div style={styles.logo}>
-          <div style={styles.logoIcon}>L</div>
+          <img 
+            src={logoImage}
+            alt="Larynx AI Logo"
+            style={styles.logoImage}
+          />
           <span style={styles.logoText}>Larynx AI</span>
         </div>
         <button style={styles.navButton} className="nav-button" onClick={handleLogin}>
@@ -522,6 +550,15 @@ const LarynxAILaunch = () => {
       <div style={styles.main}>
         {/* Hero Section */}
         <div style={styles.hero}>
+          {/* Large Hero Logo */}
+          <div style={styles.heroLogoContainer}>
+            <img 
+              src={logoImage}
+              alt="Larynx AI"
+              style={styles.heroLogo}
+            />
+          </div>
+          
           <h1 style={styles.heroTitle} className="hero-title">
             Email Intelligence<br />Reimagined
           </h1>
@@ -639,7 +676,11 @@ const LarynxAILaunch = () => {
       <footer style={styles.footer}>
         <div style={styles.footerContent}>
           <div style={styles.logo}>
-            <div style={{...styles.logoIcon, width: '24px', height: '24px'}}>L</div>
+            <img 
+              src={logoImage}
+              alt="Larynx AI Logo"
+              style={styles.footerLogo}
+            />
             <span style={{fontWeight: 'bold'}}>Larynx AI</span>
           </div>
           <div style={styles.footerLinks}>
