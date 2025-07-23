@@ -668,7 +668,7 @@ const LarynxAILaunch = () => {
             Get Started Now
             <ChevronRight />
           </button>
-          <p style={styles.ctaNote}>Free 14-day trial • No credit card required</p>
+          <p style={styles.ctaNote}>Free beta testing • No credit card required</p>
         </div>
       </div>
 
@@ -684,9 +684,8 @@ const LarynxAILaunch = () => {
             <span style={{fontWeight: 'bold'}}>Larynx AI</span>
           </div>
           <div style={styles.footerLinks}>
-            <a href="#" style={styles.footerLink} className="footer-link">Privacy</a>
-            <a href="#" style={styles.footerLink} className="footer-link">Terms</a>
-            <a href="#" style={styles.footerLink} className="footer-link">Support</a>
+            <Link to="/privacy" style={styles.footerLink} className="footer-link">Privacy</Link>
+            <Link to="/terms" style={styles.footerLink} className="footer-link">Terms</Link>    
           </div>
         </div>
       </footer>

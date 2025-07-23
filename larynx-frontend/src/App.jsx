@@ -6,6 +6,8 @@ import InventoryPage from './pages/InventoryPage'
 import InventoryStandalone from './pages/InventoryStandalone'
 import Home from './pages/Home'
 import AnalyticsPage from './pages/AnalyticsPage'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import TermsOfService from './pages/TermsOfService'
 
 
 function App() {
@@ -19,6 +21,8 @@ function App() {
       <Route path="/manage-inventory" element={<InventoryStandalone />} />
       <Route path="/home" element={<Home />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/terms" element={<TermsOfService />} />
 
     </Routes>
   )
