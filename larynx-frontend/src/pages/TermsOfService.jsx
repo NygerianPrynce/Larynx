@@ -216,5 +216,4 @@ const styles = {
     color: '#d1d5db'
   }
 }
-
 export default TermsOfService
