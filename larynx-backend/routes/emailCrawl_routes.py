@@ -28,7 +28,6 @@ async def crawl_emails(request: Request):
     token_response = supabase.table("tokens").select("access_token").eq("user_id", user_id).execute()
     access_token = await refresh_access_token_if_needed(user_id, supabase)
 
-
     headers = {
         "Authorization": f"Bearer {access_token}"
     }
@@ -61,16 +60,20 @@ async def crawl_emails(request: Request):
             if any(bot_id in sender.lower() for bot_id in bot_senders):
                 continue
 
-            body = ""
+            # Initialize variables
+            raw_body = ""
+            
             # Decode the body
-            if "data" in full_msg["payload"].get("body", {}):
-                raw_body = base64.urlsafe_b64decode(full_msg["payload"]["body"]["data"]).decode("utf-8", errors="ignore")
-            elif "parts" in full_msg["payload"]:
-                for part in full_msg["payload"]["parts"]:
-                    if part["mimeType"] == "text/plain" and "data" in part["body"]:
-                        raw_body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="ignore")
-                        break
-            else:
+            try:
+                if "data" in full_msg["payload"].get("body", {}):
+                    raw_body = base64.urlsafe_b64decode(full_msg["payload"]["body"]["data"]).decode("utf-8", errors="ignore")
+                elif "parts" in full_msg["payload"]:
+                    for part in full_msg["payload"]["parts"]:
+                        if part["mimeType"] == "text/plain" and "data" in part["body"]:
+                            raw_body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="ignore")
+                            break
+            except Exception as e:
+                print(f"Error decoding email body for message {msg_id}: {e}")
                 raw_body = ""
 
             # Clean with Talon + custom logic
@@ -79,15 +82,63 @@ async def crawl_emails(request: Request):
                 normalized_sig = "\n".join([line.strip() for line in sig.strip().splitlines() if line.strip()])
                 signature_counter[normalized_sig] += 1
 
-
-            email_data.append({
-                "message_id": msg_id,
-                "subject": subject,
-                "from": sender,
-                "body": body
-            })
-        tone_profile = analyze_email_batch(email_data)
-        store_tone_profile(user_id, tone_profile)
+            # Only add emails with meaningful content
+            if body and body.strip():
+                email_data.append({
+                    "message_id": msg_id,
+                    "subject": subject,
+                    "from": sender,
+                    "body": body
+                })
+            
+        # Check if we have enough usable emails for analysis
+        if len(email_data) >= 5:  # Require at least 5 emails for meaningful analysis
+            tone_profile = analyze_email_batch(email_data)
+            store_tone_profile(user_id, tone_profile)
+            profile_type = "analyzed"
+        else:
+            # Fall back to generic tone profile
+            tone_profile = {
+                "avg_sentences_per_email": 3.5,
+                "top_words": [
+                    ["please", 15], ["thank", 12], ["regards", 10], ["best", 10],
+                    ["hope", 8], ["you", 8], ["well", 7], ["let", 6], ["know", 6],
+                    ["time", 5], ["appreciate", 5], ["looking", 4], ["forward", 4],
+                    ["hearing", 4], ["questions", 4]
+                ],
+                "top_nouns": [
+                    ["regards", 12], ["time", 8], ["questions", 6], ["information", 5],
+                    ["assistance", 5], ["opportunity", 4], ["response", 4],
+                    ["consideration", 4], ["support", 3], ["help", 3]
+                ],
+                "top_verbs": [
+                    ["please", 15], ["thank", 12], ["hope", 8], ["let", 6],
+                    ["know", 6], ["appreciate", 5], ["looking", 4], ["hearing", 4],
+                    ["reach", 3], ["contact", 3]
+                ],
+                "top_adjectives": [
+                    ["best", 10], ["available", 5], ["additional", 4], ["necessary", 3],
+                    ["important", 3], ["specific", 3], ["further", 3], ["relevant", 2],
+                    ["appropriate", 2], ["professional", 2]
+                ],
+                "formality_score": 0.65,
+                "politeness_analysis": {
+                    "politeness_level": 2.1,
+                    "directness_level": 0.4,
+                    "communication_style": "polite"
+                },
+                "emotional_tone": {
+                    "enthusiasm": 0.6, "concern": 0.1, "gratitude": 1.2,
+                    "apologetic": 0.2, "exclamation_frequency": 0.3,
+                    "question_frequency": 0.4, "dominant_emotion": "gratitude"
+                },
+                "communication_patterns": {
+                    "preferred_opening": "professional_greeting",
+                    "avg_paragraphs": 2.5, "avg_sentence_length": 15.8
+                }
+            }
+            store_tone_profile(user_id, tone_profile)
+            profile_type = "generic_fallback"
         
         if signature_counter:
             signature, _ = signature_counter.most_common(1)[0]
@@ -101,8 +152,6 @@ async def crawl_emails(request: Request):
             "signature_extracted": safe_signature,
             "tone_profile": tone_profile
         }
-
-
 
 
 @router.post("/set-generic-tone")
@@ -233,6 +282,7 @@ async def set_generic_tone(request: Request):
             detail=f"Failed to set generic tone profile: {str(e)}"
         )
         
+
 from pydantic import BaseModel
 
 class SignatureUpdateRequest(BaseModel):
