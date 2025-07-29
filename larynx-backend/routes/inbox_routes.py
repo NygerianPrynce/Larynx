@@ -167,7 +167,7 @@ async def monitor_user_emails(user_id: str):
                         logging.error(f"Error processing email {email['message_id']}: {str(e)}")
             
             # Wait before next check
-            await asyncio.sleep(3600) #CHANGE TO AN HOUR 
+            await asyncio.sleep(120) #CHANGE TO AN HOUR  -- 3600
             
         except Exception as e:
             consecutive_errors += 1
