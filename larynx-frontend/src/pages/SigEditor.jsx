@@ -64,9 +64,17 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   // Properly sync the value with the contentEditable div
   useEffect(() => {
     if (editorRef.current) {
+      // Convert plain text line breaks to HTML line breaks if needed
+      let htmlContent = value || ''
+      
+      // If the value looks like plain text (no HTML tags), convert line breaks
+      if (htmlContent && !htmlContent.includes('<') && htmlContent.includes('\n')) {
+        htmlContent = htmlContent.replace(/\n/g, '<br>')
+      }
+      
       // Only update if the content is actually different to avoid cursor issues
-      if (editorRef.current.innerHTML !== value) {
-        editorRef.current.innerHTML = value || ''
+      if (editorRef.current.innerHTML !== htmlContent) {
+        editorRef.current.innerHTML = htmlContent
       }
     }
   }, [value])
