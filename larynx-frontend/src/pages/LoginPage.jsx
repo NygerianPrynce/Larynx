@@ -1110,13 +1110,13 @@ const LarynxAILaunch = () => {
               <div style={styles.stepItem}>
                 <div style={styles.modalStepNumber}>3</div>
                 <div style={styles.stepText}>
-                  <strong>Select Access:</strong> You'll see options to allow Larynx AI to read, compose, and send emails on your behalf.
+                  <strong>Select Access:</strong> You'll see options to allow Larynx AI to read, compose, and send emails on your behalf. We strongly recommend selecting all to avoid any issues and unlock full functionality.
                 </div>
               </div>
             </div>
 
             <div style={styles.importantNote} className="important-note">
-              <strong>💡 For the best experience:</strong> We recommend granting all Gmail permissions when prompted. 
+              <strong>💡 For the best experience:</strong> We strongly recommend granting all Gmail permissions when prompted. 
               This allows Larynx AI to learn your writing style, understand your email patterns, and draft responses that truly sound like you. 
               You can always modify these permissions later in your Google Account settings.
             </div>

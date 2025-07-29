@@ -63,6 +63,10 @@ const MessageCircle = () => (
 const SettingsPage = () => {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
+  const [nameSuccess, setNameSuccess] = useState('')
+  const [summarySuccess, setSummarySuccess] = useState('')
+  const [signatureSuccess, setSignatureSuccess] = useState('')
+  const [monitoringSuccess, setMonitoringSuccess] = useState('')
   const [particles, setParticles] = useState([])
   const api = import.meta.env.VITE_API_URL
   const [summary, setSummary] = useState('')
@@ -120,8 +124,36 @@ const SettingsPage = () => {
     }
   }, [success])
 
+  useEffect(() => {
+    if (nameSuccess) {
+      const timer = setTimeout(() => setNameSuccess(''), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [nameSuccess])
+
+  useEffect(() => {
+    if (summarySuccess) {
+      const timer = setTimeout(() => setSummarySuccess(''), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [summarySuccess])
+
+  useEffect(() => {
+    if (signatureSuccess) {
+      const timer = setTimeout(() => setSignatureSuccess(''), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [signatureSuccess])
+
+  useEffect(() => {
+    if (monitoringSuccess) {
+      const timer = setTimeout(() => setMonitoringSuccess(''), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [monitoringSuccess])
+
   const updateName = async () => {
-    setSuccess('')
+    setNameSuccess('')
     setError('')
     const res = await fetch(`${api}/user/update-name`, {
       method: 'PUT',
@@ -129,12 +161,12 @@ const SettingsPage = () => {
       credentials: 'include',
       body: JSON.stringify({ new_name: name })
     })
-    if (res.ok) setSuccess('✅ Name updated!')
-    else setError('❌ Failed to update name.')
+    if (res.ok) setNameSuccess('Name updated!')
+    else setError('Failed to update name.')
   }
 
   const updateSummary = async () => {
-    setSuccess('')
+    setSummarySuccess('')
     setError('')
     await fetch(`${api}/update-brand-summary`, {
       method: 'POST',
@@ -142,11 +174,11 @@ const SettingsPage = () => {
       credentials: 'include',
       body: JSON.stringify({ summary })
     })
-    setSuccess('✅ Brand summary updated!')
+    setSummarySuccess('Brand summary updated!')
   }
 
   const updateSignature = async () => {
-    setSuccess('')
+    setSignatureSuccess('')
     setError('')
     await fetch(`${api}/signature`, {
       method: 'PUT',
@@ -154,11 +186,11 @@ const SettingsPage = () => {
       credentials: 'include',
       body: JSON.stringify({ signature })
     })
-    setSuccess('✅ Signature updated!')
+    setSignatureSuccess('Signature updated!')
   }
 
   const stopMonitoring = async () => {
-    setSuccess('')
+    setMonitoringSuccess('')
     setError('')
     const confirmStop = window.confirm(
       '⚠️ WARNING: If you stop monitoring, you will no longer receive email drafts or alerts. Your AI assistant will be DISABLED.\n\nAre you absolutely sure you want to do this?'
@@ -170,8 +202,8 @@ const SettingsPage = () => {
       credentials: 'include'
     })
 
-    if (res.ok) setSuccess('✅ Monitoring stopped!')
-    else setError('❌ Failed to stop monitoring.')
+    if (res.ok) setMonitoringSuccess('Monitoring stopped!')
+    else setError('Failed to stop monitoring.')
   }
 
   const startMonitoring = async () => {
@@ -180,9 +212,9 @@ const SettingsPage = () => {
       credentials: 'include'
     })
     if (res.ok) {
-      setSuccess('✅ Monitoring re-enabled!')
+      setMonitoringSuccess('Monitoring re-enabled!')
     } else {
-      setError('❌ Failed to start monitoring.')
+      setError('Failed to start monitoring.')
     }
   }
 
@@ -308,13 +340,7 @@ const SettingsPage = () => {
           </a>
         </div>
 
-        {/* Success/Error Messages */}
-        {success && (
-          <div style={styles.successMessage}>
-            <Save />
-            <span>{success}</span>
-          </div>
-        )}
+        {/* Global Error Message */}
         {error && (
           <div style={styles.errorMessage}>
             <span>{error}</span>
@@ -345,6 +371,14 @@ const SettingsPage = () => {
             >
               Update Name
             </button>
+            
+            {/* Name Success Message */}
+            {nameSuccess && (
+              <div style={styles.successMessage}>
+                <Save />
+                <span>{nameSuccess}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -371,6 +405,14 @@ const SettingsPage = () => {
             >
               Save Summary
             </button>
+            
+            {/* Summary Success Message */}
+            {summarySuccess && (
+              <div style={styles.successMessage}>
+                <Save />
+                <span>{summarySuccess}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -387,6 +429,14 @@ const SettingsPage = () => {
               onBack={() => {}}
               onSave={updateSignature}
             />
+            
+            {/* Signature Success Message */}
+            {signatureSuccess && (
+              <div style={styles.successMessage}>
+                <Save />
+                <span>{signatureSuccess}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -420,6 +470,14 @@ const SettingsPage = () => {
                 <span>Stop Monitoring</span>
               </button>
             </div>
+            
+            {/* Monitoring Success Message */}
+            {monitoringSuccess && (
+              <div style={styles.successMessage}>
+                <Save />
+                <span>{monitoringSuccess}</span>
+              </div>
+            )}
           </div>
         </div>
 
