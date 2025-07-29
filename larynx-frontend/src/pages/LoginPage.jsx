@@ -986,7 +986,7 @@ const LarynxAILaunch = () => {
             </div>
             <div>
               <div style={{...styles.statNumber, color: '#3b82f6'}}>Smart</div>
-              <div style={styles.statLabel}>Business Sync</div>
+              <div style={styles.statLabel}>Inventory Sync</div>
             </div>
             <div>
               <div style={styles.statNumber}>Instant</div>
