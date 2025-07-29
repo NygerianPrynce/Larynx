@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Package, Layers, ChevronRight, ArrowRight, Star } from 'lucide-react'
+import { Mail, Package, Layers, ChevronRight, ArrowRight, Star, Key, MessageSquare, Zap } from 'lucide-react'
 import logoImage from '../assets/logo.png' // Import your custom logo
 import { Helmet } from "react-helmet";
 
@@ -68,7 +68,7 @@ const LarynxAILaunch = () => {
     {
       icon: Mail,
       title: "Business Intelligence Integration",
-      description: "Our beta system learns your business through smart onboarding questions and website analysis, creating a dynamic business profile that understands your products, services, and brand voice to ensure every email reflects your authentic business identity."
+      description: "Our system learns your business through smart onboarding questions and website analysis, creating a dynamic business profile that understands your products, services, and brand voice to ensure every email reflects your authentic business identity."
     },
     {
       icon: Package,
@@ -78,7 +78,7 @@ const LarynxAILaunch = () => {
     {
       icon: Layers,
       title: "Smart Inventory Integration",
-      description: "Currently in beta testing, our AI analyzes incoming email content to identify relevant products or services mentioned, then automatically incorporates accurate inventory information, pricing, and availability into your draft responses."
+      description: "Our AI analyzes incoming email content to identify relevant products or services mentioned, then automatically incorporates accurate inventory information, pricing, and availability into your draft responses."
     }
   ]
 
@@ -836,24 +836,32 @@ const LarynxAILaunch = () => {
           </div>
         </div>
 
-        {/* Beta Benefits Section */}
-        <div>
-          <h2 style={styles.sectionTitle} className="section-title">Why Join Our Beta?</h2>
-          <div style={styles.howItWorksGrid}>
-            <div style={styles.stepCard}>
-              <div style={styles.stepNumber}>🚀</div>
-              <h3 style={styles.stepTitle}>Early Access</h3>
-              <p style={styles.stepDescription}>Be among the first to experience next-generation email AI and influence its development</p>
-            </div>
-            <div style={styles.stepCard}>
-              <div style={styles.stepNumber}>💬</div>
-              <h3 style={styles.stepTitle}>Direct Feedback</h3>
-              <p style={styles.stepDescription}>Your insights and suggestions directly shape new features and improvements</p>
-            </div>
-            <div style={styles.stepCard}>
-              <div style={styles.stepNumber}>🎯</div>
-              <h3 style={styles.stepTitle}>Priority Support</h3>
-              <p style={styles.stepDescription}>Get dedicated support and regular updates as we refine the platform together</p>
+        {/* Early Access Benefits Section */}
+        <div style={{marginBottom: '80px'}}>
+          <h2 style={styles.sectionTitle} className="section-title">Why Join Early Access?</h2>
+          <div style={{
+            background: 'linear-gradient(145deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1))',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '24px',
+            padding: '48px',
+            border: '1px solid rgba(139, 92, 246, 0.15)'
+          }}>
+            <div style={styles.howItWorksGrid}>
+              <div style={{textAlign: 'center'}}>
+                <Key size={48} style={{color: '#8b5cf6', marginBottom: '16px'}} />
+                <h3 style={styles.stepTitle}>First Access</h3>
+                <p style={styles.stepDescription}>Be among the first to experience next-generation email AI and get priority access to new features as they're released</p>
+              </div>
+              <div style={{textAlign: 'center'}}>
+                <MessageSquare size={48} style={{color: '#3b82f6', marginBottom: '16px'}} />
+                <h3 style={styles.stepTitle}>Direct Input</h3>
+                <p style={styles.stepDescription}>Your insights and suggestions directly influence the product roadmap and help us build exactly what businesses need</p>
+              </div>
+              <div style={{textAlign: 'center'}}>
+                <Zap size={48} style={{color: '#8b5cf6', marginBottom: '16px'}} />
+                <h3 style={styles.stepTitle}>Priority Support</h3>
+                <p style={styles.stepDescription}>Get dedicated support and regular updates as we refine the platform and add new capabilities</p>
+              </div>
             </div>
           </div>
         </div>
