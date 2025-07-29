@@ -30,8 +30,12 @@ const EmailIcon = ({ style }) => (
 
 const InventoryIcon = ({ style }) => (
   <svg style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7.5 4.21l4.5 2.6 4.5-2.6M7.5 4.21l-2.5 1.44 2.5 1.44M16.5 4.21l2.5 1.44-2.5 1.44" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+    <rect x="3" y="12" width="18" height="3" rx="1" strokeWidth={2} />
+    <rect x="3" y="16" width="18" height="3" rx="1" strokeWidth={2} />
+    <circle cx="7" cy="10.5" r="0.5" fill="currentColor" />
+    <circle cx="12" cy="10.5" r="0.5" fill="currentColor" />
+    <circle cx="17" cy="10.5" r="0.5" fill="currentColor" />
   </svg>
 )
 
