@@ -579,6 +579,24 @@ const LarynxAILaunch = () => {
       textDecoration: 'underline',
       fontWeight: '500',
       transition: 'color 0.3s ease'
+    },
+    earlyAccessSection: {
+      background: 'linear-gradient(145deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1))',
+      backdropFilter: 'blur(10px)',
+      borderRadius: '24px',
+      padding: '48px 32px',
+      border: '1px solid rgba(139, 92, 246, 0.15)',
+      marginBottom: '80px'
+    },
+    earlyAccessGrid: {
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+      gap: '32px',
+      alignItems: 'start'
+    },
+    earlyAccessCard: {
+      textAlign: 'center',
+      padding: '0 16px'
     }
   }
 
@@ -837,27 +855,21 @@ const LarynxAILaunch = () => {
         </div>
 
         {/* Early Access Benefits Section */}
-        <div style={{marginBottom: '80px'}}>
+        <div>
           <h2 style={styles.sectionTitle} className="section-title">Why Join Early Access?</h2>
-          <div style={{
-            background: 'linear-gradient(145deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1))',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '24px',
-            padding: '48px',
-            border: '1px solid rgba(139, 92, 246, 0.15)'
-          }}>
-            <div style={styles.howItWorksGrid}>
-              <div style={{textAlign: 'center'}}>
+          <div style={styles.earlyAccessSection}>
+            <div style={styles.earlyAccessGrid}>
+              <div style={styles.earlyAccessCard}>
                 <Key size={48} style={{color: '#8b5cf6', marginBottom: '16px'}} />
                 <h3 style={styles.stepTitle}>First Access</h3>
                 <p style={styles.stepDescription}>Be among the first to experience next-generation email AI and get priority access to new features as they're released</p>
               </div>
-              <div style={{textAlign: 'center'}}>
+              <div style={styles.earlyAccessCard}>
                 <MessageSquare size={48} style={{color: '#3b82f6', marginBottom: '16px'}} />
                 <h3 style={styles.stepTitle}>Direct Input</h3>
                 <p style={styles.stepDescription}>Your insights and suggestions directly influence the product roadmap and help us build exactly what businesses need</p>
               </div>
-              <div style={{textAlign: 'center'}}>
+              <div style={styles.earlyAccessCard}>
                 <Zap size={48} style={{color: '#8b5cf6', marginBottom: '16px'}} />
                 <h3 style={styles.stepTitle}>Priority Support</h3>
                 <p style={styles.stepDescription}>Get dedicated support and regular updates as we refine the platform and add new capabilities</p>
