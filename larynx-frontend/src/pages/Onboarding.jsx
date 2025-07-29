@@ -60,7 +60,7 @@ const Play = () => (
 
 const AlertTriangle = () => (
   <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 3h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
   </svg>
 )
 
@@ -1141,6 +1141,17 @@ const styles = {
     border: '1px solid rgba(245, 158, 11, 0.3)',
     borderRadius: '12px',
     marginTop: '20px'
+  },
+  warningHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginBottom: '8px'
+  },
+  warningTitle: {
+    color: '#fbbf24',
+    fontSize: '16px',
+    fontWeight: '600'
   },
   warningText: {
     color: '#fbbf24',

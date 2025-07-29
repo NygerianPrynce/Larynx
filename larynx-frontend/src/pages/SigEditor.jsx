@@ -51,8 +51,8 @@ const ListNumbered = () => (
 
 const ClearFormat = () => (
   <svg style={{ display: 'inline', width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M8 4v4M16 4v4" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M4 12h8m-8 5h12" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 14l4-4m0 4l-4-4" />
   </svg>
 )
 
