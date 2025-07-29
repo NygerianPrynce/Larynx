@@ -942,7 +942,7 @@ const LarynxAILaunch = () => {
           </p>
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
-              Join Beta Program
+               Get Started
               <ArrowRightCustom />
             </button>
             <button style={styles.secondaryButton} className="secondary-button">
@@ -1085,11 +1085,11 @@ const LarynxAILaunch = () => {
               ✕
             </button>
             
-            <h2 style={styles.modalTitle} className="modal-title">Join Our Beta Program! 🧪</h2>
+            <h2 style={styles.modalTitle} className="modal-title">Almost There! 🚀</h2>
             
             <p style={styles.modalText} className="modal-text">
-              You're about to become an early tester of Larynx AI! To help our AI learn your authentic writing style, 
-              we need to securely connect with your Gmail account. Here's what happens next:
+              To create emails that sound authentically like you, Larynx AI needs to securely connect with your Gmail account. 
+              Here's exactly what will happen next:
             </p>
 
             <div style={styles.stepsList} className="steps-list">
@@ -1116,15 +1116,14 @@ const LarynxAILaunch = () => {
             </div>
 
             <div style={styles.importantNote} className="important-note">
-              <strong>💡 Beta Tester Tip:</strong> We recommend granting all Gmail permissions when prompted. 
-              This allows our AI to learn your writing patterns more effectively and provide better draft suggestions. 
-              As a beta tester, your experience and feedback will help us refine these features for everyone.
+              <strong>💡 For the best experience:</strong> We recommend granting all Gmail permissions when prompted. 
+              This allows Larynx AI to learn your writing style, understand your email patterns, and draft responses that truly sound like you. 
+              You can always modify these permissions later in your Google Account settings.
             </div>
 
             <p style={styles.modalText} className="modal-text">
-              As a beta tester, your privacy and security are paramount. All data is encrypted and used solely for 
-              product development and improvement. You'll have direct communication with our team and can influence 
-              the direction of new features. Read our{' '}
+              Your privacy and security are our top priorities. All data is encrypted and used solely to improve your email experience. 
+              You maintain full control and can revoke access at any time. Read our{' '}
               <a href="/privacy" style={styles.modalLink} className="modal-link" target="_blank" rel="noopener noreferrer">
                 Privacy Policy
               </a>{' '}
@@ -1148,7 +1147,7 @@ const LarynxAILaunch = () => {
                 className="modal-button-primary"
                 onClick={handleProceedToAuth}
               >
-                Join Beta Program
+                Continue to Google Sign-in
               </button>
             </div>
           </div>
