@@ -937,8 +937,9 @@ const LarynxAILaunch = () => {
             Email Intelligence<br />Reimagined
           </h1>
           <p style={styles.heroSubtitle} className="hero-subtitle">
-            Larynx AI automatically drafts emails that sound authentically like you, 
-            while staying perfectly in sync with your inventory and business needs. Join our beta program to experience the future of email automation.
+            Larynx AI automatically drafts emails that sound authentically like you—while staying perfectly in sync with your inventory and business needs.<br />
+            Ideal for small businesses like caterers, rental companies, retailers, salons, and service providers.<br />
+            Experience the future of email automation.
           </p>
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
@@ -950,7 +951,6 @@ const LarynxAILaunch = () => {
             </button>
           </div>
         </div>
-
         {/* Features Showcase */}
         <div id="features" style={styles.featuresGrid}>
           {features.map((feature, index) => {
@@ -975,7 +975,6 @@ const LarynxAILaunch = () => {
             )
           })}
         </div>
-
         {/* Stats Section */}
         <div style={styles.statsSection}>
           <div style={styles.statsGrid}>
@@ -985,7 +984,7 @@ const LarynxAILaunch = () => {
             </div>
             <div>
               <div style={{...styles.statNumber, color: '#3b82f6'}}>Smart</div>
-              <div style={styles.statLabel}>Inventory Sync</div>
+              <div style={styles.statLabel}>Business Sync</div>
             </div>
             <div>
               <div style={styles.statNumber}>Instant</div>
@@ -993,85 +992,6 @@ const LarynxAILaunch = () => {
             </div>
           </div>
         </div>
-
-        {/* Ideal For Section */}
-        <div style={{marginBottom: '80px'}}>
-          <h2 style={styles.sectionTitle} className="section-title">Perfect for These Businesses</h2>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '24px',
-            marginBottom: '32px'
-          }}>
-            <div style={{
-              padding: '24px 16px',
-              background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.3), rgba(17, 24, 39, 0.3))',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '12px',
-              border: '1px solid #374151',
-              textAlign: 'center'
-            }}>
-              <h4 style={{color: '#8b5cf6', marginBottom: '8px', fontSize: '16px'}}>Catering</h4>
-              <p style={{color: '#d1d5db', fontSize: '13px', lineHeight: '1.4'}}>Menu inquiries, event quotes, availability</p>
-            </div>
-            <div style={{
-              padding: '24px 16px',
-              background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.3), rgba(17, 24, 39, 0.3))',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '12px',
-              border: '1px solid #374151',
-              textAlign: 'center'
-            }}>
-              <h4 style={{color: '#8b5cf6', marginBottom: '8px', fontSize: '16px'}}>Party Rentals</h4>
-              <p style={{color: '#d1d5db', fontSize: '13px', lineHeight: '1.4'}}>Equipment availability, booking requests</p>
-            </div>
-            <div style={{
-              padding: '24px 16px',
-              background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.3), rgba(17, 24, 39, 0.3))',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '12px',
-              border: '1px solid #374151',
-              textAlign: 'center'
-            }}>
-              <h4 style={{color: '#8b5cf6', marginBottom: '8px', fontSize: '16px'}}>Retail Stores</h4>
-              <p style={{color: '#d1d5db', fontSize: '13px', lineHeight: '1.4'}}>Product availability, special orders</p>
-            </div>
-            <div style={{
-              padding: '24px 16px',
-              background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.3), rgba(17, 24, 39, 0.3))',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '12px',
-              border: '1px solid #374151',
-              textAlign: 'center'
-            }}>
-              <h4 style={{color: '#8b5cf6', marginBottom: '8px', fontSize: '16px'}}>Service Contractors</h4>
-              <p style={{color: '#d1d5db', fontSize: '13px', lineHeight: '1.4'}}>Project estimates, scheduling</p>
-            </div>
-            <div style={{
-              padding: '24px 16px',
-              background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.3), rgba(17, 24, 39, 0.3))',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '12px',
-              border: '1px solid #374151',
-              textAlign: 'center'
-            }}>
-              <h4 style={{color: '#8b5cf6', marginBottom: '8px', fontSize: '16px'}}>Beauty & Wellness</h4>
-              <p style={{color: '#d1d5db', fontSize: '13px', lineHeight: '1.4'}}>Appointment booking, service details</p>
-            </div>
-            <div style={{
-              padding: '24px 16px',
-              background: 'linear-gradient(145deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.2))',
-              backdropFilter: 'blur(10px)',
-              borderRadius: '12px',
-              border: '1px solid rgba(139, 92, 246, 0.3)',
-              textAlign: 'center'
-            }}>
-              <h4 style={{color: '#a855f7', marginBottom: '8px', fontSize: '16px'}}>& Many More</h4>
-              <p style={{color: '#e5e7eb', fontSize: '13px', lineHeight: '1.4'}}>Any business with inventory to manage</p>
-            </div>
-          </div>
-        </div>
-
         {/* How It Works */}
         <div id="how-it-works">
           <h2 style={styles.sectionTitle} className="section-title">How It Works</h2>
