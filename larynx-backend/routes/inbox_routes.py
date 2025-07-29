@@ -561,10 +561,10 @@ async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: 
         # Customer classification
         customer_status = customer_detector.analyze_customer_status(raw_body)
         
-        # Optional: Skip prospects if you only want to respond to customers
-        if customer_status == 'unknown':
-            logging.info(f"Skipping prospect email from because unknown -- Sender:{sender}: {subject}")
-            return None
+        # Optional: Skip prospects if you only want to respond to customers -- HEURISTICS NOT NEARLY GOOD ENOUGH
+        #if customer_status == 'unknown':
+        #    logging.info(f"Skipping prospect email from because unknown -- Sender:{sender}: {subject}")
+        #    return None
         
         logging.info(f"Email classified as '{customer_status}' from {sender}: {subject}")
         
@@ -1398,9 +1398,6 @@ class BotEmailDetector:
             bot_signals += 1
         
         return bot_signals >= 3
-
-
-
 class CustomerDetector:
     def __init__(self):
         self.customer_indicators = [
@@ -1436,7 +1433,6 @@ class CustomerDetector:
             r'our\s+previous\s+order',
             r'usual\s+order',
             r'same\s+as\s+last\s+time',
-            # New patterns from examples
             r'i\s+messaged\s+earlier',
             r'i\s+am.*mom',
             r'i\s+was\s+with\s+.*\s+when\s+we',
@@ -1450,6 +1446,7 @@ class CustomerDetector:
         ]
         
         self.prospect_indicators = [
+            # Existing patterns
             r'i\s+am\s+interested\s+in',
             r'can\s+you\s+tell\s+me\s+about',
             r'what\s+do\s+you\s+charge',
@@ -1463,7 +1460,6 @@ class CustomerDetector:
             r'first\s+time',
             r'new\s+to\s+your',
             r'heard\s+about\s+you',
-            # New patterns from examples
             r'wanted\s+to\s+rent',
             r'would\s+like\s+to\s+rent',
             r'would\s+like\s+to\s+inquire',
@@ -1479,18 +1475,77 @@ class CustomerDetector:
             r'total\s+cost',
             r'delivery.*fees',
             r'pickup.*fees',
-            r'rental.*rates'
+            r'rental.*rates',
+            
+            # Common business patterns
+            r'\bbuying\b',
+            r'\bselling\b',
+            r'\bbuy\b',
+            r'\bsell\b',
+            r'\bpurchase\b',
+            r'\bpurchasing\b',
+            r'want\s+to\s+buy',
+            r'want\s+to\s+purchase',
+            r'interested\s+in\s+buying',
+            r'how\s+much',
+            r'what\s+is\s+the\s+price',
+            r'what.*cost',
+            r'how.*much.*cost',
+            r'can\s+i\s+buy',
+            r'can\s+i\s+get',
+            r'where\s+can\s+i',
+            r'need\s+to\s+buy',
+            r'want\s+to\s+order',
+            r'place\s+an\s+order',
+            r'make\s+an\s+order',
+            r'business\s+inquiry',
+            r'product\s+inquiry',
+            r'service\s+inquiry',
+            r'questions?\s+about',
+            r'tell\s+me\s+more',
+            r'learn\s+more',
+            r'get\s+more\s+info',
+            r'contact.*about',
+            r'reach\s+out.*about',
+            r'hello.*interested',
+            r'hi.*interested',
+            r'good\s+morning.*interested',
+            r'good\s+afternoon.*interested'
+        ]
+        
+        # Add patterns that indicate personal/non-business emails
+        self.personal_indicators = [
+            r'how\s+was\s+your\s+weekend',
+            r'happy\s+birthday',
+            r'congratulations',
+            r'how\s+are\s+you\s+doing',
+            r'miss\s+you',
+            r'see\s+you\s+soon',
+            r'call\s+me\s+when',
+            r'what\s+are\s+you\s+up\s+to',
+            r'how.*family',
+            r'vacation',
+            r'holiday'
+        ]
+        
+        # Very short/minimal responses
+        self.minimal_responses = [
+            r'^\s*(okay?|yes|no|thanks?|sure|maybe|alright|got\s+it|sounds?\s+good)\s*$'
         ]
     
     def analyze_customer_status(self, body: str) -> str:
         """
-        Analyze email body to determine if sender is likely a customer or prospect
+        Analyze email body to determine if sender is likely a customer, prospect, or unknown
         Returns: 'customer', 'prospect', or 'unknown'
         """
-        body_lower = body.lower()
+        if not body or len(body.strip()) < 2:
+            return 'unknown'
+            
+        body_lower = body.lower().strip()
         
         customer_score = 0
         prospect_score = 0
+        personal_score = 0
         
         # Check for customer indicators
         for pattern in self.customer_indicators:
@@ -1507,9 +1562,24 @@ class CustomerDetector:
             if re.search(pattern, body_lower):
                 prospect_score += 1
         
-        if customer_score > prospect_score and customer_score > 0:
+        # Check for personal indicators
+        for pattern in self.personal_indicators:
+            if re.search(pattern, body_lower):
+                personal_score += 1
+        
+        # Check for minimal responses
+        for pattern in self.minimal_responses:
+            if re.search(pattern, body_lower):
+                personal_score += 1
+        
+        # Decision logic that can actually return 'unknown'
+        if customer_score > 0 and customer_score >= prospect_score:
             return 'customer'
-        elif prospect_score > customer_score and prospect_score > 0:
+        elif prospect_score > 0 and prospect_score > personal_score:
             return 'prospect'
+        elif personal_score > 0:
+            return 'unknown'  # Personal/social emails
+        elif len(body_lower) < 10:
+            return 'unknown'  # Very short, ambiguous emails
         else:
-            return 'unknown'
+            return 'unknown'  # No clear business indicators
