@@ -571,15 +571,15 @@ const LarynxAILaunch = () => {
     },
     stepsList: {
       textAlign: 'left',
-      marginBottom: '32px',
+      marginBottom: '24px',
       background: 'rgba(55, 65, 81, 0.3)',
       borderRadius: '16px',
-      padding: '24px'
+      padding: '20px'
     },
     stepItem: {
       display: 'flex',
       alignItems: 'flex-start',
-      marginBottom: '20px',
+      marginBottom: '16px',
       fontSize: '16px',
       lineHeight: '1.5'
     },
@@ -1107,7 +1107,7 @@ const LarynxAILaunch = () => {
                 </div>
               </div>
               
-              <div style={styles.stepItem}>
+              <div style={{...styles.stepItem, marginBottom: '0'}}>
                 <div style={styles.modalStepNumber}>3</div>
                 <div style={styles.stepText}>
                   <strong>Select Access:</strong> You'll see options to allow Larynx AI to read, compose, and send emails on your behalf. We strongly recommend selecting all to avoid any issues and unlock full functionality.
