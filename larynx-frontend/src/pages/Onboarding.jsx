@@ -40,6 +40,36 @@ const ArrowRight = () => (
   </svg>
 )
 
+const CheckCircle = () => (
+  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
+const Trash = () => (
+  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+)
+
+const Play = () => (
+  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10v1.586a1 1 0 00.293.707l2.414 2.414a1 1 0 00.707.293H15M9 10V9a2 2 0 012-2h1m-1 1v1m0 0V8a2 2 0 012-2h1m-1 1v1" />
+  </svg>
+)
+
+const AlertTriangle = () => (
+  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+  </svg>
+)
+
+const Sparkles = () => (
+  <svg style={{ display: 'inline', width: '48px', height: '48px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l3.057 3.057M5 3l3.057-3.057M5 3h6m4 0l3.057 3.057M19 3l-3.057-3.057M19 3h-6m-4 8l3.057 3.057M9 11l3.057-3.057M9 11h6m4 0l3.057 3.057M19 11l-3.057-3.057M19 11h-6m-4 8l3.057 3.057M9 19l3.057-3.057M9 19h6m4 0l3.057 3.057M19 19l-3.057-3.057M19 19h-6" />
+  </svg>
+)
+
 const Onboarding = () => {
   const [hasWebsite, setHasWebsite] = useState(true)
   const [websiteUrl, setWebsiteUrl] = useState('')
@@ -49,8 +79,12 @@ const Onboarding = () => {
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [brandSummary, setBrandSummary] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingMessage, setLoadingMessage] = useState('')
   const [signature, setSignature] = useState('')
   const [particles, setParticles] = useState([])
+  const [emailCrawlMessages, setEmailCrawlMessages] = useState([])
+  const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
   const [brandInfo, setBrandInfo] = useState({
     brand_name: '',
     business_description: '',
@@ -69,6 +103,16 @@ const Onboarding = () => {
     { key: 'industry', label: 'What industry are you in?', type: 'input', min: 2, max: 100 },
     { key: 'business_mission', label: "What's your company's mission? (Optional)", type: 'textarea', optional: true, max: 500 },
     { key: 'key_differentiators', label: 'What makes you different? (Optional)', type: 'textarea', optional: true, max: 1000 }
+  ]
+
+  const crawlMessages = [
+    'Connecting to your email...',
+    'Analyzing your writing style...',
+    'Learning your tone and voice...',
+    'Extracting your email signature...',
+    'Identifying common phrases...',
+    'Understanding your communication patterns...',
+    'Almost done...'
   ]
 
   useEffect(() => {
@@ -91,6 +135,16 @@ const Onboarding = () => {
     generateParticles()
   }, [])
 
+  // Cycle through crawl messages
+  useEffect(() => {
+    if (emailCrawlMessages.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentMessageIndex((prev) => (prev + 1) % emailCrawlMessages.length)
+      }, 2000)
+      return () => clearInterval(interval)
+    }
+  }, [emailCrawlMessages.length])
+
   const transitionToStep = (newStep) => {
     setIsTransitioning(true)
     setTimeout(() => {
@@ -99,9 +153,18 @@ const Onboarding = () => {
     }, 300)
   }
 
+  const setLoadingState = (loading, message = '') => {
+    setIsLoading(loading)
+    setLoadingMessage(message)
+    if (!loading) {
+      setEmailCrawlMessages([])
+      setShowSuccessMessage(false)
+    }
+  }
+
   const fetchSignature = async () => {
     try {
-      setIsLoading(true)
+      setLoadingState(true, 'Fetching your signature...')
       const res = await fetch(`${api}/signature`, {
         credentials: 'include'
       })
@@ -111,13 +174,13 @@ const Onboarding = () => {
     } catch (err) {
       alert('Failed to fetch signature.')
     } finally {
-      setIsLoading(false)
+      setLoadingState(false)
     }
   }
 
   const updateSignature = async () => {
     try {
-      setIsLoading(true)
+      setLoadingState(true, 'Saving your signature...')
       const res = await fetch(`${api}/signature`, {
         method: 'PUT',
         headers: {
@@ -135,13 +198,13 @@ const Onboarding = () => {
     } catch (err) {
       alert('Error while updating signature.')
     } finally {
-      setIsLoading(false)
+      setLoadingState(false)
     }
   }
 
   const fetchBrandSummary = async () => {
     try {
-      setIsLoading(true)
+      setLoadingState(true, 'Generating your brand summary...')
       const res = await fetch(`${api}/get-brand-summary`, {
         credentials: 'include'
       })
@@ -151,13 +214,13 @@ const Onboarding = () => {
     } catch (err) {
       alert('Failed to fetch brand summary.')
     } finally {
-      setIsLoading(false)
+      setLoadingState(false)
     }
   }
 
   const handleConfirmBrandSummary = async () => {
     try {
-      setIsLoading(true)
+      setLoadingState(true, 'Saving your brand summary...')
       const res = await fetch(`${api}/update-brand-summary`, {
         method: 'POST',
         headers: {
@@ -175,7 +238,7 @@ const Onboarding = () => {
     } catch (err) {
       alert("Error while updating brand summary.")
     } finally {
-      setIsLoading(false)
+      setLoadingState(false)
     }
   }
 
@@ -209,7 +272,7 @@ const Onboarding = () => {
     }
 
     setErrors({ ...errors, websiteUrl: null })
-    setIsLoading(true)
+    setLoadingState(true, 'Analyzing your website...')
     try {
       const res = await fetch(`${api}/website-scrape?url=${encodeURIComponent(normalized)}`, {
         credentials: 'include',
@@ -218,7 +281,7 @@ const Onboarding = () => {
     } catch (err) {
       alert('Failed to scrape website.')
     } finally {
-      setIsLoading(false)
+      setLoadingState(false)
     }
   }
 
@@ -251,7 +314,7 @@ const Onboarding = () => {
   }
 
   const handleManualSubmit = async () => {
-    setIsLoading(true)
+    setLoadingState(true, 'Processing your information...')
     try {
       const res = await fetch(`${api}/upload-brand-summary`, {
         method: 'POST',
@@ -263,7 +326,47 @@ const Onboarding = () => {
     } catch (err) {
       alert('Failed to upload brand info.')
     } finally {
-      setIsLoading(false)
+      setLoadingState(false)
+    }
+  }
+
+  const handleEmailCrawl = async () => {
+    try {
+      setEmailCrawlMessages(crawlMessages)
+      setCurrentMessageIndex(0)
+      setLoadingState(true)
+      
+      const res = await fetch(`${api}/crawl-emails`, {
+        credentials: 'include'
+      })
+      
+      // Show success message
+      setShowSuccessMessage(true)
+      setEmailCrawlMessages([])
+      setLoadingMessage('Successfully analyzed your emails!')
+      
+      // Wait 2 seconds to show success, then proceed
+      setTimeout(async () => {
+        await fetchSignature()
+      }, 2000)
+    } catch (err) {
+      alert('Error crawling emails.')
+      setLoadingState(false)
+    }
+  }
+
+  const handleGenericTone = async () => {
+    try {
+      setLoadingState(true, 'Setting up default tone...')
+      const res = await fetch(`${api}/set-generic-tone`, {
+        method: 'POST',
+        credentials: 'include'
+      })
+      await fetchSignature()
+    } catch (err) {
+      alert('Error setting generic tone.')
+    } finally {
+      setLoadingState(false)
     }
   }
 
@@ -305,6 +408,17 @@ const Onboarding = () => {
     <div style={styles.container}>
       <style>
         {`
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            margin: 0;
+            padding: 0;
+          }
+          
           @keyframes float {
             0% { transform: translateY(100vh) translateX(0px) rotate(0deg); opacity: 0; }
             10% { opacity: 1; }
@@ -338,6 +452,13 @@ const Onboarding = () => {
             100% { transform: rotate(360deg); }
           }
           
+          @keyframes messageSlide {
+            0% { opacity: 0; transform: translateY(10px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-10px); }
+          }
+          
           .step-content {
             animation: fadeIn 0.5s ease-out;
           }
@@ -368,6 +489,10 @@ const Onboarding = () => {
           
           .toggle-link:hover {
             color: #a855f7;
+          }
+          
+          .crawl-message {
+            animation: messageSlide 2s ease-in-out;
           }
         `}
       </style>
@@ -402,7 +527,33 @@ const Onboarding = () => {
         <div style={styles.loadingOverlay}>
           <div style={styles.loadingContent}>
             <div style={styles.spinner}></div>
-            <p style={styles.loadingText}>Processing...</p>
+            
+            {/* Show cycling messages for email crawling */}
+            {emailCrawlMessages.length > 0 && (
+              <div style={styles.crawlMessageContainer}>
+                <p style={styles.crawlMessage} className="crawl-message" key={currentMessageIndex}>
+                  {emailCrawlMessages[currentMessageIndex]}
+                </p>
+              </div>
+            )}
+            
+            {/* Show success message */}
+            {showSuccessMessage && (
+              <div style={styles.successMessageContainer}>
+                <CheckCircle />
+                <p style={styles.successMessage}>Successfully analyzed your emails!</p>
+              </div>
+            )}
+            
+            {/* Regular loading message */}
+            {!emailCrawlMessages.length && !showSuccessMessage && loadingMessage && (
+              <p style={styles.loadingText}>{loadingMessage}</p>
+            )}
+            
+            {/* Default processing message */}
+            {!emailCrawlMessages.length && !showSuccessMessage && !loadingMessage && (
+              <p style={styles.loadingText}>Processing...</p>
+            )}
           </div>
         </div>
       )}
@@ -532,19 +683,7 @@ const Onboarding = () => {
               </div>
               <div style={styles.buttonGroup}>
                 <button
-                  onClick={async () => {
-                    try {
-                      setIsLoading(true)
-                      const res = await fetch(`${api}/crawl-emails`, {
-                        credentials: 'include'
-                      })
-                      await fetchSignature()
-                    } catch (err) {
-                      alert('Error crawling emails.')
-                    } finally {
-                      setIsLoading(false)
-                    }
-                  }}
+                  onClick={handleEmailCrawl}
                   style={styles.primaryButton}
                   className="primary-button"
                 >
@@ -552,20 +691,7 @@ const Onboarding = () => {
                   <ArrowRight />
                 </button>
                 <button
-                  onClick={async () => {
-                    try {
-                      setIsLoading(true)
-                      const res = await fetch(`${api}/set-generic-tone`, {
-                        method: 'POST',
-                        credentials: 'include'
-                      })
-                      await fetchSignature()
-                    } catch (err) {
-                      alert('Error setting generic tone.')
-                    } finally {
-                      setIsLoading(false)
-                    }
-                  }}
+                  onClick={handleGenericTone}
                   style={styles.secondaryButton}
                   className="secondary-button"
                 >
@@ -605,8 +731,12 @@ const Onboarding = () => {
                   and draft replies. This is essential for our service to work.
                 </p>
                 <div style={styles.warningBox}>
+                  <div style={styles.warningHeader}>
+                    <AlertTriangle />
+                    <span style={styles.warningTitle}>Important Notice</span>
+                  </div>
                   <p style={styles.warningText}>
-                    ⚠️ Without email monitoring, we cannot detect new messages or help with responses. 
+                    Without email monitoring, we cannot detect new messages or help with responses. 
                     Declining will result in account termination.
                   </p>
                 </div>
@@ -621,6 +751,7 @@ const Onboarding = () => {
                     )
                     if (!confirmed) return
 
+                    setLoadingState(true, 'Deleting your account...')
                     const res = await fetch(`${api}/user/delete`, {
                       method: 'DELETE',
                       credentials: 'include'
@@ -631,18 +762,21 @@ const Onboarding = () => {
                     } else {
                       alert('Something went wrong while deleting your account.')
                     }
+                    setLoadingState(false)
                   }}
                 >
                   ❌ Delete Account
                 </button>
                 <button
                   onClick={async () => {
+                    setLoadingState(true, 'Enabling email monitoring...')
                     const res = await fetch(`${api}/start-monitoring`, {
                       method: 'POST',
                       credentials: 'include'
                     })
 
                     if (res.ok) {
+                      setLoadingMessage('Finalizing your setup...')
                       await fetch(`${api}/finish-onboarding`, {
                         method: 'POST',
                         credentials: 'include'
@@ -651,6 +785,7 @@ const Onboarding = () => {
                     } else {
                       alert('Something went wrong enabling monitoring.')
                     }
+                    setLoadingState(false)
                   }}
                   style={styles.successButton}
                   className="success-button"
@@ -687,7 +822,8 @@ const styles = {
     background: 'linear-gradient(135deg, #1a1a1a 0%, #000000 50%, #2d2d2d 100%)',
     color: 'white',
     fontFamily: 'Arial, sans-serif',
-    position: 'relative'
+    position: 'relative',
+    overflow: 'hidden'
   },
   backgroundOrb1: {
     position: 'absolute',
@@ -734,12 +870,43 @@ const styles = {
     zIndex: 1000
   },
   loadingContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
     textAlign: 'center'
   },
   loadingText: {
     color: 'white',
     fontSize: '18px',
     marginTop: '20px'
+  },
+  crawlMessageContainer: {
+    marginTop: '20px',
+    height: '30px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  crawlMessage: {
+    color: '#8b5cf6',
+    fontSize: '16px',
+    fontWeight: '500'
+  },
+  successMessageContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginTop: '20px',
+    padding: '16px 24px',
+    background: 'rgba(16, 185, 129, 0.2)',
+    border: '1px solid rgba(16, 185, 129, 0.3)',
+    borderRadius: '12px'
+  },
+  successMessage: {
+    color: '#10b981',
+    fontSize: '16px',
+    fontWeight: '600',
+    margin: 0
   },
   main: {
     position: 'relative',

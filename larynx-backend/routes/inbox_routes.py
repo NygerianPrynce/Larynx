@@ -513,7 +513,7 @@ async def check_for_new_emails(user_id: str) -> List[Dict]:
             return new_emails
             
     except Exception as e:
-        logging.error(f"Error checking for new emails: {str(e)}")
+        logging.error(f"Error checking for new emails for user {user_id}: {str(e)}")
         return []
 
 

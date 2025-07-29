@@ -80,7 +80,6 @@ async def auth_callback(request: Request):
 
         # Use new refresh_token if present, otherwise fallback to existing
         refresh_token_to_store = token.get("refresh_token") or existing_refresh_token
-        print("AYYYEYEYEYEYE" + refresh_token_to_store)
         # Upsert token
         supabase.table("tokens").upsert({
             "user_id": user_id,

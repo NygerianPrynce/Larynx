@@ -49,26 +49,17 @@ const ListNumbered = () => (
   </svg>
 )
 
-const ColorPalette = () => (
+const ClearFormat = () => (
   <svg style={{ display: 'inline', width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM7 3H5a2 2 0 00-2 2v12a4 4 0 004 4h2a2 2 0 002-2V5a2 2 0 00-2-2z"/>
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M8 4v4M16 4v4" />
   </svg>
 )
 
-const SigEditor = ({ value, setValue, onBack, onSave }) => {
+const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const editorRef = useRef(null)
-  const [showColorPicker, setShowColorPicker] = useState(false)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
-
-  const colors = [
-    '#000000', '#333333', '#666666', '#999999', '#cccccc', '#ffffff',
-    '#ff0000', '#ff6600', '#ff9900', '#ffcc00', '#ffff00', '#ccff00',
-    '#99ff00', '#66ff00', '#33ff00', '#00ff00', '#00ff33', '#00ff66',
-    '#00ff99', '#00ffcc', '#00ffff', '#00ccff', '#0099ff', '#0066ff',
-    '#0033ff', '#0000ff', '#3300ff', '#6600ff', '#9900ff', '#cc00ff',
-    '#ff00ff', '#ff00cc', '#ff0099', '#ff0066', '#ff0033'
-  ]
 
   const execCommand = (command, value = null) => {
     document.execCommand(command, false, value)
@@ -108,6 +99,10 @@ const SigEditor = ({ value, setValue, onBack, onSave }) => {
           break
       }
     }
+  }
+
+  const handleInput = () => {
+    updateValue()
   }
 
   return (
@@ -155,35 +150,6 @@ const SigEditor = ({ value, setValue, onBack, onSave }) => {
           .save-button:hover {
             transform: scale(1.02) !important;
             box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4) !important;
-          }
-          
-          .color-picker {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: rgba(17, 24, 39, 0.95);
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 12px;
-            backdrop-filter: blur(20px);
-            z-index: 1000;
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: 4px;
-            width: 200px;
-          }
-          
-          .color-swatch {
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-            cursor: pointer;
-            border: 2px solid transparent;
-            transition: border-color 0.2s;
-          }
-          
-          .color-swatch:hover {
-            border-color: #8b5cf6;
           }
           
           .link-dialog {
@@ -274,33 +240,6 @@ const SigEditor = ({ value, setValue, onBack, onSave }) => {
           
           <div style={styles.separator}></div>
           
-          <div style={styles.colorPickerContainer}>
-            <button
-              className="toolbar-button"
-              onClick={() => setShowColorPicker(!showColorPicker)}
-              title="Text Color"
-            >
-              <ColorPalette />
-            </button>
-            {showColorPicker && (
-              <div className="color-picker">
-                {colors.map((color) => (
-                  <div
-                    key={color}
-                    className="color-swatch"
-                    style={{ backgroundColor: color }}
-                    onClick={() => {
-                      execCommand('foreColor', color)
-                      setShowColorPicker(false)
-                    }}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-          
-          <div style={styles.separator}></div>
-          
           <button
             className="toolbar-button"
             onClick={() => execCommand('insertUnorderedList')}
@@ -365,7 +304,7 @@ const SigEditor = ({ value, setValue, onBack, onSave }) => {
             onClick={() => execCommand('removeFormat')}
             title="Clear Formatting"
           >
-            ✨
+            <ClearFormat />
           </button>
         </div>
         
@@ -375,11 +314,12 @@ const SigEditor = ({ value, setValue, onBack, onSave }) => {
           className="editor-content"
           contentEditable={true}
           style={styles.editor}
-          onInput={updateValue}
+          onInput={handleInput}
           onKeyDown={handleKeyDown}
-          dangerouslySetInnerHTML={{ __html: value || '' }}
-          placeholder="Enter your email signature..."
-        />
+          suppressContentEditableWarning={true}
+        >
+          {!value && <div style={{ color: '#9ca3af', pointerEvents: 'none' }}>Enter your email signature...</div>}
+        </div>
       </div>
       
       <div style={styles.actions}>
@@ -438,9 +378,6 @@ const styles = {
     height: '24px',
     background: '#374151',
     margin: '0 8px'
-  },
-  colorPickerContainer: {
-    position: 'relative'
   },
   linkContainer: {
     position: 'relative'

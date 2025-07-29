@@ -24,6 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Create app
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app.add_middleware(
     CORSMiddleware,
