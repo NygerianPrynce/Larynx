@@ -985,7 +985,7 @@ const LarynxAILaunch = () => {
             </div>
             <div>
               <div style={{...styles.statNumber, color: '#3b82f6'}}>Smart</div>
-              <div style={styles.statLabel}>Business Sync</div>
+              <div style={styles.statLabel}>Inventory Sync</div>
             </div>
             <div>
               <div style={styles.statNumber}>Instant</div>
@@ -1130,54 +1130,6 @@ const LarynxAILaunch = () => {
             <ChevronRightCustom />
           </button>
           <p style={styles.ctaNote}>Free beta access • Limited spots available • Your feedback matters</p>
-        </div>
-
-        {/* Ideal For Section */}
-        <div style={{marginBottom: '80px'}}>
-          <h2 style={styles.sectionTitle} className="section-title">Perfect for These Businesses</h2>
-          <div style={{
-            background: 'linear-gradient(145deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))',
-            backdropFilter: 'blur(10px)',
-            borderRadius: '24px',
-            padding: '40px 32px',
-            border: '1px solid rgba(59, 130, 246, 0.15)',
-            textAlign: 'center'
-          }}>
-            <p style={{fontSize: '18px', color: '#d1d5db', marginBottom: '24px', lineHeight: '1.6'}}>
-              Larynx AI excels with businesses that regularly handle customer inquiries and need inventory-aware responses:
-            </p>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '24px',
-              marginTop: '32px'
-            }}>
-              <div style={{textAlign: 'center'}}>
-                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Catering</h4>
-                <p style={{color: '#d1d5db', fontSize: '14px'}}>Menu inquiries, event quotes, availability checks</p>
-              </div>
-              <div style={{textAlign: 'center'}}>
-                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Party Rentals</h4>
-                <p style={{color: '#d1d5db', fontSize: '14px'}}>Equipment availability, booking requests, pricing</p>
-              </div>
-              <div style={{textAlign: 'center'}}>
-                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Retail Stores</h4>
-                <p style={{color: '#d1d5db', fontSize: '14px'}}>Product availability, store hours, special orders</p>
-              </div>
-              <div style={{textAlign: 'center'}}>
-                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Service Contractors</h4>
-                <p style={{color: '#d1d5db', fontSize: '14px'}}>Project estimates, scheduling, service availability</p>
-              </div>
-              <div style={{textAlign: 'center'}}>
-                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Beauty & Wellness</h4>
-                <p style={{color: '#d1d5db', fontSize: '14px'}}>Appointment booking, service details, product info</p>
-              </div>
-              <div style={{textAlign: 'center'}}>
-                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>& Many More</h4>
-                <p style={{color: '#d1d5db', fontSize: '14px'}}>Any business with inventory or services to manage</p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
