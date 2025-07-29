@@ -509,7 +509,7 @@ async def check_for_new_emails(user_id: str) -> List[Dict]:
                     
                     new_emails.append(email_details)
             
-            print(f"[DEBUG] Found {len(new_emails)} new emails after filtering")
+            print(f"[DEBUG] Found {len(new_emails)} new emails for user {user_id} after filtering")
             return new_emails
             
     except Exception as e:
