@@ -354,6 +354,7 @@ const Onboarding = () => {
       setLoadingState(false)
     }
   }
+
 const handleGenericTone = async () => {
   try {
     console.log('Starting generic tone setup...')
@@ -932,8 +933,8 @@ const styles = {
   },
   header: {
     textAlign: 'center',
-    marginBottom: '48px',
-    padding: '48px 0'
+    marginBottom: '24px', // Reduced from 48px
+    padding: '24px 0' // Reduced from 48px 0
   },
   stepIcon: {
     display: 'inline-flex',
@@ -960,10 +961,10 @@ const styles = {
     color: '#d1d5db'
   },
   stepContainer: {
-    flex: 1,
+    width: '100%',
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    paddingTop: '20px' // Added spacing from header
   },
   card: {
     width: '100%',
