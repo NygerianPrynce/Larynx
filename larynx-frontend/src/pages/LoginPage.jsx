@@ -942,7 +942,7 @@ const LarynxAILaunch = () => {
           </p>
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
-               Get Started
+              Join Beta Program
               <ArrowRightCustom />
             </button>
             <button style={styles.secondaryButton} className="secondary-button">
@@ -1053,6 +1053,54 @@ const LarynxAILaunch = () => {
           </button>
           <p style={styles.ctaNote}>Free beta access • Limited spots available • Your feedback matters</p>
         </div>
+
+        {/* Ideal For Section */}
+        <div style={{marginBottom: '80px'}}>
+          <h2 style={styles.sectionTitle} className="section-title">Perfect for These Businesses</h2>
+          <div style={{
+            background: 'linear-gradient(145deg, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))',
+            backdropFilter: 'blur(10px)',
+            borderRadius: '24px',
+            padding: '40px 32px',
+            border: '1px solid rgba(59, 130, 246, 0.15)',
+            textAlign: 'center'
+          }}>
+            <p style={{fontSize: '18px', color: '#d1d5db', marginBottom: '24px', lineHeight: '1.6'}}>
+              Larynx AI excels with businesses that regularly handle customer inquiries and need inventory-aware responses:
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '24px',
+              marginTop: '32px'
+            }}>
+              <div style={{textAlign: 'center'}}>
+                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Catering</h4>
+                <p style={{color: '#d1d5db', fontSize: '14px'}}>Menu inquiries, event quotes, availability checks</p>
+              </div>
+              <div style={{textAlign: 'center'}}>
+                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Party Rentals</h4>
+                <p style={{color: '#d1d5db', fontSize: '14px'}}>Equipment availability, booking requests, pricing</p>
+              </div>
+              <div style={{textAlign: 'center'}}>
+                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Retail Stores</h4>
+                <p style={{color: '#d1d5db', fontSize: '14px'}}>Product availability, store hours, special orders</p>
+              </div>
+              <div style={{textAlign: 'center'}}>
+                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Service Contractors</h4>
+                <p style={{color: '#d1d5db', fontSize: '14px'}}>Project estimates, scheduling, service availability</p>
+              </div>
+              <div style={{textAlign: 'center'}}>
+                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>Beauty & Wellness</h4>
+                <p style={{color: '#d1d5db', fontSize: '14px'}}>Appointment booking, service details, product info</p>
+              </div>
+              <div style={{textAlign: 'center'}}>
+                <h4 style={{color: '#8b5cf6', marginBottom: '8px'}}>& Many More</h4>
+                <p style={{color: '#d1d5db', fontSize: '14px'}}>Any business with inventory or services to manage</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Footer */}
@@ -1110,15 +1158,21 @@ const LarynxAILaunch = () => {
               <div style={{...styles.stepItem, marginBottom: '0'}}>
                 <div style={styles.modalStepNumber}>3</div>
                 <div style={styles.stepText}>
-                  <strong>Select Access:</strong> You'll see options to allow Larynx AI to read, compose, and send emails on your behalf. We strongly recommend selecting all to avoid any issues and unlock full functionality.
+                  <strong>Select Access:</strong> You'll see options to allow Larynx AI to read, compose, and send emails on your behalf.
                 </div>
               </div>
             </div>
 
             <div style={styles.importantNote} className="important-note">
-              <strong>💡 For the best experience:</strong> We strongly recommend granting all Gmail permissions when prompted. 
+              <strong>💡 For the best experience:</strong> We recommend granting all Gmail permissions when prompted. 
               This allows Larynx AI to learn your writing style, understand your email patterns, and draft responses that truly sound like you. 
               You can always modify these permissions later in your Google Account settings.
+            </div>
+
+            <div style={{...styles.importantNote, background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)'}} className="important-note">
+              <strong>📧 Best suited for business email:</strong> Larynx AI works optimally with business-focused email accounts 
+              where correspondence primarily involves customer inquiries, sales communications, support requests, and other 
+              business-related activities.
             </div>
 
             <p style={styles.modalText} className="modal-text">
