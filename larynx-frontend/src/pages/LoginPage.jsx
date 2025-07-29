@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { Mail, Package, Layers, ChevronRight, ArrowRight, Star } from 'lucide-react'
 import logoImage from '../assets/logo.png' // Import your custom logo
+import { Helmet } from "react-helmet";
 
 // Custom SVG Icons for arrows and star
 const ArrowRightCustom = () => (
@@ -587,6 +588,10 @@ const LarynxAILaunch = () => {
 
   return (
     <div style={styles.container}>
+      <Helmet>
+            <link rel="canonical" href="https://www.larynxai.com/login" />
+            <title>Larynx AI</title>
+      </Helmet>
       <style>
         {`
         * {
