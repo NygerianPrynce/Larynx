@@ -354,21 +354,33 @@ const Onboarding = () => {
       setLoadingState(false)
     }
   }
-
-  const handleGenericTone = async () => {
-    try {
-      setLoadingState(true, 'Setting up default tone...')
-      const res = await fetch(`${api}/set-generic-tone`, {
-        method: 'POST',
-        credentials: 'include'
-      })
-      await fetchSignature()
-    } catch (err) {
-      alert('Error setting generic tone.')
-    } finally {
-      setLoadingState(false)
+const handleGenericTone = async () => {
+  try {
+    console.log('Starting generic tone setup...')
+    setLoadingState(true, 'Setting up default tone...')
+    
+    const res = await fetch(`${api}/set-generic-tone`, {
+      method: 'POST',
+      credentials: 'include'
+    })
+    
+    console.log('API response status:', res.status)
+    
+    if (!res.ok) {
+      const errorData = await res.text()
+      console.error('API error:', errorData)
+      throw new Error(`HTTP error! status: ${res.status}`)
     }
+    
+    console.log('Generic tone set successfully, fetching signature...')
+    await fetchSignature()
+  } catch (err) {
+    console.error('Error in handleGenericTone:', err)
+    alert('Error setting generic tone.')
+  } finally {
+    setLoadingState(false)
   }
+}
 
   useEffect(() => {
     if (step === 'finalizing') {
