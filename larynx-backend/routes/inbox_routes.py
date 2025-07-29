@@ -52,6 +52,232 @@ class NewEmailNotification(BaseModel):
 
 # ─── Email monitoring system ──────────────────────────────────────────────────
 
+async def is_email_already_seen(user_id: str, message_id: str) -> bool:
+    """
+    Check if we've already evaluated this email (processed OR filtered)
+    Returns True if we should skip this email
+    """
+    try:
+        # Check if already processed successfully
+        processed = supabase.table("drafts").select("id").eq("user_id", user_id).eq("message_id", message_id).limit(1).execute()
+        if len(processed.data) > 0:
+            return True
+        
+        # Check if already filtered out
+        filtered = supabase.table("filtered_emails").select("id").eq("user_id", user_id).eq("message_id", message_id).limit(1).execute()
+        if len(filtered.data) > 0:
+            return True
+            
+        return False
+    except Exception as e:
+        logging.error(f"Error checking if email already seen: {str(e)}")
+        return False
+
+async def mark_email_as_filtered(user_id: str, message_id: str, reason: str, sender: str = "", subject: str = ""):
+    """
+    Mark an email as filtered so we don't check it again
+    """
+    try:
+        supabase.table("filtered_emails").upsert({
+            "user_id": user_id,
+            "message_id": message_id,
+            "filter_reason": reason,
+            "sender": sender[:255] if sender else "",  # Limit length
+            "subject": subject[:255] if subject else "",  # Limit length
+            "created_at": datetime.utcnow().isoformat()
+        }, on_conflict="user_id,message_id").execute()
+        
+        logging.info(f"Marked email {message_id} as filtered: {reason}")
+    except Exception as e:
+        logging.error(f"Error marking email as filtered: {str(e)}")
+
+async def check_for_new_emails(user_id: str) -> List[Dict]:
+    """
+    Check Gmail for new emails received after account creation
+    Now efficiently skips emails we've already evaluated
+    """
+    try:
+        access_token = await refresh_access_token_if_needed(user_id, supabase)
+        headers = {"Authorization": f"Bearer {access_token}"}
+        
+        # Get account creation date
+        account_created = await get_user_account_creation_date(user_id)
+        
+        # Build query to get emails after account creation
+        query_params = {
+            "maxResults": 50,
+            "format": "metadata"
+        }
+        
+        if account_created:
+            after_date = account_created.strftime("%Y/%m/%d")
+            query_params["q"] = f"category:primary -label:^auto after:{after_date}"
+        
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+                headers=headers,
+                params=query_params
+            )
+            
+            if r.status_code != 200:
+                logging.error(f"Gmail API error: {r.text}")
+                return []
+            
+            messages = r.json().get("messages", [])
+            new_emails = []
+            checked_count = 0
+            skipped_count = 0
+            
+            for msg in messages:
+                msg_id = msg["id"]
+                checked_count += 1
+                
+                # 🔥 Skip if already seen (processed OR filtered)
+                if await is_email_already_seen(user_id, msg_id):
+                    skipped_count += 1
+                    continue
+                
+                # Fetch full email details
+                email_details = await fetch_email_details(client, headers, msg_id, user_id)
+                if email_details:
+                    # Additional filtering based on received date
+                    if account_created and email_details.get('received_at'):
+                        received_at = datetime.fromisoformat(email_details['received_at'])
+                        if received_at.tzinfo is None:
+                            received_at = received_at.replace(tzinfo=timezone.utc)
+                        
+                        if received_at <= account_created:
+                            await mark_email_as_filtered(
+                                user_id, msg_id, "date_filter", 
+                                email_details.get('sender', ''), 
+                                email_details.get('subject', '')
+                            )
+                            continue
+                    
+                    new_emails.append(email_details)
+                # If email_details is None, it was already marked as filtered in fetch_email_details
+            
+            logging.info(f"📊 Email check for user {user_id}: {checked_count} total, {skipped_count} already seen, {len(new_emails)} new to process")
+            return new_emails
+            
+    except Exception as e:
+        logging.error(f"Error checking for new emails for user {user_id}: {str(e)}")
+        return []
+
+async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: str, user_id: str) -> Optional[Dict]:
+    """
+    Fetch detailed email information from Gmail with enhanced bot detection
+    Now marks filtered emails in database
+    """
+    detector = BotEmailDetector()
+    customer_detector = CustomerDetector()
+    
+    try:
+        r = await client.get(
+            f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}",
+            headers=headers
+        )
+        
+        if r.status_code != 200:
+            await mark_email_as_filtered(user_id, msg_id, "api_error", "", "")
+            return None
+        
+        full_msg = r.json()
+        
+        # Extract headers
+        headers_list = full_msg["payload"].get("headers", [])
+        subject = next((h["value"] for h in headers_list if h["name"] == "Subject"), "(No Subject)")
+        sender = next((h["value"] for h in headers_list if h["name"] == "From"), "(Unknown Sender)")
+        
+        # Get received date
+        received_at = None
+        date_header = next((h["value"] for h in headers_list if h["name"] == "Date"), None)
+        if date_header:
+            try:
+                received_at = parsedate_to_datetime(date_header).isoformat()
+            except:
+                pass
+        
+        # Extract body
+        raw_body = extract_email_body(full_msg)
+        if not raw_body or len(raw_body.strip()) < 10:
+            await mark_email_as_filtered(user_id, msg_id, "empty_body", sender, subject)
+            return None
+        
+        # Enhanced bot detection
+        if detector.is_bot_email(sender, subject, raw_body, headers_list):
+            await mark_email_as_filtered(user_id, msg_id, "bot_email", sender, subject)
+            return None
+        
+        # Customer classification
+        customer_status = customer_detector.analyze_customer_status(raw_body)
+        
+        # Skip unknown customers if desired (you can change this)
+        if customer_status == 'unknown':
+            await mark_email_as_filtered(user_id, msg_id, "unknown_customer", sender, subject)
+            return None
+        
+        # This email passed all filters - return it for processing
+        logging.info(f"✅ Email passed all filters - Subject: {subject[:50]}...")
+        return {
+            "message_id": msg_id,
+            "subject": subject,
+            "sender": sender,
+            "raw_body": raw_body,
+            "received_at": received_at
+        }
+        
+    except Exception as e:
+        logging.error(f"Error fetching email details for {msg_id}: {str(e)}")
+        await mark_email_as_filtered(user_id, msg_id, "processing_error", "", "")
+        return None
+
+# Add cleanup function to prevent database bloat
+async def cleanup_old_filtered_emails():
+    """
+    Clean up old filtered email records (keep last 30 days)
+    """
+    try:
+        cutoff_date = (datetime.utcnow() - timedelta(days=30)).isoformat()
+        
+        result = supabase.table("filtered_emails").delete().lt("created_at", cutoff_date).execute()
+        
+        if result.data:
+            logging.info(f"Cleaned up {len(result.data)} old filtered email records")
+        
+    except Exception as e:
+        logging.error(f"Error cleaning up filtered emails: {str(e)}")
+
+# Add debug endpoint to see filtered emails
+@router.get("/debug/filtered-emails")
+async def debug_filtered_emails(request: Request, limit: int = 20):
+    """
+    Debug endpoint to see recently filtered emails
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        result = supabase.table("filtered_emails").select("*").eq("user_id", user_id).order("created_at", desc=True).limit(limit).execute()
+        
+        # Group by filter reason for summary
+        summary = {}
+        for record in result.data:
+            reason = record['filter_reason']
+            summary[reason] = summary.get(reason, 0) + 1
+        
+        return {
+            "filtered_emails": result.data,
+            "summary": summary,
+            "total_filtered": len(result.data)
+        }
+        
+    except Exception as e:
+        logging.error(f"Error getting filtered emails: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
 async def stop_monitoring_task_only(user_id: str):
     """
     Stops tracking background monitoring for the user.
@@ -61,16 +287,6 @@ async def stop_monitoring_task_only(user_id: str):
     if user_id in active_monitoring_tasks:
         active_monitoring_tasks.remove(user_id)
         logging.info(f"[shutdown] Stopped tracking monitoring for user {user_id}")
-
-#ONLY NEED message_id
-async def is_message_already_processed(user_id: str, message_id: str) -> bool:
-    """Check if we've already processed this email"""
-    try:
-        result = supabase.table("drafts").select("id").eq("user_id", user_id).eq("message_id", message_id).limit(1).execute()
-        return len(result.data) > 0
-    except Exception as e:
-        logging.error(f"Error checking if message processed: {str(e)}")
-        return False
     
     
 async def start_email_monitoring(user_id: str):
@@ -116,7 +332,6 @@ async def stop_email_monitoring(user_id: str):
     except Exception as e:
         logging.error(f"Error stopping monitoring for user {user_id}: {str(e)}")
         return {"status": "error", "user_id": user_id, "error": str(e)}
-
 async def monitor_user_emails(user_id: str):
     """
     Continuously monitor emails for a specific user with better error handling
@@ -127,7 +342,7 @@ async def monitor_user_emails(user_id: str):
     
     active_monitoring_tasks.add(user_id)
     
-    logging.info(f"Starting email monitoring for user {user_id}")
+    logging.info(f"🟢 STARTING email monitoring for user {user_id}")
     
     consecutive_errors = 0
     max_consecutive_errors = 3
@@ -138,7 +353,7 @@ async def monitor_user_emails(user_id: str):
                 # Check if monitoring is still enabled in database
                 result = supabase.table("users").select("is_monitoring").eq("id", user_id).execute()
                 if not result.data or not result.data[0].get("is_monitoring"):
-                    logging.info(f"Monitoring disabled for user {user_id}, stopping...")
+                    logging.info(f"❌ Monitoring disabled for user {user_id}, stopping...")
                     break
                 
                 # Update last check time (this prevents stale detection)
@@ -149,32 +364,36 @@ async def monitor_user_emails(user_id: str):
                 # Reset error counter on successful database update
                 consecutive_errors = 0
                 
-                # Check for new emails
+                # Check for new emails (this now handles all filtering internally)
+                logging.info(f"🔍 Checking for new emails for user {user_id}...")
                 new_emails = await check_for_new_emails(user_id)
                 
+                logging.info(f"📊 Found {len(new_emails)} emails ready for processing for user {user_id}")
+                
                 if new_emails:
-                    logging.info(f"Found {len(new_emails)} new emails for user {user_id}")
-                    
                     for email in new_emails:
                         try:
-                            # Skip if already processed
-                            if await is_message_already_processed(user_id, email['message_id']):
-                                continue
-                                
+                            # 🔥 REMOVED: is_message_already_processed check
+                            # The new check_for_new_emails() function already handles this
+                            
+                            logging.info(f"✉️ Processing email: {email['subject'][:50]}...")
                             await process_and_store_email(user_id, email)
+                            
                         except Exception as e:
-                            logging.error(f"Error processing email {email['message_id']}: {str(e)}")
+                            logging.error(f"❌ Error processing email {email['message_id']}: {str(e)}")
+                else:
+                    logging.info(f"✅ No new emails to process for user {user_id}")
                 
                 # Wait before next check
-                logging.info(f"Waiting another 2 minutes")
+                logging.info(f"⏰ User {user_id}: Waiting another 2 minutes...")
                 await asyncio.sleep(120)  # CHANGE TO AN HOUR -- 3600
                 
             except Exception as e:
                 consecutive_errors += 1
-                logging.error(f"Error in email monitoring for user {user_id} (attempt {consecutive_errors}): {str(e)}")
+                logging.error(f"❌ Error in email monitoring for user {user_id} (attempt {consecutive_errors}): {str(e)}")
                 
                 if consecutive_errors >= max_consecutive_errors:
-                    logging.error(f"Too many consecutive errors for user {user_id}, stopping monitoring")
+                    logging.error(f"🛑 Too many consecutive errors for user {user_id}, stopping monitoring")
                     await stop_email_monitoring(user_id)
                     break
                 
@@ -182,10 +401,10 @@ async def monitor_user_emails(user_id: str):
                 await asyncio.sleep(60)
                 
     finally:
-        # MOVED HERE - This should only happen when the function exits
+        # This should only happen when the function exits
         active_monitoring_tasks.discard(user_id)
-        logging.info(f"Stopped email monitoring for user {user_id}")
-    
+        logging.info(f"🔴 STOPPED email monitoring for user {user_id}")
+        
 async def get_user_monitoring_status(user_id: str) -> Dict:
     """
     Get monitoring status from database
@@ -271,6 +490,7 @@ async def cleanup_old_email_data():
                     
                     logging.info(f"Cleaned {len(recent_activity) - len(cleaned_activity)} old activity entries for user {record['user_id']}")
         
+        await cleanup_old_filtered_emails()
         logging.info("Email data cleanup completed successfully")
         
     except Exception as e:
@@ -443,143 +663,10 @@ async def get_user_account_creation_date(user_id: str) -> Optional[datetime]:
     except Exception as e:
         logging.error(f"Error fetching user creation date: {str(e)}")
         return None
-async def check_for_new_emails(user_id: str) -> List[Dict]:
-    """
-    Check Gmail for new emails received after account creation
-    """
-    try:
-        access_token = await refresh_access_token_if_needed(user_id, supabase)
-        headers = {"Authorization": f"Bearer {access_token}"}
-        
-        # Get account creation date
-        account_created = await get_user_account_creation_date(user_id)
-        # No need to convert timezone - it's already in UTC
-        
-        # Build query to get emails after account creation
-        query_params = {
-            "maxResults": 50,
-            #"labelIds": "INBOX", -- Deprecated -- using primary inbox now
-            "format": "metadata"
-        }
-        
-        # Add date filter if we have account creation date
-        if account_created:
-            # Format date for Gmail search (YYYY/MM/DD)
-            after_date = account_created.strftime("%Y/%m/%d")
-            query_params["q"] = f"category:primary -label:^auto after:{after_date}"
-        
-        async with httpx.AsyncClient() as client:
-            r = await client.get(
-                "https://gmail.googleapis.com/gmail/v1/users/me/messages",
-                headers=headers,
-                params=query_params
-            )
-            
-            if r.status_code != 200:
-                logging.error(f"Gmail API error: {r.text}")
-                return []
-            
-            messages = r.json().get("messages", [])
-            new_emails = []
-            
-            for msg in messages:
-                msg_id = msg["id"]
-                
-                # Skip if already processed
-                if await is_message_already_processed(user_id, msg_id):
-                    continue
-                
-                # Fetch full email details
-                email_details = await fetch_email_details(client, headers, msg_id)
-                if email_details:
-                    # Additional filtering based on received date
-                    if account_created and email_details.get('received_at'):
-                        received_at = datetime.fromisoformat(email_details['received_at'])
-                        # Ensure both datetimes are in UTC for comparison
-                        if received_at.tzinfo is None:
-                            received_at = received_at.replace(tzinfo=timezone.utc)
-                        
-                        print(f"[DEBUG] Email received at {received_at} (UTC), account created at {account_created} (UTC)")
-                        
-                        # Email must be AFTER account creation (not equal)
-                        if received_at <= account_created:
-                            print(f"[DEBUG] Skipping email - received at {received_at} is not after account creation {account_created}")
-                            continue
-                    
-                    new_emails.append(email_details)
-            
-            print(f"[DEBUG] Found {len(new_emails)} new emails for user {user_id} after filtering")
-            return new_emails
-            
-    except Exception as e:
-        logging.error(f"Error checking for new emails for user {user_id}: {str(e)}")
-        return []
 
 
-async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: str) -> Optional[Dict]:
-    """
-    Fetch detailed email information from Gmail with enhanced bot detection
-    """
-    detector = BotEmailDetector()
-    customer_detector = CustomerDetector()
-    
-    try:
-        r = await client.get(
-            f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg_id}",
-            headers=headers
-        )
-        
-        if r.status_code != 200:
-            return None
-        
-        full_msg = r.json()
-        
-        # Extract headers
-        headers_list = full_msg["payload"].get("headers", [])
-        subject = next((h["value"] for h in headers_list if h["name"] == "Subject"), "(No Subject)")
-        sender = next((h["value"] for h in headers_list if h["name"] == "From"), "(Unknown Sender)")
-        
-        # Get received date
-        received_at = None
-        date_header = next((h["value"] for h in headers_list if h["name"] == "Date"), None)
-        if date_header:
-            try:
-                received_at = parsedate_to_datetime(date_header).isoformat()
-            except:
-                pass
-        
-        # Extract body
-        raw_body = extract_email_body(full_msg)
-        if not raw_body or len(raw_body.strip()) < 10:
-            return None
-        
-        # Enhanced bot detection
-        if detector.is_bot_email(sender, subject, raw_body, headers_list):
-            logging.info(f"Skipping bot email from {sender}: {subject}")
-            return None
-        
-        # Customer classification
-        customer_status = customer_detector.analyze_customer_status(raw_body)
-        
-        # Optional: Skip prospects if you only want to respond to customers -- HEURISTICS NOT NEARLY GOOD ENOUGH
-        #if customer_status == 'unknown':
-        #    logging.info(f"Skipping prospect email from because unknown -- Sender:{sender}: {subject}")
-        #    return None
-        
-        logging.info(f"Email classified as '{customer_status}' from {sender}: {subject}")
-        
-        logging.info(f"Email passed bot detection - Subject: {subject[:50]}...") #restart
-        return {
-            "message_id": msg_id,
-            "subject": subject,
-            "sender": sender,
-            "raw_body": raw_body,
-            "received_at": received_at
-        }
-        
-    except Exception as e:
-        logging.error(f"Error fetching email details for {msg_id}: {str(e)}")
-        return None
+
+
 
 def extract_email_body(full_msg: dict) -> str:
     """
