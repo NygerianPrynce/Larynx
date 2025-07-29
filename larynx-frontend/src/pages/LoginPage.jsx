@@ -937,17 +937,19 @@ const LarynxAILaunch = () => {
             Email Intelligence<br />Reimagined
           </h1>
           <p style={styles.heroSubtitle} className="hero-subtitle">
-            Larynx AI automatically drafts emails that sound authentically like you—while staying perfectly in sync with your inventory and business needs.<br />
-            Ideal for small businesses like caterers, rental companies, retailers, salons, and service providers.<br />
-            Experience the future of email automation.
+            <strong>Larynx AI writes emails that sound just like you—automatically.</strong><br />
+            It stays perfectly in sync with your inventory, services, and business needs.<br />
+            <strong>Ideal for small businesses</strong> like caterers, rental companies, retailers, salons, and service providers.<br />
+            <em>Experience the future of email automation.</em>
           </p>
+
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
-              Join Beta Program
+              Get Started
               <ArrowRightCustom />
             </button>
             <button style={styles.secondaryButton} className="secondary-button">
-              Learn More
+              Watch Demo
             </button>
           </div>
         </div>
