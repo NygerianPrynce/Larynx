@@ -1,12 +1,17 @@
 // File: src/pages/PrivacyPolicy.jsx
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Helmet } from "react-helmet";
 
 const PrivacyPolicy = () => {
   const navigate = useNavigate()
 
   return (
     <div style={styles.container}>
+      <Helmet>
+      <link rel="canonical" href="https://www.larynxai.com/login" />
+      <title>Larynx AI | Privacy</title>
+    </Helmet>
       <style>
         {`
           body {

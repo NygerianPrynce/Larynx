@@ -20,7 +20,6 @@ const LarynxAILaunch = () => {
   const [isVisible, setIsVisible] = useState(false)
   const [currentFeature, setCurrentFeature] = useState(0)
   const [particles, setParticles] = useState([])
-  const [iconSet, setIconSet] = useState('default')
 
   const navigate = useNavigate()
   const [showConsentModal, setShowConsentModal] = useState(false)
@@ -446,7 +445,7 @@ const LarynxAILaunch = () => {
       objectFit: 'contain',
       filter: 'drop-shadow(0 2px 4px rgba(139, 92, 246, 0.3))'
     },
-    // Consent Modal Styles
+    // Consent Modal Styles - Fixed for zoom compatibility
     modalOverlay: {
       position: 'fixed',
       top: 0,
@@ -459,19 +458,23 @@ const LarynxAILaunch = () => {
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
-      padding: '20px'
+      padding: '2vw', // Use viewport units for better scaling
+      overflowY: 'auto' // Allow scrolling if content is too tall
     },
     modalContent: {
       background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(55, 65, 81, 0.95))',
       backdropFilter: 'blur(20px)',
       borderRadius: '24px',
       border: '1px solid rgba(139, 92, 246, 0.3)',
-      padding: '48px',
-      maxWidth: '600px',
-      width: '100%',
+      padding: '3vw', // Use viewport units for responsive padding
+      maxWidth: '90vw', // Ensure it never exceeds viewport width
+      width: '600px', // Preferred width
+      maxHeight: '90vh', // Prevent modal from exceeding viewport height
       textAlign: 'center',
       position: 'relative',
-      boxShadow: '0 25px 50px rgba(0, 0, 0, 0.5)'
+      boxShadow: '0 25px 50px rgba(0, 0, 0, 0.5)',
+      overflowY: 'auto', // Allow scrolling within modal if needed
+      margin: 'auto' // Center the modal
     },
     modalTitle: {
       fontSize: '32px',
@@ -660,11 +663,41 @@ const LarynxAILaunch = () => {
           color: #a855f7;
         }
         
+        /* Responsive design for different screen sizes and zoom levels */
         @media (max-width: 768px) {
           .hero-title { font-size: 48px !important; }
           .hero-subtitle { font-size: 18px !important; }
           .section-title { font-size: 32px !important; }
           .cta-title { font-size: 32px !important; }
+        }
+        
+        /* Modal responsive adjustments for zoom levels */
+        @media (max-height: 800px) {
+          .modal-content {
+            padding: 24px !important;
+            max-height: 95vh !important;
+          }
+          .modal-title {
+            font-size: 24px !important;
+          }
+          .modal-text {
+            font-size: 16px !important;
+          }
+        }
+        
+        @media (max-height: 600px) {
+          .modal-content {
+            padding: 20px !important;
+            max-height: 98vh !important;
+          }
+          .steps-list {
+            margin: 16px 0 !important;
+            padding: 16px !important;
+          }
+          .important-note {
+            padding: 12px !important;
+            margin: 16px 0 !important;
+          }
         }
         `}
       </style>
@@ -856,7 +889,7 @@ const LarynxAILaunch = () => {
       {/* Consent Modal */}
       {showConsentModal && (
         <div style={styles.modalOverlay} onClick={() => setShowConsentModal(false)}>
-          <div style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+          <div style={styles.modalContent} className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button 
               style={styles.closeButton} 
               className="close-button"
@@ -865,14 +898,14 @@ const LarynxAILaunch = () => {
               ✕
             </button>
             
-            <h2 style={styles.modalTitle}>Almost There! 🚀</h2>
+            <h2 style={styles.modalTitle} className="modal-title">Almost There! 🚀</h2>
             
-            <p style={styles.modalText}>
+            <p style={styles.modalText} className="modal-text">
               To create emails that sound authentically like you, Larynx AI needs to securely connect with your Gmail account. 
               Here's exactly what will happen next:
             </p>
 
-            <div style={styles.stepsList}>
+            <div style={styles.stepsList} className="steps-list">
               <div style={styles.stepItem}>
                 <div style={styles.modalStepNumber}>1</div>
                 <div style={styles.stepText}>
@@ -895,13 +928,13 @@ const LarynxAILaunch = () => {
               </div>
             </div>
 
-            <div style={styles.importantNote}>
+            <div style={styles.importantNote} className="important-note">
               <strong>💡 For the best experience:</strong> We recommend selecting all Gmail permissions when prompted. 
               This allows Larynx AI to learn your writing style, understand your email patterns, and draft responses that truly sound like you. 
               You can always modify these permissions later in your Google Account settings.
             </div>
 
-            <p style={styles.modalText}>
+            <p style={styles.modalText} className="modal-text">
               Your privacy and security are our top priorities. All data is encrypted and used solely to improve your email experience. 
               You maintain full control and can revoke access at any time. Read our{' '}
               <a href="/privacy" style={styles.modalLink} className="modal-link" target="_blank" rel="noopener noreferrer">
