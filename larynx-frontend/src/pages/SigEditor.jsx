@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 
 // Custom SVG Icons
 const Save = () => (
@@ -60,6 +60,16 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const editorRef = useRef(null)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
+
+  // Properly sync the value with the contentEditable div
+  useEffect(() => {
+    if (editorRef.current) {
+      // Only update if the content is actually different to avoid cursor issues
+      if (editorRef.current.innerHTML !== value) {
+        editorRef.current.innerHTML = value || ''
+      }
+    }
+  }, [value])
 
   const execCommand = (command, value = null) => {
     document.execCommand(command, false, value)
