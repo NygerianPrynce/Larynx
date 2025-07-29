@@ -116,11 +116,10 @@ async def stop_email_monitoring(user_id: str):
     except Exception as e:
         logging.error(f"Error stopping monitoring for user {user_id}: {str(e)}")
         return {"status": "error", "user_id": user_id, "error": str(e)}
-    
+
 async def monitor_user_emails(user_id: str):
     """
     Continuously monitor emails for a specific user with better error handling
-    
     """
     if user_id in active_monitoring_tasks:
         logging.info(f"Monitoring already active for user {user_id}")
@@ -133,61 +132,59 @@ async def monitor_user_emails(user_id: str):
     consecutive_errors = 0
     max_consecutive_errors = 3
     
-    while True:
-        try:
-            # Check if monitoring is still enabled in database
-            result = supabase.table("users").select("is_monitoring").eq("id", user_id).execute()
-            if not result.data or not result.data[0].get("is_monitoring"):
-                logging.info(f"Monitoring disabled for user {user_id}, stopping...")
-                break
-            
-            # Update last check time (this prevents stale detection)
-            supabase.table("users").update({
-                "last_email_check": datetime.utcnow().isoformat()
-            }).eq("id", user_id).execute()
-            
-            # Reset error counter on successful database update
-            consecutive_errors = 0
-            
-            # Check for new emails
-            new_emails = await check_for_new_emails(user_id)
-            
-            if new_emails:
-                logging.info(f"Found {len(new_emails)} new emails for user {user_id}")
+    try:
+        while True:
+            try:
+                # Check if monitoring is still enabled in database
+                result = supabase.table("users").select("is_monitoring").eq("id", user_id).execute()
+                if not result.data or not result.data[0].get("is_monitoring"):
+                    logging.info(f"Monitoring disabled for user {user_id}, stopping...")
+                    break
                 
-                for email in new_emails:
-                    try:
-                        # Skip if already processed
-                        if await is_message_already_processed(user_id, email['message_id']):
-                            #logging.info(f"Skipping already processed email {email['message_id']}")
-                            continue
-                            
-                        await process_and_store_email(user_id, email)
-                    except Exception as e:
-                        logging.error(f"Error processing email {email['message_id']}: {str(e)}")
-            
-            # Wait before next check
-            logging.info(f"Waiting another 2 minutes")
-            await asyncio.sleep(120) #CHANGE TO AN HOUR  -- 3600
-            
-            
-        except Exception as e:
-            consecutive_errors += 1
-            logging.error(f"Error in email monitoring for user {user_id} (attempt {consecutive_errors}): {str(e)}")
-            
-            if consecutive_errors >= max_consecutive_errors:
-                logging.error(f"Too many consecutive errors for user {user_id}, stopping monitoring")
-                await stop_email_monitoring(user_id)
-                break
-            
-            # Wait longer after errors
-            await asyncio.sleep(60)
-        
+                # Update last check time (this prevents stale detection)
+                supabase.table("users").update({
+                    "last_email_check": datetime.utcnow().isoformat()
+                }).eq("id", user_id).execute()
+                
+                # Reset error counter on successful database update
+                consecutive_errors = 0
+                
+                # Check for new emails
+                new_emails = await check_for_new_emails(user_id)
+                
+                if new_emails:
+                    logging.info(f"Found {len(new_emails)} new emails for user {user_id}")
+                    
+                    for email in new_emails:
+                        try:
+                            # Skip if already processed
+                            if await is_message_already_processed(user_id, email['message_id']):
+                                continue
+                                
+                            await process_and_store_email(user_id, email)
+                        except Exception as e:
+                            logging.error(f"Error processing email {email['message_id']}: {str(e)}")
+                
+                # Wait before next check
+                logging.info(f"Waiting another 2 minutes")
+                await asyncio.sleep(120)  # CHANGE TO AN HOUR -- 3600
+                
+            except Exception as e:
+                consecutive_errors += 1
+                logging.error(f"Error in email monitoring for user {user_id} (attempt {consecutive_errors}): {str(e)}")
+                
+                if consecutive_errors >= max_consecutive_errors:
+                    logging.error(f"Too many consecutive errors for user {user_id}, stopping monitoring")
+                    await stop_email_monitoring(user_id)
+                    break
+                
+                # Wait longer after errors
+                await asyncio.sleep(60)
+                
+    finally:
+        # MOVED HERE - This should only happen when the function exits
         active_monitoring_tasks.discard(user_id)
-
-    
-    logging.info(f"Stopped email monitoring for user {user_id}")
-    
+        logging.info(f"Stopped email monitoring for user {user_id}")
     
 async def get_user_monitoring_status(user_id: str) -> Dict:
     """
