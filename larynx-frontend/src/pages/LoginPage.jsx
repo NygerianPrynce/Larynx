@@ -67,18 +67,18 @@ const LarynxAILaunch = () => {
   const features = [
     {
       icon: Mail,
-      title: "AI-Powered Email Drafting",
-      description: "Our beta AI analyzes your writing patterns from past emails to learn your unique voice, tone, and communication style. It then generates draft responses that match how you naturally write, saving you time while maintaining authenticity."
+      title: "Business Intelligence Integration",
+      description: "Our beta system learns your business through smart onboarding questions and website analysis, creating a dynamic business profile that understands your products, services, and brand voice to ensure every email reflects your authentic business identity."
     },
     {
       icon: Package,
-      title: "Inventory Intelligence", 
-      description: "We're developing smart inventory integration that will sync with your business systems to ensure every email reflects accurate product availability, pricing, and stock levels - no more outdated information in customer communications."
+      title: "Automated Email Monitoring", 
+      description: "We're developing intelligent Gmail monitoring that continuously watches for incoming emails, detects legitimate business inquiries using bot detection, and automatically generates contextual draft replies that match your communication style and business needs."
     },
     {
       icon: Layers,
-      title: "Gmail Integration",
-      description: "Currently in beta testing, our Chrome extension works directly within your Gmail interface. It suggests draft responses based on incoming emails and your learned writing style, with easy editing and approval before sending."
+      title: "Smart Inventory Integration",
+      description: "Currently in beta testing, our AI analyzes incoming email content to identify relevant products or services mentioned, then automatically incorporates accurate inventory information, pricing, and availability into your draft responses."
     }
   ]
 
@@ -754,11 +754,11 @@ const LarynxAILaunch = () => {
           </div>
           
           <h1 style={styles.heroTitle} className="hero-title">
-            Email Intelligence<br />In Development
+            Email Intelligence<br />Reimagined
           </h1>
           <p style={styles.heroSubtitle} className="hero-subtitle">
-            We're building an AI that learns to write emails in your authentic voice while staying 
-            perfectly synced with your inventory and business data. Join our beta program to help shape the future of email automation.
+            Larynx AI automatically drafts emails that sound authentically like you, 
+            while staying perfectly in sync with your inventory and business needs. Join our beta program to experience the future of email automation.
           </p>
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
@@ -800,38 +800,38 @@ const LarynxAILaunch = () => {
         <div style={styles.statsSection}>
           <div style={styles.statsGrid}>
             <div>
-              <div style={styles.statNumber}>50+</div>
-              <div style={styles.statLabel}>Beta Testers Enrolled</div>
+              <div style={styles.statNumber}>Auto</div>
+              <div style={styles.statLabel}>Email Monitoring</div>
             </div>
             <div>
-              <div style={{...styles.statNumber, color: '#3b82f6'}}>2</div>
-              <div style={styles.statLabel}>Months in Development</div>
+              <div style={{...styles.statNumber, color: '#3b82f6'}}>Smart</div>
+              <div style={styles.statLabel}>Inventory Sync</div>
             </div>
             <div>
-              <div style={styles.statNumber}>Limited</div>
-              <div style={styles.statLabel}>Spots Remaining</div>
+              <div style={styles.statNumber}>Instant</div>
+              <div style={styles.statLabel}>Draft Creation</div>
             </div>
           </div>
         </div>
 
         {/* How It Works */}
         <div>
-          <h2 style={styles.sectionTitle} className="section-title">How Beta Testing Works</h2>
+          <h2 style={styles.sectionTitle} className="section-title">How It Works</h2>
           <div style={styles.howItWorksGrid}>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>1</div>
-              <h3 style={styles.stepTitle}>Connect & Learn</h3>
-              <p style={styles.stepDescription}>Connect your Gmail account and let our AI analyze your writing patterns to understand your unique communication style</p>
+              <h3 style={styles.stepTitle}>Complete Setup</h3>
+              <p style={styles.stepDescription}>Add your business info, writing style, signature, and inventory through our guided onboarding process</p>
             </div>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>2</div>
-              <h3 style={styles.stepTitle}>Test & Provide Feedback</h3>
-              <p style={styles.stepDescription}>Use early features, test draft suggestions, and share your feedback to help us improve the AI's accuracy</p>
+              <h3 style={styles.stepTitle}>AI Takes Over</h3>
+              <p style={styles.stepDescription}>Our system monitors your Gmail and automatically generates draft replies using your business context and inventory data</p>
             </div>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>3</div>
-              <h3 style={styles.stepTitle}>Shape the Future</h3>
-              <p style={styles.stepDescription}>Your input directly influences new features and improvements as we build towards our full launch</p>
+              <h3 style={styles.stepTitle}>Review & Send</h3>
+              <p style={styles.stepDescription}>Check the AI-generated drafts in your Gmail and send when ready - you maintain full control over every message</p>
             </div>
           </div>
         </div>
