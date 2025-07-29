@@ -54,6 +54,12 @@ const Save = () => (
   </svg>
 )
 
+const MessageCircle = () => (
+  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  </svg>
+)
+
 const SettingsPage = () => {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
@@ -238,6 +244,11 @@ const SettingsPage = () => {
             background: rgba(16, 185, 129, 0.9) !important;
             transform: scale(1.02) !important;
           }
+          
+          .feedback-link:hover {
+            color: #a855f7 !important;
+            text-decoration: underline !important;
+          }
         `}
       </style>
 
@@ -275,6 +286,26 @@ const SettingsPage = () => {
           <p style={styles.subtitle}>
             Customize your AI assistant and manage your account preferences
           </p>
+        </div>
+
+        {/* Feedback Banner */}
+        <div style={styles.feedbackBanner}>
+          <div style={styles.feedbackContent}>
+            <MessageCircle />
+            <div style={styles.feedbackText}>
+              <h3 style={styles.feedbackTitle}>Your Feedback Matters!</h3>
+              <p style={styles.feedbackDescription}>
+                Help us improve Larynx AI by sharing your thoughts, suggestions, or reporting any issues.
+              </p>
+            </div>
+          </div>
+          <a 
+            href="mailto:fadhillawal06@gmail.com" 
+            style={styles.feedbackLink}
+            className="feedback-link"
+          >
+            fadhillawal06@gmail.com
+          </a>
         </div>
 
         {/* Success/Error Messages */}
@@ -471,8 +502,8 @@ const styles = {
   },
   header: {
     textAlign: 'center',
-    marginBottom: '48px',
-    padding: '48px 0'
+    marginBottom: '32px',
+    padding: '48px 0 24px'
   },
   title: {
     fontSize: '48px',
@@ -488,6 +519,52 @@ const styles = {
     color: '#d1d5db',
     maxWidth: '600px',
     margin: '0 auto'
+  },
+  feedbackBanner: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '20px 24px',
+    background: 'linear-gradient(145deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.1))',
+    backdropFilter: 'blur(10px)',
+    borderRadius: '16px',
+    border: '1px solid rgba(139, 92, 246, 0.2)',
+    marginBottom: '32px',
+    gap: '16px',
+    flexWrap: 'wrap'
+  },
+  feedbackContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+    flex: 1,
+    minWidth: '300px'
+  },
+  feedbackText: {
+    flex: 1
+  },
+  feedbackTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#8b5cf6',
+    marginBottom: '4px'
+  },
+  feedbackDescription: {
+    fontSize: '14px',
+    color: '#d1d5db',
+    lineHeight: '1.4'
+  },
+  feedbackLink: {
+    color: '#8b5cf6',
+    fontSize: '14px',
+    fontWeight: '500',
+    textDecoration: 'none',
+    transition: 'all 0.3s ease',
+    padding: '8px 16px',
+    borderRadius: '8px',
+    border: '1px solid rgba(139, 92, 246, 0.3)',
+    background: 'rgba(139, 92, 246, 0.1)',
+    whiteSpace: 'nowrap'
   },
   section: {
     marginBottom: '48px'

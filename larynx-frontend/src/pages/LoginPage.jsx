@@ -780,7 +780,7 @@ const LarynxAILaunch = () => {
           </p>
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
-              Join Beta Program
+              Get Started
               <ArrowRightCustom />
             </button>
             <button style={styles.secondaryButton} className="secondary-button">
