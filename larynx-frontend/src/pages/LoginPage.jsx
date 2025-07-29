@@ -30,7 +30,8 @@ const EmailIcon = ({ style }) => (
 
 const InventoryIcon = ({ style }) => (
   <svg style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7.5 4.21l4.5 2.6 4.5-2.6M7.5 4.21l-2.5 1.44 2.5 1.44M16.5 4.21l2.5 1.44-2.5 1.44" />
   </svg>
 )
 
@@ -358,7 +359,7 @@ const LarynxAILaunch = () => {
       justifyContent: 'center',
       fontSize: '24px',
       fontWeight: 'bold',
-      margin: '0 auto 16px'
+      margin: '0 auto 24px'
     },
     stepTitle: {
       fontSize: '20px',
@@ -525,7 +526,7 @@ const LarynxAILaunch = () => {
       fontSize: '16px',
       lineHeight: '1.5'
     },
-    stepNumber: {
+    modalStepNumber: {
       background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
       color: 'white',
       borderRadius: '50%',
@@ -897,21 +898,21 @@ const LarynxAILaunch = () => {
 
             <div style={styles.stepsList}>
               <div style={styles.stepItem}>
-                <div style={styles.stepNumber}>1</div>
+                <div style={styles.modalStepNumber}>1</div>
                 <div style={styles.stepText}>
                   <strong>Google Sign-in:</strong> You'll be redirected to Google's secure sign-in page to authenticate with your Gmail account.
                 </div>
               </div>
               
               <div style={styles.stepItem}>
-                <div style={styles.stepNumber}>2</div>
+                <div style={styles.modalStepNumber}>2</div>
                 <div style={styles.stepText}>
                   <strong>Permission Request:</strong> Google will ask which permissions you'd like to grant to Larynx AI for your account.
                 </div>
               </div>
               
               <div style={styles.stepItem}>
-                <div style={styles.stepNumber}>3</div>
+                <div style={styles.modalStepNumber}>3</div>
                 <div style={styles.stepText}>
                   <strong>Select Access:</strong> You'll see options to allow Larynx AI to read, compose, and send emails on your behalf.
                 </div>
@@ -926,7 +927,15 @@ const LarynxAILaunch = () => {
 
             <p style={styles.modalText}>
               Your privacy and security are our top priorities. All data is encrypted and used solely to improve your email experience. 
-              You maintain full control and can revoke access at any time.
+              You maintain full control and can revoke access at any time. Read our{' '}
+              <a href="/privacy" style={styles.modalLink} className="modal-link" target="_blank" rel="noopener noreferrer">
+                Privacy Policy
+              </a>{' '}
+              and{' '}
+              <a href="/terms" style={styles.modalLink} className="modal-link" target="_blank" rel="noopener noreferrer">
+                Terms of Service
+              </a>{' '}
+              for more details.
             </p>
 
             <div style={styles.modalButtons}>
