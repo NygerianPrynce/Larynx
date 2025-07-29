@@ -809,7 +809,7 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
             "user_id": user_id,
             "total_drafts": analytics_data.get("total_drafts", 0) + 1,
             "drafts_this_week": this_week + 1,
-            "estimated_hours_saved": round((analytics_data.get("total_drafts", 0) + 1) * 3.5 / 60, 2),
+            "estimated_hours_saved": round((analytics_data.get("total_drafts", 0) + 1) * 6.0 / 60, 2),
             "recent_activity": recent,
             "updated_at": datetime.utcnow().isoformat()
         }).execute()
