@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Package, Shield, ChevronRight, ArrowRight, Star } from 'lucide-react'
+import { Mail, Package, Layers, ChevronRight, ArrowRight, Star } from 'lucide-react'
 import logoImage from '../assets/logo.png' // Import your custom logo
 
 // Custom SVG Icons for arrows and star
@@ -20,6 +20,7 @@ const LarynxAILaunch = () => {
   const [isVisible, setIsVisible] = useState(false)
   const [currentFeature, setCurrentFeature] = useState(0)
   const [particles, setParticles] = useState([])
+  const [iconSet, setIconSet] = useState('default')
 
   const navigate = useNavigate()
   const [showConsentModal, setShowConsentModal] = useState(false)
@@ -75,7 +76,7 @@ const LarynxAILaunch = () => {
       description: "Smart inventory awareness ensures accurate, up-to-date communications"
     },
     {
-      icon: Shield,
+      icon: Layers,
       title: "Gmail Integration",
       description: "Seamlessly integrates with your existing Gmail workflow"
     }
