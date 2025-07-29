@@ -674,7 +674,7 @@ const InventoryPage = ({ onNext, embedded = false }) => {
                 if (onNext) onNext()
               }}
             >
-              ✅ Continue to Next Step
+              Continue to Next Step
             </button>
           </div>
         )}

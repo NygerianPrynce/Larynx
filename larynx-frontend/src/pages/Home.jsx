@@ -49,6 +49,27 @@ const Home = () => {
   const [recentActivity, setRecentActivity] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
+  // Helper functions for activity categorization (same as analytics page)
+  const getActivityType = (activityType) => {
+    if (activityType === 'email_draft') return 'email'
+    if (activityType.startsWith('inventory_')) return 'inventory'
+    return 'other'  // This includes special_instructions and anything else
+  }
+
+  const getActivityStatus = (activityType) => {
+    if (activityType === 'email_draft') return 'draft'
+    if (activityType.startsWith('inventory_')) return 'success'
+    return 'info'  // special_instructions and other activities
+  }
+
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case 'email': return <Mail />
+      case 'inventory': return <Package />
+      default: return <Zap />
+    }
+  }
+
   // Helper function to format timestamps
   const formatTimeAgo = (timestamp) => {
     try {
@@ -103,18 +124,17 @@ const Home = () => {
             hoursSaved: data.estimated_hours_saved ? `${data.estimated_hours_saved} hours` : '0 hours'
           })
           
-          // Process recent activity with proper formatting
+          // Process recent activity with proper formatting using the new categorization
           if (data.recent_activity && Array.isArray(data.recent_activity)) {
             const formattedActivity = data.recent_activity
               .slice(0, 3) // Limit to 3 most recent items
               .map((activity, index) => ({
                 id: index,
-                type: activity.type === 'email_draft' ? 'email' : 
-                      activity.type === 'inventory_edit' ? 'inventory' : 'other',
+                type: getActivityType(activity.type),
                 message: activity.message || 'Unknown activity',
                 time: formatTimeAgo(activity.timestamp),
-                status: activity.type === 'email_draft' ? 'draft' :
-                        activity.type === 'inventory_edit' ? 'success' : 'info'
+                status: getActivityStatus(activity.type),
+                originalType: activity.type
               }))
             setRecentActivity(formattedActivity)
           } else {
@@ -368,7 +388,7 @@ const Home = () => {
               recentActivity.map((activity) => (
                 <div key={activity.id} style={styles.activityItem} className="activity-item">
                   <div style={styles.activityIcon}>
-                    {activity.type === 'email' ? <Mail /> : <Package />}
+                    {getActivityIcon(activity.type)}
                   </div>
                   <div style={styles.activityContent}>
                     <div style={styles.activityMessage}>{activity.message}</div>

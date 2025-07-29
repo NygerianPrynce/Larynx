@@ -58,6 +58,19 @@ const AnalyticsPage = () => {
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [timeRange, setTimeRange] = useState('all')
 
+  // Helper functions for activity categorization
+  const getActivityType = (activityType) => {
+    if (activityType === 'email_draft') return 'email'
+    if (activityType.startsWith('inventory_')) return 'inventory'
+    return 'other'  // This includes special_instructions and anything else
+  }
+
+  const getActivityStatus = (activityType) => {
+    if (activityType === 'email_draft') return 'draft'
+    if (activityType.startsWith('inventory_')) return 'success'
+    return 'info'  // special_instructions and other activities
+  }
+
   // Helper function to format timestamps
   const formatTimeAgo = (timestamp) => {
     try {
@@ -131,14 +144,12 @@ const AnalyticsPage = () => {
           if (data.recent_activity && Array.isArray(data.recent_activity)) {
             const formattedActivity = data.recent_activity.map((activity, index) => ({
               id: index,
-              type: activity.type === 'email_draft' ? 'email' : 
-                    activity.type === 'inventory_edit' ? 'inventory' : 'other',
+              type: getActivityType(activity.type),
               message: activity.message || 'Unknown activity',
               time: formatTimeAgo(activity.timestamp),
               fullDate: formatFullDate(activity.timestamp),
               timestamp: activity.timestamp,
-              status: activity.type === 'email_draft' ? 'draft' :
-                      activity.type === 'inventory_edit' ? 'success' : 'info',
+              status: getActivityStatus(activity.type),
               originalType: activity.type
             }))
             setFilteredActivity(formattedActivity)
@@ -166,14 +177,12 @@ const AnalyticsPage = () => {
 
     let filtered = analytics.recent_activity.map((activity, index) => ({
       id: index,
-      type: activity.type === 'email_draft' ? 'email' : 
-            activity.type === 'inventory_edit' ? 'inventory' : 'other',
+      type: getActivityType(activity.type),
       message: activity.message || 'Unknown activity',
       time: formatTimeAgo(activity.timestamp),
       fullDate: formatFullDate(activity.timestamp),
       timestamp: activity.timestamp,
-      status: activity.type === 'email_draft' ? 'draft' :
-              activity.type === 'inventory_edit' ? 'success' : 'info',
+      status: getActivityStatus(activity.type),
       originalType: activity.type
     }))
 

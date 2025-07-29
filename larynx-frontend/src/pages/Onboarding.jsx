@@ -765,7 +765,7 @@ const Onboarding = () => {
                     setLoadingState(false)
                   }}
                 >
-                  ❌ Delete Account
+                  Delete Account
                 </button>
                 <button
                   onClick={async () => {
@@ -790,7 +790,7 @@ const Onboarding = () => {
                   style={styles.successButton}
                   className="success-button"
                 >
-                  ✅ Start Monitoring
+                  Start Monitoring
                 </button>
               </div>
             </div>
