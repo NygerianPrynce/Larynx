@@ -1,48 +1,19 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { Mail, Package, Shield, ChevronRight, ArrowRight, Star } from 'lucide-react'
 import logoImage from '../assets/logo.png' // Import your custom logo
 
-// Custom SVG Icons
-const ChevronRight = () => (
-  <svg style={{ display: 'inline', width: '24px', height: '24px', marginLeft: '8px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-  </svg>
+// Custom SVG Icons for arrows and star
+const ArrowRightCustom = () => (
+  <ArrowRight size={20} style={{ marginLeft: '8px' }} />
 )
 
-const ArrowRight = () => (
-  <svg style={{ display: 'inline', width: '20px', height: '20px', marginLeft: '8px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-  </svg>
+const ChevronRightCustom = () => (
+  <ChevronRight size={24} style={{ marginLeft: '8px' }} />
 )
 
-const Star = ({ style }) => (
-  <svg style={style} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-)
-
-// Professional Feature Icons
-const EmailIcon = ({ style }) => (
-  <svg style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-  </svg>
-)
-
-const InventoryIcon = ({ style }) => (
-  <svg style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-    <rect x="3" y="12" width="18" height="3" rx="1" strokeWidth={2} />
-    <rect x="3" y="16" width="18" height="3" rx="1" strokeWidth={2} />
-    <circle cx="7" cy="10.5" r="0.5" fill="currentColor" />
-    <circle cx="12" cy="10.5" r="0.5" fill="currentColor" />
-    <circle cx="17" cy="10.5" r="0.5" fill="currentColor" />
-  </svg>
-)
-
-const SecurityIcon = ({ style }) => (
-  <svg style={style} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-  </svg>
+const StarCustom = ({ style }) => (
+  <Star size={20} fill="currentColor" style={style} />
 )
 
 const LarynxAILaunch = () => {
@@ -94,17 +65,17 @@ const LarynxAILaunch = () => {
 
   const features = [
     {
-      icon: EmailIcon,
+      icon: Mail,
       title: "AI-Powered Email Drafting",
       description: "Automatically generates emails that sound authentically like you"
     },
     {
-      icon: InventoryIcon,
-      title: "Inventory Intelligence",
+      icon: Package,
+      title: "Inventory Intelligence", 
       description: "Smart inventory awareness ensures accurate, up-to-date communications"
     },
     {
-      icon: SecurityIcon,
+      icon: Shield,
       title: "Gmail Integration",
       description: "Seamlessly integrates with your existing Gmail workflow"
     }
@@ -757,7 +728,7 @@ const LarynxAILaunch = () => {
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
               Get Started
-              <ArrowRight />
+              <ArrowRightCustom />
             </button>
             <button style={styles.secondaryButton} className="secondary-button">
               Watch Demo
@@ -838,7 +809,7 @@ const LarynxAILaunch = () => {
               <div key={index} style={styles.testimonialCard}>
                 <div style={styles.stars}>
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} style={{ width: '20px', height: '20px' }} />
+                    <StarCustom key={i} style={{ width: '20px', height: '20px' }} />
                   ))}
                 </div>
                 <p style={styles.testimonialText}>"{testimonial.text}"</p>
@@ -857,7 +828,7 @@ const LarynxAILaunch = () => {
           </p>
           <button style={styles.ctaButton} className="cta-button" onClick={handleGetStarted}>
             Get Started Now
-            <ChevronRight />
+            <ChevronRightCustom />
           </button>
           <p style={styles.ctaNote}>Free beta testing • No credit card required</p>
         </div>
