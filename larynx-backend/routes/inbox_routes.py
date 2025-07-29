@@ -753,21 +753,28 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         - They frequently use words like: {', '.join([w for w, _ in tone['top_words']][:5])}
         - They tend to be {tone['politeness_analysis']['communication_style']} in tone
         - They often express {tone['emotional_tone']['dominant_emotion']}
-        
+
         Their brand identity:
         {brand_summary or "No brand information available."}
 
         {inventory_context}
-        
+
         Business-Specific Rules (Include if relevant to the reply):
         {special_instructions or "No specific rules provided."}
 
         INSTRUCTIONS:
-        - Write a helpful, natural reply that sounds like a real person
-        - Address the sender by name ({sender_name}) in a natural way - use their name once, ideally early in the email
-        - Don't be overly enthusiastic or robotic
+        - Write a SHORT, helpful reply (2-3 sentences max) that sounds like a real person
+        - Address the sender by name ({sender_name}) in a natural way - use their name once, early in the email
+        - Be direct and conversational - NO corporate fluff like "greatly appreciated" or "we are here to help"
+        - Get straight to the point - if they want pricing, give pricing; if they want availability, confirm availability
+        - Include specific numbers/totals when relevant (e.g., "$40 for all 5")
+        - End with a simple question or clear next step
         - NEVER INCLUDE ANY CLOSING SIGNATURE OR SIGN OFF like Thanks or Best Regards or Warm Regards — that will be handled outside your response
         - Be conversational and match their tone{inventory_instructions}
+
+        BAD example: "Thank you for your message about the ear savers. We have the ear savers available for $8.00 each. Since you're interested in 5 ear savers, just let me know if this works for you. Your interest in our products is greatly appreciated."
+
+        GOOD example: "Hey {sender_name}! We've got ear savers for $8 each, so $40 for all 5. Should I set those aside for you?"
 
         —— Incoming email ——
         From: {sender_name}
@@ -778,12 +785,6 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         # Generate draft
         draft_text = create_draft_with_gpt(prompt)
         
-        # Add signature
-        if signature_block:
-            normalized_signature = signature_block.strip().lower()
-            normalized_draft = draft_text.strip().lower()
-            if not any(line.strip() in normalized_draft for line in normalized_signature.splitlines() if line.strip()):
-                draft_text += f"\n\n{signature_block}"
 
         # Fetch existing analytics
         analytics_resp = supabase.table("analytics").select("*").eq("user_id", user_id).execute()
@@ -903,15 +904,20 @@ async def create_gmail_draft(user_id: str, original_message_id: str, reply_body:
         access_token = await refresh_access_token_if_needed(user_id, supabase)
         headers = {"Authorization": f"Bearer {access_token}"}
         
+        # Get the user's signature
+        user_row = supabase.table("users").select("signature").eq("id", user_id).execute()
+        signature_html = user_row.data[0].get("signature", "") if user_row.data else ""
+        
         # Get the original message to extract proper headers for reply
         original_message = await get_original_message_headers(headers, original_message_id)
         
-        # Create the reply message
+        # Create the reply message WITH HTML signature support
         reply_message = create_reply_message(
             reply_body=reply_body,
             original_subject=original_subject,
             original_sender=original_sender,
-            original_message=original_message
+            original_message=original_message,
+            signature_html=signature_html
         )
         
         # Create draft via Gmail API
@@ -923,7 +929,6 @@ async def create_gmail_draft(user_id: str, original_message_id: str, reply_body:
     except Exception as e:
         logging.error(f"Error creating Gmail draft: {str(e)}")
         return None
-
 async def get_original_message_headers(headers: dict, message_id: str) -> Optional[Dict]:
     """
     Get the original message headers needed for proper reply threading
@@ -946,13 +951,14 @@ async def get_original_message_headers(headers: dict, message_id: str) -> Option
         return None
 
 def create_reply_message(reply_body: str, original_subject: str, 
-                        original_sender: str, original_message: Optional[Dict] = None) -> str:
+                        original_sender: str, original_message: Optional[Dict] = None,
+                        signature_html: str = "") -> str:
     """
-    Create a properly formatted reply message
+    Create a properly formatted reply message with HTML support for signatures
     """
     try:
         # Create the reply message
-        msg = MIMEMultipart()
+        msg = MIMEMultipart('alternative')  # Support both plain text and HTML
         
         # Set basic headers
         msg['To'] = original_sender
@@ -973,8 +979,30 @@ def create_reply_message(reply_body: str, original_subject: str,
                 msg['In-Reply-To'] = original_message_id
                 msg['References'] = original_message_id
         
-        # Add the reply body
-        msg.attach(MIMEText(reply_body, 'plain'))
+        # Create plain text version
+        plain_text_body = reply_body
+        if signature_html:
+            # Convert signature HTML to plain text for fallback
+            plain_signature = clean_html_to_text(signature_html)
+            plain_text_body += f"\n\n{plain_signature}"
+        
+        # Create HTML version
+        html_body = reply_body.replace('\n', '<br>')
+        if signature_html:
+            html_body += f"<br><br>{signature_html}"
+        
+        # Wrap HTML in proper structure
+        html_content = f"""
+        <html>
+        <body>
+        {html_body}
+        </body>
+        </html>
+        """
+        
+        # Attach both versions
+        msg.attach(MIMEText(plain_text_body, 'plain'))
+        msg.attach(MIMEText(html_content, 'html'))
         
         # Convert to string and encode for Gmail API
         raw_message = msg.as_string()
@@ -985,6 +1013,37 @@ def create_reply_message(reply_body: str, original_subject: str,
         # Fallback to simple message
         simple_msg = f"To: {original_sender}\nSubject: Re: {original_subject}\n\n{reply_body}"
         return base64.urlsafe_b64encode(simple_msg.encode()).decode()
+
+def clean_html_to_text(html: str) -> str:
+    """
+    Convert HTML to clean plain text (for email clients that don't support HTML)
+    """
+    if not html:
+        return ""
+    
+    import re
+    
+    # Handle lists
+    html = re.sub(r'<ul[^>]*>', '', html)
+    html = re.sub(r'</ul>', '', html)
+    html = re.sub(r'<li[^>]*>', '• ', html)
+    html = re.sub(r'</li>', '\n', html)
+    
+    # Handle line breaks
+    html = html.replace('<br>', '\n')
+    html = html.replace('<br/>', '\n')
+    html = html.replace('<br />', '\n')
+    html = html.replace('</p>', '\n')
+    html = html.replace('</div>', '\n')
+    
+    # Remove all other HTML tags
+    html = re.sub(r'<[^>]+>', '', html)
+    
+    # Clean up whitespace
+    lines = [line.strip() for line in html.split('\n')]
+    lines = [line for line in lines if line]
+    
+    return '\n'.join(lines)
 
 async def send_draft_to_gmail(headers: dict, raw_message: str, thread_id: str) -> Optional[str]:
     """
