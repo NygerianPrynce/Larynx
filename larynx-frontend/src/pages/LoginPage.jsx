@@ -746,16 +746,18 @@ const LarynxAILaunch = () => {
       {/* Navigation */}
       <nav style={styles.nav}>
         <div style={styles.logo}>
-          <img 
-            src={logoImage}
-            alt="Larynx AI Logo"
-            style={styles.logoImage}
-          />
+          <img src={logoImage} alt="Larynx AI Logo" style={styles.logoImage} />
           <span style={styles.logoText}>Larynx AI</span>
         </div>
-        <button style={styles.navButton} className="nav-button" onClick={handleLogin}>
-          Log In
-        </button>
+        
+        <div style={styles.navLinks}>
+          <a href="#features" style={styles.navLink}>Features</a>
+          <a href="#how-it-works" style={styles.navLink}>How It Works</a>
+          <a href="#pricing" style={styles.navLink}>Pricing</a>
+          <button style={styles.navButton} className="nav-button" onClick={handleLogin}>
+            Log In
+          </button>
+        </div>
       </nav>
 
       {/* Main Content */}
