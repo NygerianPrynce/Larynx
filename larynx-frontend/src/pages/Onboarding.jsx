@@ -277,9 +277,20 @@ const Onboarding = () => {
       const res = await fetch(`${api}/website-scrape?url=${encodeURIComponent(normalized)}`, {
         credentials: 'include',
       })
-      await fetchBrandSummary()
+      
+      if (res.ok) {
+        await fetchBrandSummary()
+      } else {
+        // Website scrape failed, redirect to manual entry
+        console.log('Website scrape failed, switching to manual entry')
+        setHasWebsite(false)
+        setLoadingState(false)
+        return
+      }
     } catch (err) {
-      alert('Failed to scrape website.')
+      // Network error or other failure, redirect to manual entry
+      console.log('Website scrape error, switching to manual entry:', err)
+      setHasWebsite(false)
     } finally {
       setLoadingState(false)
     }
