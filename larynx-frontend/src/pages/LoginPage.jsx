@@ -68,25 +68,21 @@ const LarynxAILaunch = () => {
     {
       icon: Mail,
       title: "AI-Powered Email Drafting",
-      description: "Automatically generates emails that sound authentically like you"
+      description: "Our beta AI analyzes your writing patterns from past emails to learn your unique voice, tone, and communication style. It then generates draft responses that match how you naturally write, saving you time while maintaining authenticity."
     },
     {
       icon: Package,
       title: "Inventory Intelligence", 
-      description: "Smart inventory awareness ensures accurate, up-to-date communications"
+      description: "We're developing smart inventory integration that will sync with your business systems to ensure every email reflects accurate product availability, pricing, and stock levels - no more outdated information in customer communications."
     },
     {
       icon: Layers,
       title: "Gmail Integration",
-      description: "Seamlessly integrates with your existing Gmail workflow"
+      description: "Currently in beta testing, our Chrome extension works directly within your Gmail interface. It suggests draft responses based on incoming emails and your learned writing style, with easy editing and approval before sending."
     }
   ]
 
-  const testimonials = [
-    { name: "Sarah Chen", role: "Business Owner", text: "Cut my email response time by 80%" },
-    { name: "Marcus Rodriguez", role: "Sales Manager", text: "Finally, emails that actually sound like me" },
-    { name: "Emma Thompson", role: "E-commerce Director", text: "Inventory-aware emails are a game changer" }
-  ]
+  const testimonials = []
 
   const styles = {
     container: {
@@ -196,11 +192,11 @@ const LarynxAILaunch = () => {
       marginBottom: '48px'
     },
     heroLogo: {
-      width: '120px',
-      height: '120px',
-      borderRadius: '24px',
+      width: '180px',
+      height: '180px',
+      borderRadius: '32px',
       objectFit: 'contain',
-      filter: 'drop-shadow(0 15px 35px rgba(139, 92, 246, 0.6))',
+      filter: 'drop-shadow(0 20px 40px rgba(139, 92, 246, 0.7))',
       animation: 'logoFloat 6s ease-in-out infinite'
     },
     heroTitle: {
@@ -758,19 +754,19 @@ const LarynxAILaunch = () => {
           </div>
           
           <h1 style={styles.heroTitle} className="hero-title">
-            Email Intelligence<br />Reimagined
+            Email Intelligence<br />In Development
           </h1>
           <p style={styles.heroSubtitle} className="hero-subtitle">
-            Larynx AI automatically drafts emails that sound authentically like you, 
-            while staying perfectly in sync with your inventory and business needs.
+            We're building an AI that learns to write emails in your authentic voice while staying 
+            perfectly synced with your inventory and business data. Join our beta program to help shape the future of email automation.
           </p>
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
-              Get Started
+              Join Beta Program
               <ArrowRightCustom />
             </button>
             <button style={styles.secondaryButton} className="secondary-button">
-              Watch Demo
+              Learn More
             </button>
           </div>
         </div>
@@ -804,72 +800,76 @@ const LarynxAILaunch = () => {
         <div style={styles.statsSection}>
           <div style={styles.statsGrid}>
             <div>
-              <div style={styles.statNumber}>80%</div>
-              <div style={styles.statLabel}>Faster Email Drafting</div>
+              <div style={styles.statNumber}>50+</div>
+              <div style={styles.statLabel}>Beta Testers Enrolled</div>
             </div>
             <div>
-              <div style={{...styles.statNumber, color: '#3b82f6'}}>100%</div>
-              <div style={styles.statLabel}>Your Voice Preserved</div>
+              <div style={{...styles.statNumber, color: '#3b82f6'}}>2</div>
+              <div style={styles.statLabel}>Months in Development</div>
             </div>
             <div>
-              <div style={styles.statNumber}>24/7</div>
-              <div style={styles.statLabel}>Inventory Sync</div>
+              <div style={styles.statNumber}>Limited</div>
+              <div style={styles.statLabel}>Spots Remaining</div>
             </div>
           </div>
         </div>
 
         {/* How It Works */}
         <div>
-          <h2 style={styles.sectionTitle} className="section-title">How It Works</h2>
+          <h2 style={styles.sectionTitle} className="section-title">How Beta Testing Works</h2>
           <div style={styles.howItWorksGrid}>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>1</div>
-              <h3 style={styles.stepTitle}>Connect Gmail</h3>
-              <p style={styles.stepDescription}>Securely link your Gmail account in seconds</p>
+              <h3 style={styles.stepTitle}>Connect & Learn</h3>
+              <p style={styles.stepDescription}>Connect your Gmail account and let our AI analyze your writing patterns to understand your unique communication style</p>
             </div>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>2</div>
-              <h3 style={styles.stepTitle}>AI Learns You</h3>
-              <p style={styles.stepDescription}>Our AI studies your writing style and inventory</p>
+              <h3 style={styles.stepTitle}>Test & Provide Feedback</h3>
+              <p style={styles.stepDescription}>Use early features, test draft suggestions, and share your feedback to help us improve the AI's accuracy</p>
             </div>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>3</div>
-              <h3 style={styles.stepTitle}>Perfect Emails</h3>
-              <p style={styles.stepDescription}>Get authentic, inventory-aware emails automatically</p>
+              <h3 style={styles.stepTitle}>Shape the Future</h3>
+              <p style={styles.stepDescription}>Your input directly influences new features and improvements as we build towards our full launch</p>
             </div>
           </div>
         </div>
 
-        {/* Testimonials */}
+        {/* Beta Benefits Section */}
         <div>
-          <h2 style={styles.sectionTitle} className="section-title">Loved by Professionals</h2>
-          <div style={styles.testimonialsGrid}>
-            {testimonials.map((testimonial, index) => (
-              <div key={index} style={styles.testimonialCard}>
-                <div style={styles.stars}>
-                  {[...Array(5)].map((_, i) => (
-                    <StarCustom key={i} style={{ width: '20px', height: '20px' }} />
-                  ))}
-                </div>
-                <p style={styles.testimonialText}>"{testimonial.text}"</p>
-                <div style={styles.testimonialName}>{testimonial.name}</div>
-                <div style={styles.testimonialRole}>{testimonial.role}</div>
-              </div>
-            ))}
+          <h2 style={styles.sectionTitle} className="section-title">Why Join Our Beta?</h2>
+          <div style={styles.howItWorksGrid}>
+            <div style={styles.stepCard}>
+              <div style={styles.stepNumber}>🚀</div>
+              <h3 style={styles.stepTitle}>Early Access</h3>
+              <p style={styles.stepDescription}>Be among the first to experience next-generation email AI and influence its development</p>
+            </div>
+            <div style={styles.stepCard}>
+              <div style={styles.stepNumber}>💬</div>
+              <h3 style={styles.stepTitle}>Direct Feedback</h3>
+              <p style={styles.stepDescription}>Your insights and suggestions directly shape new features and improvements</p>
+            </div>
+            <div style={styles.stepCard}>
+              <div style={styles.stepNumber}>🎯</div>
+              <h3 style={styles.stepTitle}>Priority Support</h3>
+              <p style={styles.stepDescription}>Get dedicated support and regular updates as we refine the platform together</p>
+            </div>
           </div>
         </div>
 
         {/* CTA Section */}
         <div style={styles.ctaSection}>
-          <h2 style={styles.ctaTitle} className="cta-title">Ready to Transform Your Email Game?</h2>
+          <h2 style={styles.ctaTitle} className="cta-title">Ready to Help Build the Future of Email?</h2>
           <p style={styles.ctaDescription}>
-            Join thousands of professionals who've revolutionized their email workflow with Larynx AI.
+            Join our exclusive beta program and be part of developing AI that truly understands your communication style. 
+            Your feedback will directly shape how this technology evolves.
           </p>
           <button style={styles.ctaButton} className="cta-button" onClick={handleGetStarted}>
-            Get Started Now
+            Join Beta Program
             <ChevronRightCustom />
           </button>
-          <p style={styles.ctaNote}>Free beta testing • No credit card required</p>
+          <p style={styles.ctaNote}>Free beta access • Limited spots available • Your feedback matters</p>
         </div>
       </div>
 
@@ -903,11 +903,11 @@ const LarynxAILaunch = () => {
               ✕
             </button>
             
-            <h2 style={styles.modalTitle} className="modal-title">Almost There! 🚀</h2>
+            <h2 style={styles.modalTitle} className="modal-title">Join Our Beta Program! 🧪</h2>
             
             <p style={styles.modalText} className="modal-text">
-              To create emails that sound authentically like you, Larynx AI needs to securely connect with your Gmail account. 
-              Here's exactly what will happen next:
+              You're about to become an early tester of Larynx AI! To help our AI learn your authentic writing style, 
+              we need to securely connect with your Gmail account. Here's what happens next:
             </p>
 
             <div style={styles.stepsList} className="steps-list">
@@ -934,14 +934,15 @@ const LarynxAILaunch = () => {
             </div>
 
             <div style={styles.importantNote} className="important-note">
-              <strong>💡 For the best experience:</strong> We recommend selecting all Gmail permissions when prompted. 
-              This allows Larynx AI to learn your writing style, understand your email patterns, and draft responses that truly sound like you. 
-              You can always modify these permissions later in your Google Account settings.
+              <strong>💡 Beta Tester Tip:</strong> We recommend granting all Gmail permissions when prompted. 
+              This allows our AI to learn your writing patterns more effectively and provide better draft suggestions. 
+              As a beta tester, your experience and feedback will help us refine these features for everyone.
             </div>
 
             <p style={styles.modalText} className="modal-text">
-              Your privacy and security are our top priorities. All data is encrypted and used solely to improve your email experience. 
-              You maintain full control and can revoke access at any time. Read our{' '}
+              As a beta tester, your privacy and security are paramount. All data is encrypted and used solely for 
+              product development and improvement. You'll have direct communication with our team and can influence 
+              the direction of new features. Read our{' '}
               <a href="/privacy" style={styles.modalLink} className="modal-link" target="_blank" rel="noopener noreferrer">
                 Privacy Policy
               </a>{' '}
@@ -958,14 +959,14 @@ const LarynxAILaunch = () => {
                 className="modal-button-secondary"
                 onClick={() => setShowConsentModal(false)}
               >
-                Not Right Now
+                Maybe Later
               </button>
               <button 
                 style={styles.modalButtonPrimary} 
                 className="modal-button-primary"
                 onClick={handleProceedToAuth}
               >
-                Continue to Google Sign-in
+                Join Beta Program
               </button>
             </div>
           </div>
