@@ -9,7 +9,7 @@ const TermsOfService = () => {
   return (
     <div style={styles.container}>
       <Helmet>
-      <link rel="canonical" href="https://www.larynxai.com/login" />
+      <link rel="canonical" href="https://www.larynxai.com/terms" />
       <title>Larynx AI | Terms of Service</title>
     </Helmet>
       <style>

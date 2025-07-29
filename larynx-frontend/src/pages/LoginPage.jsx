@@ -589,7 +589,7 @@ const LarynxAILaunch = () => {
   return (
     <div style={styles.container}>
       <Helmet>
-            <link rel="canonical" href="https://www.larynxai.com/login" />
+            <link rel="canonical" href="https://www.larynxai.com/" />
             <title>Larynx AI</title>
       </Helmet>
       <style>
