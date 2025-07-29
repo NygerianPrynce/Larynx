@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Mail, Package, Layers, ChevronRight, ArrowRight, Star, Key, MessageSquare, Zap } from 'lucide-react'
+import { Mail, Package, Layers, ChevronRight, ArrowRight, Star, Key, MessageSquare, Zap, Menu, X } from 'lucide-react'
 import logoImage from '../assets/logo.png' // Import your custom logo
 import { Helmet } from "react-helmet";
 
@@ -21,6 +21,7 @@ const LarynxAILaunch = () => {
   const [isVisible, setIsVisible] = useState(false)
   const [currentFeature, setCurrentFeature] = useState(0)
   const [particles, setParticles] = useState([])
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const navigate = useNavigate()
   const [showConsentModal, setShowConsentModal] = useState(false)
@@ -35,6 +36,14 @@ const LarynxAILaunch = () => {
   
   const handleLogin = () => {
     window.location.href = `${import.meta.env.VITE_API_URL}/auth`
+  }
+
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' })
+    }
+    setIsMenuOpen(false) // Close mobile menu after clicking
   }
 
   useEffect(() => {
@@ -146,6 +155,78 @@ const LarynxAILaunch = () => {
       display: 'flex',
       alignItems: 'center',
       gap: '12px'
+    },
+    navLinks: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '32px'
+    },
+    navLink: {
+      color: '#d1d5db',
+      textDecoration: 'none',
+      fontSize: '16px',
+      fontWeight: '500',
+      transition: 'color 0.3s ease',
+      cursor: 'pointer'
+    },
+    hamburger: {
+      display: 'none',
+      background: 'none',
+      border: 'none',
+      color: '#d1d5db',
+      cursor: 'pointer',
+      padding: '8px',
+      borderRadius: '8px',
+      transition: 'all 0.3s ease'
+    },
+    mobileMenu: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.95)',
+      backdropFilter: 'blur(20px)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '32px',
+      zIndex: 1000,
+      opacity: isMenuOpen ? 1 : 0,
+      visibility: isMenuOpen ? 'visible' : 'hidden',
+      transition: 'all 0.3s ease'
+    },
+    mobileMenuLink: {
+      color: '#d1d5db',
+      textDecoration: 'none',
+      fontSize: '24px',
+      fontWeight: '500',
+      transition: 'color 0.3s ease',
+      cursor: 'pointer'
+    },
+    mobileMenuButton: {
+      background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
+      color: 'white',
+      padding: '16px 32px',
+      borderRadius: '25px',
+      border: 'none',
+      fontSize: '18px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'all 0.3s ease'
+    },
+    closeButton: {
+      position: 'absolute',
+      top: '32px',
+      right: '32px',
+      background: 'none',
+      border: 'none',
+      color: '#d1d5db',
+      cursor: 'pointer',
+      padding: '8px',
+      borderRadius: '8px',
+      transition: 'all 0.3s ease'
     },
     logoImage: {
       width: '40px',
@@ -644,6 +725,48 @@ const LarynxAILaunch = () => {
           transform: scale(1.05);
         }
         
+        .nav-link:hover {
+          color: #8b5cf6 !important;
+        }
+        
+        .hamburger:hover {
+          background-color: rgba(139, 92, 246, 0.2) !important;
+          color: #8b5cf6 !important;
+        }
+        
+        .mobile-nav-link:hover {
+          color: #8b5cf6 !important;
+        }
+        
+        .mobile-menu-button:hover {
+          transform: scale(1.05) !important;
+          box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4) !important;
+        }
+        
+        .close-button:hover {
+          background-color: rgba(139, 92, 246, 0.2) !important;
+          color: #8b5cf6 !important;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+          .desktop-nav {
+            display: none !important;
+          }
+          .hamburger {
+            display: block !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .hamburger {
+            display: none !important;
+          }
+          .mobile-menu {
+            display: none !important;
+          }
+        }
+        
         .primary-button:hover {
           transform: scale(1.05);
           box-shadow: 0 25px 50px rgba(139, 92, 246, 0.4);
@@ -746,19 +869,56 @@ const LarynxAILaunch = () => {
       {/* Navigation */}
       <nav style={styles.nav}>
         <div style={styles.logo}>
-          <img src={logoImage} alt="Larynx AI Logo" style={styles.logoImage} />
+          <img 
+            src={logoImage}
+            alt="Larynx AI Logo"
+            style={styles.logoImage}
+          />
           <span style={styles.logoText}>Larynx AI</span>
         </div>
         
-        <div style={styles.navLinks}>
-          <a href="#features" style={styles.navLink}>Features</a>
-          <a href="#how-it-works" style={styles.navLink}>How It Works</a>
-          <a href="#pricing" style={styles.navLink}>Pricing</a>
+        {/* Desktop Navigation */}
+        <div style={styles.navLinks} className="desktop-nav">
+          <a onClick={() => scrollToSection('features')} style={styles.navLink} className="nav-link">Features</a>
+          <a onClick={() => scrollToSection('how-it-works')} style={styles.navLink} className="nav-link">How It Works</a>
+          <a onClick={() => scrollToSection('early-access')} style={styles.navLink} className="nav-link">Early Access</a>
           <button style={styles.navButton} className="nav-button" onClick={handleLogin}>
             Log In
           </button>
         </div>
+
+        {/* Mobile Hamburger */}
+        <button 
+          style={styles.hamburger} 
+          className="hamburger"
+          onClick={() => setIsMenuOpen(true)}
+        >
+          <Menu size={24} />
+        </button>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      <div style={styles.mobileMenu} className="mobile-menu">
+        <button 
+          style={styles.closeButton}
+          onClick={() => setIsMenuOpen(false)}
+        >
+          <X size={24} />
+        </button>
+        
+        <a onClick={() => scrollToSection('features')} style={styles.mobileMenuLink} className="mobile-nav-link">
+          Features
+        </a>
+        <a onClick={() => scrollToSection('how-it-works')} style={styles.mobileMenuLink} className="mobile-nav-link">
+          How It Works
+        </a>
+        <a onClick={() => scrollToSection('early-access')} style={styles.mobileMenuLink} className="mobile-nav-link">
+          Early Access
+        </a>
+        <button style={styles.mobileMenuButton} className="mobile-menu-button" onClick={handleLogin}>
+          Log In
+        </button>
+      </div>
 
       {/* Main Content */}
       <div style={styles.main}>
@@ -782,7 +942,7 @@ const LarynxAILaunch = () => {
           </p>
           <div style={styles.heroButtons}>
             <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
-              Get Started
+              Join Beta Program
               <ArrowRightCustom />
             </button>
             <button style={styles.secondaryButton} className="secondary-button">
@@ -792,7 +952,7 @@ const LarynxAILaunch = () => {
         </div>
 
         {/* Features Showcase */}
-        <div style={styles.featuresGrid}>
+        <div id="features" style={styles.featuresGrid}>
           {features.map((feature, index) => {
             const IconComponent = feature.icon
             return (
@@ -835,7 +995,7 @@ const LarynxAILaunch = () => {
         </div>
 
         {/* How It Works */}
-        <div>
+        <div id="how-it-works">
           <h2 style={styles.sectionTitle} className="section-title">How It Works</h2>
           <div style={styles.howItWorksGrid}>
             <div style={styles.stepCard}>
@@ -857,7 +1017,7 @@ const LarynxAILaunch = () => {
         </div>
 
         {/* Early Access Benefits Section */}
-        <div>
+        <div id="early-access">
           <h2 style={styles.sectionTitle} className="section-title">Why Join Early Access?</h2>
           <div style={styles.earlyAccessSection}>
             <div style={styles.earlyAccessGrid}>
