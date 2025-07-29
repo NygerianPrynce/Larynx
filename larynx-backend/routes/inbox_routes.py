@@ -386,7 +386,7 @@ async def monitor_user_emails(user_id: str):
                 
                 # Wait before next check
                 logging.info(f"⏰ User {user_id}: Waiting another 2 minutes...")
-                await asyncio.sleep(120)  # CHANGE TO AN HOUR -- 3600
+                await asyncio.sleep(3600)  # CHANGE TO AN HOUR 
                 
             except Exception as e:
                 consecutive_errors += 1
