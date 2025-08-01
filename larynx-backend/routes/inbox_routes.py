@@ -763,7 +763,8 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         {special_instructions or "No specific rules provided."}
 
         INSTRUCTIONS:
-        - Write a SHORT, helpful reply (2-3 sentences max) that sounds like a real person
+        - If the email isn't asking about products, services, or business-related matters, just respond naturally in a friendly, conversational way
+        - For business inquiries: Write a SHORT, helpful reply (2-3 sentences max) that sounds like a real person
         - Address the sender by name ({sender_name}) in a natural way - use their name once, early in the email
         - Be direct and conversational - NO corporate fluff like "greatly appreciated" or "we are here to help"
         - Get straight to the point - if they want pricing, give pricing; if they want availability, confirm availability
