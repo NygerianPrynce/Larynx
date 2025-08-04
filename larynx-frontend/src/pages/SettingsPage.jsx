@@ -479,12 +479,18 @@ const SettingsPage = () => {
             <h2 style={styles.sectionTitle}>Email Signature</h2>
           </div>
           <div style={styles.card}>
-            <SigEditor
-              value={signature}
-              setValue={setSignature}
-              onBack={() => {}}
-              onSave={updateSignature}
-            />
+            {/* Isolate SigEditor in its own container to prevent conflicts */}
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              {mounted && (
+                <SigEditor
+                  key="signature-editor" // Force consistent identity
+                  value={signature}
+                  setValue={setSignature}
+                  onBack={() => {}}
+                  onSave={updateSignature}
+                />
+              )}
+            </div>
             
             {/* Signature Success Message */}
             {signatureSuccess && (
