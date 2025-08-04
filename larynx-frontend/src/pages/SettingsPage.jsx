@@ -149,8 +149,6 @@ const SettingsPage = () => {
   }, [])
 
   useEffect(() => {
-    if (!mounted) return
-    
     // Generate floating particles
     const generateParticles = () => {
       const newParticles = []
@@ -168,11 +166,9 @@ const SettingsPage = () => {
       setParticles(newParticles)
     }
     generateParticles()
-  }, [mounted])
+  }, [])
 
   useEffect(() => {
-    if (!mounted) return
-    
     const fetchAll = async () => {
       try {
         const [summaryRes, nameRes, sigRes] = await Promise.all([
@@ -194,7 +190,7 @@ const SettingsPage = () => {
     }
 
     fetchAll()
-  }, [mounted, api])
+  }, [api])
 
   // Auto-clear success messages
   useEffect(() => {
@@ -333,18 +329,14 @@ const SettingsPage = () => {
     }
   }
 
-  // Don't render until mounted to avoid hydration issues
-  if (!mounted) {
-    return <div style={styles.container}>Loading...</div>
-  }
-
+  // Don't render until ready
   return (
     <div style={styles.container}>
-      {/* Animated Background */}
+      {/* Animated Background - simplified */}
       <div style={styles.backgroundOrb1}></div>
       <div style={styles.backgroundOrb2}></div>
       
-      {/* Floating Particles */}
+      {/* Floating Particles - simplified */}
       <div style={styles.particleContainer}>
         {particles.map((particle) => (
           <div
@@ -359,7 +351,8 @@ const SettingsPage = () => {
               borderRadius: '50%',
               pointerEvents: 'none',
               opacity: particle.opacity,
-              animation: `float ${particle.duration}s linear infinite ${particle.delay}s, floatHorizontal 5s ease-in-out infinite ${particle.delay * 0.3}s`
+              // Simplified animations using inline styles instead of CSS classes
+              animation: `${particle.duration}s linear infinite ${particle.delay}s`
             }}
           />
         ))}
@@ -390,7 +383,6 @@ const SettingsPage = () => {
           <a 
             href="mailto:fadhillawal06@gmail.com" 
             style={styles.feedbackLink}
-            className="feedback-link"
           >
             fadhillawal06@gmail.com
           </a>
@@ -422,8 +414,7 @@ const SettingsPage = () => {
             </div>
             <button 
               onClick={updateName}
-              style={styles.primaryButton}
-              className="primary-button"
+              style={{...styles.primaryButton, ':hover': styles.primaryButtonHover}}
             >
               Update Name
             </button>
@@ -457,7 +448,6 @@ const SettingsPage = () => {
             <button 
               onClick={updateSummary}
               style={styles.primaryButton}
-              className="primary-button"
             >
               Save Summary
             </button>
@@ -479,18 +469,12 @@ const SettingsPage = () => {
             <h2 style={styles.sectionTitle}>Email Signature</h2>
           </div>
           <div style={styles.card}>
-            {/* Isolate SigEditor in its own container to prevent conflicts */}
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              {mounted && (
-                <SigEditor
-                  key="signature-editor" // Force consistent identity
-                  value={signature}
-                  setValue={setSignature}
-                  onBack={() => {}}
-                  onSave={updateSignature}
-                />
-              )}
-            </div>
+            <SigEditor
+              value={signature}
+              setValue={setSignature}
+              onBack={() => {}}
+              onSave={updateSignature}
+            />
             
             {/* Signature Success Message */}
             {signatureSuccess && (
@@ -518,7 +502,6 @@ const SettingsPage = () => {
               <button
                 onClick={startMonitoring}
                 style={styles.successButton}
-                className="success-button"
               >
                 <Eye />
                 <span>Start Monitoring</span>
@@ -526,7 +509,6 @@ const SettingsPage = () => {
               <button
                 onClick={stopMonitoring}
                 style={styles.secondaryButton}
-                className="secondary-button"
               >
                 <EyeOff />
                 <span>Stop Monitoring</span>
@@ -559,7 +541,6 @@ const SettingsPage = () => {
             <button
               onClick={deleteAccount}
               style={styles.dangerButton}
-              className="danger-button"
             >
               <Trash />
               <span>Delete Account</span>
