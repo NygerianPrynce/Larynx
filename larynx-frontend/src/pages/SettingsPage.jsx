@@ -1,61 +1,10 @@
 // File: pages/SettingsPage.jsx
 import React, { useEffect, useState } from 'react'
 import SigEditor from './SigEditor'
+
 import Navbar from '../components/Navbar'
 
-// Move styles to a separate CSS file or use this approach
-const globalStyles = `
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  @keyframes float {
-    0% { transform: translateY(100vh) translateX(0px) rotate(0deg); opacity: 0; }
-    10% { opacity: 1; }
-    90% { opacity: 1; }
-    100% { transform: translateY(-100vh) translateX(30px) rotate(360deg); opacity: 0; }
-  }
-  
-  @keyframes floatHorizontal {
-    0% { transform: translateX(-3px); }
-    50% { transform: translateX(3px); }
-    100% { transform: translateX(-3px); }
-  }
-  
-  @keyframes pulse {
-    0%, 100% { opacity: 0.1; transform: scale(1); }
-    50% { opacity: 0.3; transform: scale(1.05); }
-  }
-  
-  .primary-button:hover {
-    transform: scale(1.02) !important;
-    box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4) !important;
-  }
-  
-  .secondary-button:hover {
-    background: rgba(59, 130, 246, 0.9) !important;
-    transform: scale(1.02) !important;
-  }
-  
-  .danger-button:hover {
-    background: rgba(220, 38, 38, 0.9) !important;
-    transform: scale(1.02) !important;
-  }
-  
-  .success-button:hover {
-    background: rgba(16, 185, 129, 0.9) !important;
-    transform: scale(1.02) !important;
-  }
-  
-  .feedback-link:hover {
-    color: #a855f7 !important;
-    text-decoration: underline !important;
-  }
-`;
-
-// Custom SVG Icons (keeping these as they are fine)
+// Custom SVG Icons
 const User = () => (
   <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -119,34 +68,10 @@ const SettingsPage = () => {
   const [signatureSuccess, setSignatureSuccess] = useState('')
   const [monitoringSuccess, setMonitoringSuccess] = useState('')
   const [particles, setParticles] = useState([])
-  const [mounted, setMounted] = useState(false)
   const api = import.meta.env.VITE_API_URL
   const [summary, setSummary] = useState('')
   const [signature, setSignature] = useState('')
   const [name, setName] = useState('')
-
-  // Add styles to document head safely
-  useEffect(() => {
-    const styleId = 'settings-page-styles'
-    let styleElement = document.getElementById(styleId)
-    
-    if (!styleElement) {
-      styleElement = document.createElement('style')
-      styleElement.id = styleId
-      styleElement.textContent = globalStyles
-      document.head.appendChild(styleElement)
-    }
-
-    setMounted(true)
-
-    // Cleanup function
-    return () => {
-      const existingStyle = document.getElementById(styleId)
-      if (existingStyle) {
-        document.head.removeChild(existingStyle)
-      }
-    }
-  }, [])
 
   useEffect(() => {
     // Generate floating particles
@@ -190,9 +115,8 @@ const SettingsPage = () => {
     }
 
     fetchAll()
-  }, [api])
+  }, [])
 
-  // Auto-clear success messages
   useEffect(() => {
     if (success) {
       const timer = setTimeout(() => setSuccess(''), 4000)
@@ -231,50 +155,38 @@ const SettingsPage = () => {
   const updateName = async () => {
     setNameSuccess('')
     setError('')
-    try {
-      const res = await fetch(`${api}/user/update-name`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ new_name: name })
-      })
-      if (res.ok) setNameSuccess('Name updated!')
-      else setError('Failed to update name.')
-    } catch (err) {
-      setError('Failed to update name.')
-    }
+    const res = await fetch(`${api}/user/update-name`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ new_name: name })
+    })
+    if (res.ok) setNameSuccess('Name updated!')
+    else setError('Failed to update name.')
   }
 
   const updateSummary = async () => {
     setSummarySuccess('')
     setError('')
-    try {
-      await fetch(`${api}/update-brand-summary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ summary })
-      })
-      setSummarySuccess('Brand summary updated!')
-    } catch (err) {
-      setError('Failed to update brand summary.')
-    }
+    await fetch(`${api}/update-brand-summary`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ summary })
+    })
+    setSummarySuccess('Brand summary updated!')
   }
 
   const updateSignature = async () => {
     setSignatureSuccess('')
     setError('')
-    try {
-      await fetch(`${api}/signature`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ signature })
-      })
-      setSignatureSuccess('Signature updated!')
-    } catch (err) {
-      setError('Failed to update signature.')
-    }
+    await fetch(`${api}/signature`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ signature })
+    })
+    setSignatureSuccess('Signature updated!')
   }
 
   const stopMonitoring = async () => {
@@ -285,31 +197,23 @@ const SettingsPage = () => {
     )
     if (!confirmStop) return
 
-    try {
-      const res = await fetch(`${api}/stop-monitoring`, {
-        method: 'POST',
-        credentials: 'include'
-      })
+    const res = await fetch(`${api}/stop-monitoring`, {
+      method: 'POST',
+      credentials: 'include'
+    })
 
-      if (res.ok) setMonitoringSuccess('Monitoring stopped!')
-      else setError('Failed to stop monitoring.')
-    } catch (err) {
-      setError('Failed to stop monitoring.')
-    }
+    if (res.ok) setMonitoringSuccess('Monitoring stopped!')
+    else setError('Failed to stop monitoring.')
   }
 
   const startMonitoring = async () => {
-    try {
-      const res = await fetch(`${api}/start-monitoring`, {
-        method: 'POST',
-        credentials: 'include'
-      })
-      if (res.ok) {
-        setMonitoringSuccess('Monitoring re-enabled!')
-      } else {
-        setError('Failed to start monitoring.')
-      }
-    } catch (err) {
+    const res = await fetch(`${api}/start-monitoring`, {
+      method: 'POST',
+      credentials: 'include'
+    })
+    if (res.ok) {
+      setMonitoringSuccess('Monitoring re-enabled!')
+    } else {
       setError('Failed to start monitoring.')
     }
   }
@@ -318,27 +222,75 @@ const SettingsPage = () => {
     const confirm = window.confirm('Are you sure? This will permanently delete your account.')
     if (!confirm) return
 
-    try {
-      await fetch(`${api}/user/delete`, {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-      window.location.href = '/'
-    } catch (err) {
-      setError('Failed to delete account.')
-    }
+    await fetch(`${api}/user/delete`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    window.location.href = '/'
   }
 
-  // Don't render until ready
   return (
     <div style={styles.container}>
-      {/* Animated Background - simplified */}
+      <style>
+        {`
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          @keyframes float {
+            0% { transform: translateY(100vh) translateX(0px) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100vh) translateX(30px) rotate(360deg); opacity: 0; }
+          }
+          
+          @keyframes floatHorizontal {
+            0% { transform: translateX(-3px); }
+            50% { transform: translateX(3px); }
+            100% { transform: translateX(-3px); }
+          }
+          
+          @keyframes pulse {
+            0%, 100% { opacity: 0.1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(1.05); }
+          }
+          
+          .primary-button:hover {
+            transform: scale(1.02) !important;
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4) !important;
+          }
+          
+          .secondary-button:hover {
+            background: rgba(59, 130, 246, 0.9) !important;
+            transform: scale(1.02) !important;
+          }
+          
+          .danger-button:hover {
+            background: rgba(220, 38, 38, 0.9) !important;
+            transform: scale(1.02) !important;
+          }
+          
+          .success-button:hover {
+            background: rgba(16, 185, 129, 0.9) !important;
+            transform: scale(1.02) !important;
+          }
+          
+          .feedback-link:hover {
+            color: #a855f7 !important;
+            text-decoration: underline !important;
+          }
+        `}
+      </style>
+
+      {/* Animated Background */}
       <div style={styles.backgroundOrb1}></div>
       <div style={styles.backgroundOrb2}></div>
       
-      {/* Floating Particles - simplified */}
+      {/* Floating Particles */}
       <div style={styles.particleContainer}>
-        {particles.map((particle) => (
+        {/*particles.map((particle) => (
           <div
             key={particle.id}
             style={{
@@ -351,11 +303,10 @@ const SettingsPage = () => {
               borderRadius: '50%',
               pointerEvents: 'none',
               opacity: particle.opacity,
-              // Simplified animations using inline styles instead of CSS classes
-              animation: `${particle.duration}s linear infinite ${particle.delay}s`
+              animation: `float ${particle.duration}s linear infinite ${particle.delay}s, floatHorizontal 5s ease-in-out infinite ${particle.delay * 0.3}s`
             }}
           />
-        ))}
+        ))*/}
       </div>
 
       <Navbar />
@@ -383,6 +334,7 @@ const SettingsPage = () => {
           <a 
             href="mailto:fadhillawal06@gmail.com" 
             style={styles.feedbackLink}
+            className="feedback-link"
           >
             fadhillawal06@gmail.com
           </a>
@@ -414,7 +366,8 @@ const SettingsPage = () => {
             </div>
             <button 
               onClick={updateName}
-              style={{...styles.primaryButton, ':hover': styles.primaryButtonHover}}
+              style={styles.primaryButton}
+              className="primary-button"
             >
               Update Name
             </button>
@@ -448,6 +401,7 @@ const SettingsPage = () => {
             <button 
               onClick={updateSummary}
               style={styles.primaryButton}
+              className="primary-button"
             >
               Save Summary
             </button>
@@ -502,6 +456,7 @@ const SettingsPage = () => {
               <button
                 onClick={startMonitoring}
                 style={styles.successButton}
+                className="success-button"
               >
                 <Eye />
                 <span>Start Monitoring</span>
@@ -509,6 +464,7 @@ const SettingsPage = () => {
               <button
                 onClick={stopMonitoring}
                 style={styles.secondaryButton}
+                className="secondary-button"
               >
                 <EyeOff />
                 <span>Stop Monitoring</span>
@@ -541,6 +497,7 @@ const SettingsPage = () => {
             <button
               onClick={deleteAccount}
               style={styles.dangerButton}
+              className="danger-button"
             >
               <Trash />
               <span>Delete Account</span>
@@ -552,7 +509,6 @@ const SettingsPage = () => {
   )
 }
 
-// Styles remain the same
 const styles = {
   container: {
     margin: 0,
