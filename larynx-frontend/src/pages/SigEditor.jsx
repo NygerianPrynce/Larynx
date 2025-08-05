@@ -60,62 +60,34 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const editorRef = useRef(null)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
-  const [isInitialized, setIsInitialized] = useState(false)
 
-  // Initialize editor content only once when component mounts or value changes from parent
+  // Properly sync the value with the contentEditable div
   useEffect(() => {
-    if (editorRef.current && !isInitialized) {
+    if (editorRef.current) {
+      // Convert plain text line breaks to HTML line breaks if needed
       let htmlContent = value || ''
       
-      // Convert plain text line breaks to HTML line breaks if needed
+      // If the value looks like plain text (no HTML tags), convert line breaks
       if (htmlContent && !htmlContent.includes('<') && htmlContent.includes('\n')) {
         htmlContent = htmlContent.replace(/\n/g, '<br>')
       }
       
-      editorRef.current.innerHTML = htmlContent
-      setIsInitialized(true)
-    }
-  }, [value, isInitialized])
-
-  // Reset initialization when value prop changes significantly
-  useEffect(() => {
-    if (editorRef.current && isInitialized) {
-      const currentContent = editorRef.current.innerHTML
-      const newContent = value || ''
-      
-      // Only reinitialize if the content is completely different (like switching between signatures)
-      if (Math.abs(currentContent.length - newContent.length) > 50) {
-        setIsInitialized(false)
+      // Only update if the content is actually different to avoid cursor issues
+      if (editorRef.current.innerHTML !== htmlContent) {
+        editorRef.current.innerHTML = htmlContent
       }
     }
-  }, [value, isInitialized])
+  }, [value])
 
-  const execCommand = (command, commandValue = null) => {
-    try {
-      // Ensure the editor is focused before executing command
-      if (editorRef.current) {
-        editorRef.current.focus()
-        
-        // Use a timeout to ensure focus has been applied
-        setTimeout(() => {
-          document.execCommand(command, false, commandValue)
-          updateValue()
-        }, 10)
-      }
-    } catch (error) {
-      console.warn('execCommand failed:', error)
-      // Fallback: just update the value without the command
-      updateValue()
-    }
+  const execCommand = (command, value = null) => {
+    document.execCommand(command, false, value)
+    editorRef.current?.focus()
+    updateValue()
   }
 
   const updateValue = () => {
     if (editorRef.current) {
-      const content = editorRef.current.innerHTML
-      // Only update if content has actually changed
-      if (content !== value) {
-        setValue(content)
-      }
+      setValue(editorRef.current.innerHTML)
     }
   }
 
@@ -147,18 +119,8 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     }
   }
 
-  const handleInput = (e) => {
-    // Use a small delay to batch updates and avoid conflicts
-    setTimeout(() => {
-      updateValue()
-    }, 50)
-  }
-
-  const handlePaste = (e) => {
-    // Handle paste events more gracefully
-    setTimeout(() => {
-      updateValue()
-    }, 100)
+  const handleInput = () => {
+    updateValue()
   }
 
   return (
@@ -371,7 +333,6 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           contentEditable={true}
           style={styles.editor}
           onInput={handleInput}
-          onPaste={handlePaste}
           onKeyDown={handleKeyDown}
           suppressContentEditableWarning={true}
         >

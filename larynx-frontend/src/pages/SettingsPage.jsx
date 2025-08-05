@@ -69,9 +69,9 @@ const SettingsPage = () => {
   const [monitoringSuccess, setMonitoringSuccess] = useState('')
   const [particles, setParticles] = useState([])
   const api = import.meta.env.VITE_API_URL
-  const [summary, setSummary] = useState('')
-  const [signature, setSignature] = useState('')
-  const [name, setName] = useState('')
+  const [summary, setSummary] = useState(null) // Change from '' to null
+  const [signature, setSignature] = useState(null) // Change from '' to null  
+  const [name, setName] = useState(null) // Change from '' to null
 
   useEffect(() => {
     // Generate floating particles
@@ -94,28 +94,33 @@ const SettingsPage = () => {
   }, [])
 
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [summaryRes, nameRes, sigRes] = await Promise.all([
-          fetch(`${api}/get-brand-summary`, { credentials: 'include' }),
-          fetch(`${api}/user/name`, { credentials: 'include' }),
-          fetch(`${api}/signature`, { credentials: 'include' }),
-        ])
+  const fetchAll = async () => {
+    try {
+      const [summaryRes, nameRes, sigRes] = await Promise.all([
+        fetch(`${api}/get-brand-summary`, { credentials: 'include' }),
+        fetch(`${api}/user/name`, { credentials: 'include' }),
+        fetch(`${api}/signature`, { credentials: 'include' }),
+      ])
 
-        const summaryData = await summaryRes.json()
-        const nameData = await nameRes.json()
-        const sigData = await sigRes.json()
+      const summaryData = await summaryRes.json()
+      const nameData = await nameRes.json()
+      const sigData = await sigRes.json()
 
-        setSummary(summaryData.summary || '')
-        setName(nameData.name || '')
-        setSignature(sigData.signature || '')
-      } catch (err) {
-        console.error('Error fetching settings data:', err)
-      }
+      // Use empty string as fallback, but only set once
+      setSummary(summaryData.summary || '')
+      setName(nameData.name || '')
+      setSignature(sigData.signature || '')
+    } catch (err) {
+      console.error('Error fetching settings data:', err)
+      // Set empty strings on error
+      setSummary('')
+      setName('')
+      setSignature('')
     }
+  }
 
-    fetchAll()
-  }, [])
+  fetchAll()
+}, [])
 
   useEffect(() => {
     if (success) {
@@ -423,12 +428,26 @@ const SettingsPage = () => {
             <h2 style={styles.sectionTitle}>Email Signature</h2>
           </div>
           <div style={styles.card}>
-            <SigEditor
-              value={signature}
-              setValue={setSignature}
-              onBack={() => {}}
-              onSave={updateSignature}
-            />
+            {/* Only render SigEditor after signature is loaded */}
+            {signature !== null && signature !== undefined ? (
+              <SigEditor
+                key={`signature-${signature.length}`} // Force re-mount when signature changes significantly
+                value={signature}
+                setValue={setSignature}
+                onBack={null} // Pass null instead of empty function
+                onSave={updateSignature}
+              />
+            ) : (
+              <div style={{
+                minHeight: '200px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#9ca3af'
+              }}>
+                Loading signature editor...
+              </div>
+            )}
             
             {/* Signature Success Message */}
             {signatureSuccess && (
