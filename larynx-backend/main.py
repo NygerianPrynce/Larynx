@@ -39,7 +39,8 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY"),
     same_site="lax",
-    https_only=False
+    https_only=False,
+    max_age=30 * 24 * 60 * 60  # 30 days in seconds (2,592,000 seconds)
 )
 
 
