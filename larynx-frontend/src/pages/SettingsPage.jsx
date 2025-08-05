@@ -290,7 +290,7 @@ const SettingsPage = () => {
       
       {/* Floating Particles */}
       <div style={styles.particleContainer}>
-        {/*particles.map((particle) => (
+        {particles.map((particle) => (
           <div
             key={particle.id}
             style={{
@@ -306,7 +306,7 @@ const SettingsPage = () => {
               animation: `float ${particle.duration}s linear infinite ${particle.delay}s, floatHorizontal 5s ease-in-out infinite ${particle.delay * 0.3}s`
             }}
           />
-        ))*/}
+        ))}
       </div>
 
       <Navbar />
