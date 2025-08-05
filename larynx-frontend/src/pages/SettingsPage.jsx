@@ -377,41 +377,6 @@ const SettingsPage = () => {
               Update Name
             </button>
             
-            {/* Name Success Message */}
-            {nameSuccess && (
-              <div style={styles.successMessage}>
-                <Save />
-                <span>{nameSuccess}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* User Profile Section */}
-        <div style={styles.section}>
-          <div style={styles.sectionHeader}>
-            <User />
-            <h2 style={styles.sectionTitle}>User Profile</h2>
-          </div>
-          <div style={styles.card}>
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Your Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your name"
-                style={styles.input}
-              />
-            </div>
-            <button 
-              onClick={updateName}
-              style={styles.primaryButton}
-              className="primary-button"
-            >
-              Update Name
-            </button>
-            
             {/* Name Success Message - Now with proper spacing */}
             {nameSuccess && (
               <div style={{...styles.successMessage, marginTop: '24px'}}>
