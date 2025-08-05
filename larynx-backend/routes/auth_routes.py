@@ -50,6 +50,7 @@ async def auth_callback(request: Request):
         
         email = user.get("email")
         name = user.get("name")
+        profile_image_url = user.get("picture")  # Google provides profile picture URL
 
         # 1. Upsert user
         existing_user = supabase.table("users").select("id", "has_onboarded").eq("email", email).execute()
@@ -57,11 +58,18 @@ async def auth_callback(request: Request):
         if existing_user.data:
             user_id = existing_user.data[0]["id"]
             has_onboarded = existing_user.data[0]["has_onboarded"]
+            
+            # Update existing user with latest profile image from Google
+            supabase.table("users").update({
+                "name": name,
+                "profile_image_url": profile_image_url
+            }).eq("id", user_id).execute()
 
         else:
             new_user = supabase.table("users").insert({
                 "email": email,
                 "name": name,
+                "profile_image_url": profile_image_url,
                 "has_onboarded": False  # default to false on signup
             }).execute()
             user_id = new_user.data[0]["id"]
@@ -144,6 +152,9 @@ async def delete_user_account(request: Request):
 class UpdateNameRequest(BaseModel):
     new_name: str
 
+class UpdateProfileImageRequest(BaseModel):
+    profile_image_url: str
+
 @router.put("/user/update-name")
 async def update_user_name(payload: UpdateNameRequest, request: Request):
     user_id = request.session.get("user_id")
@@ -176,6 +187,40 @@ async def get_user_name(request: Request):
 
     return {
         "name": response.data[0]["name"]
+    }
+
+# NEW ENDPOINTS FOR PROFILE IMAGE SUPPORT
+
+@router.get("/user/profile")
+async def get_user_profile(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    response = supabase.table("users").select("name, profile_image_url").eq("id", user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "name": response.data[0]["name"],
+        "profileImage": response.data[0]["profile_image_url"]  # This matches what the frontend expects
+    }
+
+@router.put("/user/update-profile-image")
+async def update_user_profile_image(payload: UpdateProfileImageRequest, request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    response = supabase.table("users").update({"profile_image_url": payload.profile_image_url}).eq("id", user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=500, detail="Failed to update profile image")
+
+    return {
+        "message": "Profile image updated successfully",
+        "profile_image_url": payload.profile_image_url
     }
 
 ###Not doing this anymore only keeping 4 boiler in case needed l8r

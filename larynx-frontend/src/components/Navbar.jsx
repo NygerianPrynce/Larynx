@@ -63,6 +63,26 @@ const Navbar = () => {
   const navigate = useNavigate()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userProfileImage, setUserProfileImage] = useState(null)
+
+  // Fetch user profile image
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/user/profile`, {
+          credentials: 'include'
+        })
+        if (response.ok) {
+          const userData = await response.json()
+          setUserProfileImage(userData.profileImage || null) // Adjust based on your API response structure
+        }
+      } catch (error) {
+        console.log('Could not fetch user profile image:', error)
+      }
+    }
+    
+    fetchUserProfile()
+  }, [])
 
   const handleLogout = async () => {
     await fetch(`${import.meta.env.VITE_API_URL}/logout`, {
@@ -225,6 +245,14 @@ const Navbar = () => {
             background: rgba(139, 92, 246, 0.2) !important;
             transform: scale(1.05);
           }
+          
+          .user-profile-image {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #a855f7;
+          }
         `}
       </style>
       <nav style={styles.nav} className="navbar-container nav-glow">
@@ -271,23 +299,36 @@ const Navbar = () => {
             className="navbar-profile"
             onClick={() => setDropdownOpen(!dropdownOpen)}
           >
-            <span style={{...styles.profileIcon, color: '#a855f7'}}><User /></span>
+            {userProfileImage ? (
+              <img 
+                src={userProfileImage} 
+                alt="Profile" 
+                className="user-profile-image"
+                style={{width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #a855f7'}}
+              />
+            ) : (
+              <span style={{...styles.profileIcon, color: '#a855f7'}}><User /></span>
+            )}
             <span>Account</span>
             <span style={styles.chevron}>▼</span>
           </button>
           {dropdownOpen && (
             <div style={styles.dropdown} className="profile-dropdown">
+              <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/home')}>
+                <span style={{...styles.dropdownIcon, color: '#3b82f6'}}><Home /></span>
+                <span>Dashboard</span>
+              </div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/analytics')}>
                 <span style={{...styles.dropdownIcon, color: '#10b981'}}><TrendingUp /></span>
                 <span>Analytics</span>
               </div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/settings')}>
-                <span style={{...styles.dropdownIcon, color: '#8b5cf6'}}><Bot /></span>
+                <span style={{...styles.dropdownIcon, color: '#f59e0b'}}><Settings /></span>
                 <span>Settings</span>
               </div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/manage-inventory')}>
-                <span style={{...styles.dropdownIcon, color: '#3b82f6'}}><Package /></span>
-                <span>Manage Inventory</span>
+                <span style={{...styles.dropdownIcon, color: '#8b5cf6'}}><Package /></span>
+                <span>Inventory</span>
               </div>
               <div style={styles.dropdownSeparator}></div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={handleLogout}>
@@ -446,7 +487,8 @@ const styles = {
     top: '100%',
     right: 0,
     marginTop: '8px',
-    minWidth: '200px',
+    width: '100%', // Match the width of the profile button
+    minWidth: '200px', // Ensure minimum width for readability
     background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(0, 0, 0, 0.95))',
     backdropFilter: 'blur(20px)',
     border: '1px solid #374151',
