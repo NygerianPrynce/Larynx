@@ -8,7 +8,7 @@ import Home from './pages/Home'
 import AnalyticsPage from './pages/AnalyticsPage'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import TermsOfService from './pages/TermsOfService'
-
+import { Error404, Error500, Error403 } from './pages/ErrorPage'
 
 function App() {
   return (
@@ -23,7 +23,13 @@ function App() {
       <Route path="/analytics" element={<AnalyticsPage />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/terms" element={<TermsOfService />} />
-
+      
+      {/* Error Pages */}
+      <Route path="/error/500" element={<Error500 />} />
+      <Route path="/error/403" element={<Error403 />} />
+      
+      {/* 404 - Must be last route */}
+      <Route path="*" element={<Error404 />} />
     </Routes>
   )
 }

@@ -4,6 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import logoImage from '../assets/logo.png' // Import your custom logo
 
+// Import error pages
+import { Error500 } from './ErrorPage'
+
 // Custom SVG Icons
 const ArrowRight = () => (
   <svg style={{ display: 'inline', width: '20px', height: '20px', marginLeft: '8px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -48,6 +51,53 @@ const Home = () => {
   })
   const [recentActivity, setRecentActivity] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
+
+  // Error handler function
+  const handleError = (error, context = '') => {
+    console.error(`Error in ${context}:`, error)
+    
+    // Check if it's a network error or API is down
+    if (!navigator.onLine || error.name === 'NetworkError') {
+      setHasError(true)
+      return
+    }
+    
+    // Check specific error types
+    if (error.status === 500 || error.message?.includes('500')) {
+      navigate('/error/500')
+    } else if (error.status === 403 || error.message?.includes('403')) {
+      navigate('/error/403')
+    } else {
+      // For other errors, show error state
+      setHasError(true)
+    }
+  }
+
+  // Enhanced API call with error handling
+  const fetchWithErrorHandling = async (url, options = {}) => {
+    try {
+      const response = await fetch(url, {
+        credentials: 'include',
+        ...options
+      })
+      
+      if (!response.ok) {
+        throw {
+          status: response.status,
+          message: `HTTP ${response.status}: ${response.statusText}`
+        }
+      }
+      
+      return await response.json()
+    } catch (error) {
+      throw {
+        ...error,
+        status: error.status || 500,
+        name: error.name || 'FetchError'
+      }
+    }
+  }
 
   // Helper functions for activity categorization (same as analytics page)
   const getActivityType = (activityType) => {
@@ -93,29 +143,23 @@ const Home = () => {
   useEffect(() => {
     let isMounted = true
 
-    // Fetch user name
+    // Fetch user name with error handling
     const fetchUserName = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/user/name`, {
-          credentials: 'include'
-        })
-        if (response.ok && isMounted) {
-          const data = await response.json()
+        const data = await fetchWithErrorHandling(`${import.meta.env.VITE_API_URL}/user/name`)
+        if (isMounted) {
           setUserName(data.name || 'there')
         }
       } catch (error) {
-        console.error('Failed to fetch user name:', error)
+        handleError(error, 'fetchUserName')
       }
     }
 
-    // Fetch analytics data
+    // Fetch analytics data with error handling
     const fetchAnalytics = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/analytics`, {
-          credentials: 'include'
-        })
-        if (response.ok && isMounted) {
-          const data = await response.json()
+        const data = await fetchWithErrorHandling(`${import.meta.env.VITE_API_URL}/analytics`)
+        if (isMounted) {
           
           // Update email stats
           setEmailStats({
@@ -142,7 +186,7 @@ const Home = () => {
           }
         }
       } catch (error) {
-        console.error('Failed to fetch analytics:', error)
+        handleError(error, 'fetchAnalytics')
         // Set fallback data
         if (isMounted) {
           setRecentActivity([])
@@ -190,7 +234,12 @@ const Home = () => {
       isMounted = false
       clearInterval(timer)
     }
-  }, [])
+  }, [navigate])
+
+  // If there's an error, show the error page
+  if (hasError) {
+    return <Error500 />
+  }
 
   const quickActions = [
     {

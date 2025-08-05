@@ -1,6 +1,10 @@
 // File: pages/InventoryPage.jsx
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+
+// Import error pages
+import { Error500 } from './ErrorPage'
 
 // Custom SVG Icons
 const Plus = () => (
@@ -40,6 +44,7 @@ const X = () => (
 )
 
 const InventoryPage = ({ onNext, embedded = false }) => {
+  const navigate = useNavigate()
   const [inventory, setInventory] = useState([])
   const [newItem, setNewItem] = useState({ name: '', price: '' })
   const [editingItemId, setEditingItemId] = useState(null)
@@ -49,7 +54,54 @@ const InventoryPage = ({ onNext, embedded = false }) => {
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [instructionsSaved, setInstructionsSaved] = useState(false)
   const [particles, setParticles] = useState([])
+  const [hasError, setHasError] = useState(false)
   const api = import.meta.env.VITE_API_URL
+
+  // Error handler function
+  const handleError = (error, context = '') => {
+    console.error(`Error in ${context}:`, error)
+    
+    // Check if it's a network error or API is down
+    if (!navigator.onLine || error.name === 'NetworkError') {
+      setHasError(true)
+      return
+    }
+    
+    // Check specific error types
+    if (error.status === 500 || error.message?.includes('500')) {
+      navigate('/error/500')
+    } else if (error.status === 403 || error.message?.includes('403')) {
+      navigate('/error/403')
+    } else {
+      // For other errors, show error state
+      setHasError(true)
+    }
+  }
+
+  // Enhanced API call with error handling
+  const fetchWithErrorHandling = async (url, options = {}) => {
+    try {
+      const response = await fetch(url, {
+        credentials: 'include',
+        ...options
+      })
+      
+      if (!response.ok) {
+        throw {
+          status: response.status,
+          message: `HTTP ${response.status}: ${response.statusText}`
+        }
+      }
+      
+      return await response.json()
+    } catch (error) {
+      throw {
+        ...error,
+        status: error.status || 500,
+        name: error.name || 'FetchError'
+      }
+    }
+  }
 
   useEffect(() => {
     // Generate floating particles
@@ -73,34 +125,21 @@ const InventoryPage = ({ onNext, embedded = false }) => {
 
   const fetchInventory = async () => {
     try {
-      console.log('Fetching inventory from:', `${api}/inventory`) // Debug log
-      const res = await fetch(`${api}/inventory`, { credentials: 'include' })
-      console.log('Fetch inventory response status:', res.status) // Debug log
-      
-      if (res.ok) {
-        const data = await res.json()
-        console.log('Inventory data received:', data) // Debug log
-        setInventory(data.inventory || [])
-      } else {
-        console.error('Failed to fetch inventory:', res.status)
-        const errorText = await res.text()
-        console.error('Error response:', errorText)
-      }
+      console.log('Fetching inventory from:', `${api}/inventory`)
+      const data = await fetchWithErrorHandling(`${api}/inventory`)
+      console.log('Inventory data received:', data)
+      setInventory(data.inventory || [])
     } catch (error) {
-      console.error('Network error fetching inventory:', error)
+      handleError(error, 'fetchInventory')
     }
   }
 
   const fetchInstructions = async () => {
     try {
-      const res = await fetch(`${api}/inventory/special-instructions`, {
-        credentials: 'include'
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setSpecialInstructions(data.special_instructions || '')
-      }
+      const data = await fetchWithErrorHandling(`${api}/inventory/special-instructions`)
+      setSpecialInstructions(data.special_instructions || '')
     } catch (error) {
+      // Don't show error for instructions fetch - it's not critical
       console.error('Error fetching instructions:', error)
     }
   }
@@ -116,73 +155,41 @@ const InventoryPage = ({ onNext, embedded = false }) => {
       return
     }
     
-    console.log('API URL:', api) // Debug log
-    console.log('Adding item:', { name: newItem.name.trim(), price: parseFloat(newItem.price) }) // Debug log
+    console.log('Adding item:', { name: newItem.name.trim(), price: parseFloat(newItem.price) })
     
     try {
-      const requestUrl = `${api}/inventory/add`
-      console.log('Request URL:', requestUrl) // Debug log
-      
       const requestBody = {
         name: newItem.name.trim(),
         price: parseFloat(newItem.price)
       }
       
-      console.log('Request body:', requestBody) // Debug log
-      
-      const res = await fetch(requestUrl, {
+      const data = await fetchWithErrorHandling(`${api}/inventory/add`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        credentials: 'include',
         body: JSON.stringify(requestBody)
       })
       
-      console.log('Response status:', res.status) // Debug log
-      console.log('Response headers:', Object.fromEntries(res.headers.entries())) // Debug log
+      console.log('Item added successfully:', data)
+      setNewItem({ name: '', price: '' })
       
-      const responseText = await res.text()
-      console.log('Raw response:', responseText) // Debug log
+      // Force refresh inventory after successful add
+      console.log('Refreshing inventory...')
+      await fetchInventory()
       
-      let responseData
-      try {
-        responseData = JSON.parse(responseText)
-      } catch (parseError) {
-        console.error('Failed to parse response as JSON:', parseError)
-        responseData = { message: responseText }
-      }
-      
-      if (res.ok) {
-        console.log('Item added successfully:', responseData)
-        setNewItem({ name: '', price: '' })
-        
-        // Force refresh inventory after successful add
-        console.log('Refreshing inventory...')
-        await fetchInventory()
-        
-        // Show success message
-        //alert(`Success: ${responseData.message || 'Item added successfully'}`)
-      } else {
-        console.error('Failed to add item. Status:', res.status)
-        console.error('Error response:', responseData)
-        
-        // Handle different error types
-        if (res.status === 401) {
-          alert('You are not authenticated. Please log in again.')
-          // Optionally redirect to login
-        } else if (res.status === 422) {
-          // Validation error from Pydantic
-          const errorDetails = responseData.detail || responseData.message || 'Validation error'
-          alert(`Validation error: ${JSON.stringify(errorDetails)}`)
-        } else {
-          alert(`Failed to add item: ${responseData.message || responseData.detail || 'Unknown error'}`)
-        }
-      }
     } catch (error) {
-      console.error('Network error adding item:', error)
-      alert(`Network error: ${error.message}. Please check your internet connection and try again.`)
+      // Handle different error types
+      if (error.status === 401) {
+        alert('You are not authenticated. Please log in again.')
+        navigate('/login')
+      } else if (error.status === 422) {
+        // Validation error from Pydantic
+        alert(`Validation error: Please check your input data`)
+      } else {
+        handleError(error, 'handleAdd')
+      }
     }
   }
 
@@ -192,63 +199,37 @@ const InventoryPage = ({ onNext, embedded = false }) => {
       return
     }
     
-    console.log('Editing item:', id, editedItem) // Debug log
+    console.log('Editing item:', id, editedItem)
     
     try {
-      const requestUrl = `${api}/inventory/edit/${id}`
       const requestBody = {
         name: editedItem.name.trim(),
         price: parseFloat(editedItem.price)
       }
       
-      console.log('Edit request URL:', requestUrl)
-      console.log('Edit request body:', requestBody)
-      
-      const res = await fetch(requestUrl, {
+      const data = await fetchWithErrorHandling(`${api}/inventory/edit/${id}`, {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        credentials: 'include',
         body: JSON.stringify(requestBody)
       })
       
-      console.log('Edit response status:', res.status)
+      console.log('Item edited successfully:', data)
+      setEditingItemId(null)
+      setEditedItem({ name: '', price: '' })
+      await fetchInventory()
       
-      const responseText = await res.text()
-      console.log('Edit raw response:', responseText)
-      
-      let responseData
-      try {
-        responseData = JSON.parse(responseText)
-      } catch (parseError) {
-        console.error('Failed to parse edit response as JSON:', parseError)
-        responseData = { message: responseText }
-      }
-      
-      if (res.ok) {
-        console.log('Item edited successfully:', responseData)
-        setEditingItemId(null)
-        setEditedItem({ name: '', price: '' })
-        await fetchInventory()
-        //alert(`Success: ${responseData.message || 'Item updated successfully'}`)
-      } else {
-        console.error('Failed to edit item. Status:', res.status)
-        console.error('Edit error response:', responseData)
-        
-        if (res.status === 401) {
-          alert('You are not authenticated. Please log in again.')
-        } else if (res.status === 422) {
-          const errorDetails = responseData.detail || responseData.message || 'Validation error'
-          alert(`Validation error: ${JSON.stringify(errorDetails)}`)
-        } else {
-          alert(`Failed to edit item: ${responseData.message || responseData.detail || 'Unknown error'}`)
-        }
-      }
     } catch (error) {
-      console.error('Network error editing item:', error)
-      alert(`Network error: ${error.message}. Please try again.`)
+      if (error.status === 401) {
+        alert('You are not authenticated. Please log in again.')
+        navigate('/login')
+      } else if (error.status === 422) {
+        alert(`Validation error: Please check your input data`)
+      } else {
+        handleError(error, 'handleEdit')
+      }
     }
   }
 
@@ -257,52 +238,26 @@ const InventoryPage = ({ onNext, embedded = false }) => {
       return
     }
     
-    console.log('Deleting item:', id) // Debug log
+    console.log('Deleting item:', id)
     
     try {
-      const requestUrl = `${api}/inventory/delete/${id}`
-      console.log('Delete request URL:', requestUrl)
-      
-      const res = await fetch(requestUrl, {
+      const data = await fetchWithErrorHandling(`${api}/inventory/delete/${id}`, {
         method: 'DELETE',
         headers: { 
           'Accept': 'application/json'
-        },
-        credentials: 'include'
+        }
       })
       
-      console.log('Delete response status:', res.status)
+      console.log('Item deleted successfully:', data)
+      await fetchInventory()
       
-      const responseText = await res.text()
-      console.log('Delete raw response:', responseText)
-      
-      let responseData
-      try {
-        responseData = JSON.parse(responseText)
-      } catch (parseError) {
-        console.error('Failed to parse delete response as JSON:', parseError)
-        responseData = { message: responseText }
-      }
-      
-      if (res.ok) {
-        console.log('Item deleted successfully:', responseData)
-        await fetchInventory()
-        //alert(`Success: ${responseData.message || 'Item deleted successfully'}`)
-      } else {
-        console.error('Failed to delete item. Status:', res.status)
-        console.error('Delete error response:', responseData)
-        
-        if (res.status === 401) {
-          alert('You are not authenticated. Please log in again.')
-        } else if (res.status === 500) {
-          alert('Server error: Failed to delete item. Please try again.')
-        } else {
-          alert(`Failed to delete item: ${responseData.message || responseData.detail || 'Unknown error'}`)
-        }
-      }
     } catch (error) {
-      console.error('Network error deleting item:', error)
-      alert(`Network error: ${error.message}. Please try again.`)
+      if (error.status === 401) {
+        alert('You are not authenticated. Please log in again.')
+        navigate('/login')
+      } else {
+        handleError(error, 'handleDelete')
+      }
     }
   }
 
@@ -326,22 +281,24 @@ const InventoryPage = ({ onNext, embedded = false }) => {
     setLoading(true)
     
     try {
-      const res = await fetch(`${api}/inventory/bulk-upload`, {
+      const response = await fetch(`${api}/inventory/bulk-upload`, {
         method: 'POST',
         credentials: 'include',
         body: formData
       })
       
-      if (res.ok) {
+      if (response.ok) {
         setFile(null)
         await fetchInventory()
       } else {
-        const errorData = await res.json()
-        alert(`Failed to upload file: ${errorData.message || 'Unknown error'}`)
+        const error = {
+          status: response.status,
+          message: `HTTP ${response.status}: ${response.statusText}`
+        }
+        handleError(error, 'handleCSVUpload')
       }
     } catch (error) {
-      console.error('Error uploading file:', error)
-      alert('Failed to upload file. Please try again.')
+      handleError(error, 'handleCSVUpload')
     } finally {
       setLoading(false)
     }
@@ -349,20 +306,24 @@ const InventoryPage = ({ onNext, embedded = false }) => {
 
   const handleSaveInstructions = async () => {
     try {
-      const res = await fetch(`${api}/inventory/special-instructions`, {
+      const data = await fetchWithErrorHandling(`${api}/inventory/special-instructions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ special_instructions: specialInstructions })
       })
-      if (res.ok) {
-        setInstructionsSaved(true)
-        // Clear the saved message after 3 seconds
-        setTimeout(() => setInstructionsSaved(false), 3000)
-      }
+      
+      setInstructionsSaved(true)
+      // Clear the saved message after 3 seconds
+      setTimeout(() => setInstructionsSaved(false), 3000)
     } catch (error) {
+      // Don't show error for instructions save - just log it
       console.error('Failed to save instructions:', error)
     }
+  }
+
+  // If there's an error, show the error page
+  if (hasError) {
+    return <Error500 />
   }
 
   return (

@@ -387,6 +387,41 @@ const SettingsPage = () => {
           </div>
         </div>
 
+        {/* User Profile Section */}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader}>
+            <User />
+            <h2 style={styles.sectionTitle}>User Profile</h2>
+          </div>
+          <div style={styles.card}>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Your Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your name"
+                style={styles.input}
+              />
+            </div>
+            <button 
+              onClick={updateName}
+              style={styles.primaryButton}
+              className="primary-button"
+            >
+              Update Name
+            </button>
+            
+            {/* Name Success Message - Now with proper spacing */}
+            {nameSuccess && (
+              <div style={{...styles.successMessage, marginTop: '24px'}}>
+                <Save />
+                <span>{nameSuccess}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Brand Summary Section */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
@@ -411,9 +446,9 @@ const SettingsPage = () => {
               Save Summary
             </button>
             
-            {/* Summary Success Message */}
+            {/* Summary Success Message - Now with proper spacing */}
             {summarySuccess && (
-              <div style={styles.successMessage}>
+              <div style={{...styles.successMessage, marginTop: '24px'}}>
                 <Save />
                 <span>{summarySuccess}</span>
               </div>
@@ -431,10 +466,10 @@ const SettingsPage = () => {
             {/* Only render SigEditor after signature is loaded */}
             {signature !== null && signature !== undefined ? (
               <SigEditor
-                key={`signature-${signature.length}`} // Force re-mount when signature changes significantly
+                key={`signature-${signature.length}`}
                 value={signature}
                 setValue={setSignature}
-                onBack={null} // Pass null instead of empty function
+                onBack={null}
                 onSave={updateSignature}
               />
             ) : (
@@ -449,9 +484,9 @@ const SettingsPage = () => {
               </div>
             )}
             
-            {/* Signature Success Message */}
+            {/* Signature Success Message - Now with proper spacing */}
             {signatureSuccess && (
-              <div style={styles.successMessage}>
+              <div style={{...styles.successMessage, marginTop: '24px'}}>
                 <Save />
                 <span>{signatureSuccess}</span>
               </div>
@@ -490,9 +525,9 @@ const SettingsPage = () => {
               </button>
             </div>
             
-            {/* Monitoring Success Message */}
+            {/* Monitoring Success Message - Now with proper spacing */}
             {monitoringSuccess && (
-              <div style={styles.successMessage}>
+              <div style={{...styles.successMessage, marginTop: '24px'}}>
                 <Save />
                 <span>{monitoringSuccess}</span>
               </div>
@@ -787,17 +822,17 @@ const styles = {
     lineHeight: '1.5'
   },
   successMessage: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    padding: '16px 24px',
-    background: 'rgba(16, 185, 129, 0.2)',
-    border: '1px solid rgba(16, 185, 129, 0.3)',
-    borderRadius: '12px',
-    color: '#10b981',
-    fontSize: '14px',
-    fontWeight: '500',
-    marginBottom: '24px'
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  padding: '16px 24px',
+  background: 'rgba(16, 185, 129, 0.2)',
+  border: '1px solid rgba(16, 185, 129, 0.3)',
+  borderRadius: '12px',
+  color: '#10b981',
+  fontSize: '14px',
+  fontWeight: '500',
+  marginBottom: '0' // Remove the default bottom margin
   },
   errorMessage: {
     display: 'flex',

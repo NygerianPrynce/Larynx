@@ -22,56 +22,161 @@ const LarynxAILaunch = () => {
   const [currentFeature, setCurrentFeature] = useState(0)
   const [particles, setParticles] = useState([])
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const navigate = useNavigate()
   const [showConsentModal, setShowConsentModal] = useState(false)
   
+  // Error handling wrapper for async operations
+  const handleAsyncOperation = async (operation, errorMessage = "Something went wrong") => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      await operation()
+    } catch (err) {
+      console.error('Login page error:', err)
+      setError(errorMessage)
+      
+      // For critical errors, redirect to error page
+      if (err.message?.includes('Network') || err.message?.includes('fetch')) {
+        navigate('/error/500')
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+  
   const handleGetStarted = () => {
-    setShowConsentModal(true)
+    try {
+      setShowConsentModal(true)
+    } catch (err) {
+      console.error('Error opening consent modal:', err)
+      setError("Unable to open sign-up modal. Please try again.")
+    }
   }
   
   const handleProceedToAuth = () => {
-    window.location.href = `${import.meta.env.VITE_API_URL}/auth`
+    handleAsyncOperation(async () => {
+      const apiUrl = import.meta.env.VITE_API_URL
+      
+      if (!apiUrl) {
+        throw new Error('API configuration error')
+      }
+      
+      // Check if API is reachable before redirecting
+      try {
+        const response = await fetch(`${apiUrl}/`, { 
+          method: 'GET',
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        })
+        
+        if (!response.ok) {
+          throw new Error('Server is not responding')
+        }
+      } catch (fetchError) {
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Connection timeout - please check your internet connection')
+        }
+        throw new Error('Unable to connect to authentication server')
+      }
+      
+      // If server is reachable, proceed with auth
+      window.location.href = `${apiUrl}/auth`
+    }, "Failed to connect to authentication server. Please try again.")
   }
   
   const handleLogin = () => {
-    window.location.href = `${import.meta.env.VITE_API_URL}/auth`
+    handleAsyncOperation(async () => {
+      const apiUrl = import.meta.env.VITE_API_URL
+      
+      if (!apiUrl) {
+        throw new Error('API configuration error')
+      }
+      
+      // Check server availability before redirect
+      try {
+        const response = await fetch(`${apiUrl}/`, { 
+          method: 'GET',
+          signal: AbortSignal.timeout(5000)
+        })
+        
+        if (!response.ok) {
+          throw new Error('Authentication server unavailable')
+        }
+      } catch (fetchError) {
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Connection timeout')
+        }
+        throw new Error('Authentication server unavailable')
+      }
+      
+      window.location.href = `${apiUrl}/auth`
+    }, "Unable to access login. Please try again.")
   }
 
   const scrollToSection = (sectionId) => {
-    const element = document.getElementById(sectionId)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
+    try {
+      const element = document.getElementById(sectionId)
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' })
+      } else {
+        console.warn(`Section ${sectionId} not found`)
+        setError("Unable to navigate to that section")
+      }
+      setIsMenuOpen(false) // Close mobile menu after clicking
+    } catch (err) {
+      console.error('Scroll error:', err)
+      setError("Navigation error occurred")
     }
-    setIsMenuOpen(false) // Close mobile menu after clicking
   }
 
   useEffect(() => {
-    setIsVisible(true)
-    const interval = setInterval(() => {
-      setCurrentFeature(prev => (prev + 1) % 3)
-    }, 3000)
+    try {
+      setIsVisible(true)
+      const interval = setInterval(() => {
+        setCurrentFeature(prev => (prev + 1) % 3)
+      }, 3000)
 
-    // Generate floating particles
-    const generateParticles = () => {
-      const newParticles = []
-      for (let i = 0; i < 250; i++) {
-        newParticles.push({
-          id: i,
-          x: Math.random() * 100,
-          y: Math.random() * 100,
-          size: Math.random() * 4 + 2,
-          opacity: Math.random() * 0.5 + 0.1,
-          duration: Math.random() * 20 + 10,
-          delay: Math.random() * 10
-        })
+      // Generate floating particles
+      const generateParticles = () => {
+        try {
+          const newParticles = []
+          for (let i = 0; i < 250; i++) {
+            newParticles.push({
+              id: i,
+              x: Math.random() * 100,
+              y: Math.random() * 100,
+              size: Math.random() * 4 + 2,
+              opacity: Math.random() * 0.5 + 0.1,
+              duration: Math.random() * 20 + 10,
+              delay: Math.random() * 10
+            })
+          }
+          setParticles(newParticles)
+        } catch (err) {
+          console.error('Error generating particles:', err)
+          // Particles are decorative, so we don't show user error
+        }
       }
-      setParticles(newParticles)
-    }
-    generateParticles()
+      generateParticles()
 
-    return () => clearInterval(interval)
+      return () => clearInterval(interval)
+    } catch (err) {
+      console.error('Initialization error:', err)
+      setError("Page initialization failed. Please refresh the page.")
+    }
   }, [])
+
+  // Auto-clear errors after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null)
+      }, 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
 
   const features = [
     {
@@ -103,6 +208,46 @@ const LarynxAILaunch = () => {
       fontFamily: 'Arial, sans-serif',
       position: 'relative',
       overflow: 'hidden'
+    },
+    // Error notification styles
+    errorBanner: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      background: 'linear-gradient(45deg, #dc2626, #ef4444)',
+      color: 'white',
+      padding: '12px 24px',
+      textAlign: 'center',
+      zIndex: 10000,
+      fontSize: '14px',
+      fontWeight: '500',
+      boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
+      animation: 'slideDown 0.3s ease-out'
+    },
+    errorCloseButton: {
+      background: 'none',
+      border: 'none',
+      color: 'white',
+      fontSize: '16px',
+      cursor: 'pointer',
+      position: 'absolute',
+      right: '16px',
+      top: '50%',
+      transform: 'translateY(-50%)',
+      padding: '4px 8px',
+      borderRadius: '4px',
+      transition: 'background 0.2s'
+    },
+    loadingSpinner: {
+      display: 'inline-block',
+      width: '16px',
+      height: '16px',
+      border: '2px solid rgba(255, 255, 255, 0.3)',
+      borderTop: '2px solid white',
+      borderRadius: '50%',
+      animation: 'spin 1s linear infinite',
+      marginRight: '8px'
     },
     backgroundOrb1: {
       position: 'absolute',
@@ -214,7 +359,10 @@ const LarynxAILaunch = () => {
       fontSize: '18px',
       fontWeight: '600',
       cursor: 'pointer',
-      transition: 'all 0.3s ease'
+      transition: 'all 0.3s ease',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
     },
     closeButton: {
       position: 'absolute',
@@ -251,7 +399,10 @@ const LarynxAILaunch = () => {
       border: 'none',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      fontSize: '16px'
+      fontSize: '16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
     },
     main: {
       position: 'relative',
@@ -315,7 +466,12 @@ const LarynxAILaunch = () => {
       fontWeight: '600',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      boxShadow: '0 20px 40px rgba(139, 92, 246, 0.3)'
+      boxShadow: '0 20px 40px rgba(139, 92, 246, 0.3)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      minWidth: '160px',
+      justifyContent: 'center'
     },
     secondaryButton: {
       border: '1px solid #6b7280',
@@ -485,7 +641,10 @@ const LarynxAILaunch = () => {
       fontWeight: '600',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      boxShadow: '0 20px 40px rgba(139, 92, 246, 0.3)'
+      boxShadow: '0 20px 40px rgba(139, 92, 246, 0.3)',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px'
     },
     ctaNote: {
       fontSize: '14px',
@@ -636,9 +795,12 @@ const LarynxAILaunch = () => {
       fontWeight: '600',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      boxShadow: '0 8px 16px rgba(139, 92, 246, 0.3)'
+      boxShadow: '0 8px 16px rgba(139, 92, 246, 0.3)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px'
     },
-    closeButton: {
+    modalCloseButton: {
       position: 'absolute',
       top: '16px',
       right: '16px',
@@ -720,6 +882,16 @@ const LarynxAILaunch = () => {
           75% { transform: scale(1.05) rotate(-1deg); }
         }
         
+        @keyframes slideDown {
+          from { transform: translateY(-100%); }
+          to { transform: translateY(0); }
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
         .nav-button:hover {
           background-color: #7c3aed !important;
           transform: scale(1.05);
@@ -746,6 +918,10 @@ const LarynxAILaunch = () => {
         .close-button:hover {
           background-color: rgba(139, 92, 246, 0.2) !important;
           color: #8b5cf6 !important;
+        }
+        
+        .error-close-button:hover {
+          background: rgba(255, 255, 255, 0.2) !important;
         }
         
         /* Responsive Design */
@@ -796,9 +972,9 @@ const LarynxAILaunch = () => {
           box-shadow: 0 12px 24px rgba(139, 92, 246, 0.4);
         }
         
-        .close-button:hover {
-          background-color: rgba(156, 163, 175, 0.1);
-          color: #f3f4f6;
+        .modal-close-button:hover {
+          background-color: rgba(156, 163, 175, 0.1) !important;
+          color: #f3f4f6 !important;
         }
         
         .modal-link:hover {
@@ -844,6 +1020,20 @@ const LarynxAILaunch = () => {
         `}
       </style>
 
+      {/* Error Banner */}
+      {error && (
+        <div style={styles.errorBanner}>
+          <span>{error}</span>
+          <button 
+            style={styles.errorCloseButton}
+            className="error-close-button"
+            onClick={() => setError(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Animated background elements */}
       <div style={styles.backgroundOrb1}></div>
       <div style={styles.backgroundOrb2}></div>
@@ -882,7 +1072,8 @@ const LarynxAILaunch = () => {
           <a onClick={() => scrollToSection('features')} style={styles.navLink} className="nav-link">Features</a>
           <a onClick={() => scrollToSection('how-it-works')} style={styles.navLink} className="nav-link">How It Works</a>
           <a onClick={() => scrollToSection('early-access')} style={styles.navLink} className="nav-link">Early Access</a>
-          <button style={styles.navButton} className="nav-button" onClick={handleLogin}>
+          <button style={styles.navButton} className="nav-button" onClick={handleLogin} disabled={isLoading}>
+            {isLoading ? <div style={styles.loadingSpinner}></div> : null}
             Log In
           </button>
         </div>
@@ -901,6 +1092,7 @@ const LarynxAILaunch = () => {
       <div style={styles.mobileMenu} className="mobile-menu">
         <button 
           style={styles.closeButton}
+          className="close-button"
           onClick={() => setIsMenuOpen(false)}
         >
           <X size={24} />
@@ -915,7 +1107,8 @@ const LarynxAILaunch = () => {
         <a onClick={() => scrollToSection('early-access')} style={styles.mobileMenuLink} className="mobile-nav-link">
           Early Access
         </a>
-        <button style={styles.mobileMenuButton} className="mobile-menu-button" onClick={handleLogin}>
+        <button style={styles.mobileMenuButton} className="mobile-menu-button" onClick={handleLogin} disabled={isLoading}>
+          {isLoading ? <div style={styles.loadingSpinner}></div> : null}
           Log In
         </button>
       </div>
@@ -944,7 +1137,8 @@ const LarynxAILaunch = () => {
           </p>
 
           <div style={styles.heroButtons}>
-            <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted}>
+            <button style={styles.primaryButton} className="primary-button" onClick={handleGetStarted} disabled={isLoading}>
+              {isLoading ? <div style={styles.loadingSpinner}></div> : null}
               Get Started
               <ArrowRightCustom />
             </button>
@@ -1047,7 +1241,8 @@ const LarynxAILaunch = () => {
             Join our exclusive beta program and be part of developing AI that truly understands your communication style. 
             Your feedback will directly shape how this technology evolves.
           </p>
-          <button style={styles.ctaButton} className="cta-button" onClick={handleGetStarted}>
+          <button style={styles.ctaButton} className="cta-button" onClick={handleGetStarted} disabled={isLoading}>
+            {isLoading ? <div style={styles.loadingSpinner}></div> : null}
             Join Beta Program
             <ChevronRightCustom />
           </button>
@@ -1078,8 +1273,8 @@ const LarynxAILaunch = () => {
         <div style={styles.modalOverlay} onClick={() => setShowConsentModal(false)}>
           <div style={styles.modalContent} className="modal-content" onClick={(e) => e.stopPropagation()}>
             <button 
-              style={styles.closeButton} 
-              className="close-button"
+              style={styles.modalCloseButton} 
+              className="modal-close-button"
               onClick={() => setShowConsentModal(false)}
             >
               ✕
@@ -1152,7 +1347,9 @@ const LarynxAILaunch = () => {
                 style={styles.modalButtonPrimary} 
                 className="modal-button-primary"
                 onClick={handleProceedToAuth}
+                disabled={isLoading}
               >
+                {isLoading ? <div style={styles.loadingSpinner}></div> : null}
                 Continue to Google Sign-in
               </button>
             </div>

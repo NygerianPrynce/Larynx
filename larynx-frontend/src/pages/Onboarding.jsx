@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import InventoryPage from './InventoryPage'
 import SigEditor from './SigEditor'
-
 
 // Custom SVG Icons
 const Globe = () => (
@@ -52,25 +52,14 @@ const Trash = () => (
   </svg>
 )
 
-const Play = () => (
-  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H15M9 10v1.586a1 1 0 00.293.707l2.414 2.414a1 1 0 00.707.293H15M9 10V9a2 2 0 012-2h1m-1 1v1m0 0V8a2 2 0 012-2h1m-1 1v1" />
-  </svg>
-)
-
 const AlertTriangle = () => (
   <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 3h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
   </svg>
 )
 
-const Sparkles = () => (
-  <svg style={{ display: 'inline', width: '48px', height: '48px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l3.057 3.057M5 3l3.057-3.057M5 3h6m4 0l3.057 3.057M19 3l-3.057-3.057M19 3h-6m-4 8l3.057 3.057M9 11l3.057-3.057M9 11h6m4 0l3.057 3.057M19 11l-3.057-3.057M19 11h-6m-4 8l3.057 3.057M9 19l3.057-3.057M9 19h6m4 0l3.057 3.057M19 19l-3.057-3.057M19 19h-6" />
-  </svg>
-)
-
 const Onboarding = () => {
+  const navigate = useNavigate()
   const [hasWebsite, setHasWebsite] = useState(true)
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [manualStep, setManualStep] = useState(0)
@@ -85,6 +74,7 @@ const Onboarding = () => {
   const [emailCrawlMessages, setEmailCrawlMessages] = useState([])
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
+  const [error, setError] = useState(null) // New error state
   const [brandInfo, setBrandInfo] = useState({
     brand_name: '',
     business_description: '',
@@ -95,6 +85,41 @@ const Onboarding = () => {
   })
 
   const api = import.meta.env.VITE_API_URL
+
+  // Error handling wrapper
+  const handleAsyncOperation = async (operation, errorMessage = "Something went wrong") => {
+    try {
+      setError(null)
+      return await operation()
+    } catch (err) {
+      console.error('Onboarding error:', err)
+      
+      if (err.name === 'AbortError' || err.message?.includes('timeout')) {
+        setError("Connection timeout - please check your internet and try again")
+      } else if (err.message?.includes('401') || err.message?.includes('Unauthorized')) {
+        setError("Your session has expired. Please log in again.")
+        setTimeout(() => navigate('/login'), 3000)
+        return
+      } else if (err.message?.includes('403')) {
+        navigate('/error/403')
+        return
+      } else if (err.message?.includes('500') || err.message?.includes('Server')) {
+        navigate('/error/500')
+        return
+      } else {
+        setError(errorMessage)
+      }
+      throw err
+    }
+  }
+
+  // Auto-clear errors
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 6000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
 
   const manualSteps = [
     { key: 'brand_name', label: "What's your brand name?", type: 'input', min: 1, max: 200 },
@@ -116,41 +141,52 @@ const Onboarding = () => {
   ]
 
   useEffect(() => {
-    // Generate floating particles
-    const generateParticles = () => {
-      const newParticles = []
-      for (let i = 0; i < 60; i++) {
-        newParticles.push({
-          id: i,
-          x: Math.random() * 100,
-          y: Math.random() * 100,
-          size: Math.random() * 3 + 1,
-          opacity: Math.random() * 0.3 + 0.1,
-          duration: Math.random() * 20 + 15,
-          delay: Math.random() * 10
-        })
+    try {
+      const generateParticles = () => {
+        const newParticles = []
+        for (let i = 0; i < 60; i++) {
+          newParticles.push({
+            id: i,
+            x: Math.random() * 100,
+            y: Math.random() * 100,
+            size: Math.random() * 3 + 1,
+            opacity: Math.random() * 0.3 + 0.1,
+            duration: Math.random() * 20 + 15,
+            delay: Math.random() * 10
+          })
+        }
+        setParticles(newParticles)
       }
-      setParticles(newParticles)
+      generateParticles()
+    } catch (err) {
+      console.error('Error generating particles:', err)
     }
-    generateParticles()
   }, [])
 
-  // Cycle through crawl messages
   useEffect(() => {
     if (emailCrawlMessages.length > 0) {
-      const interval = setInterval(() => {
-        setCurrentMessageIndex((prev) => (prev + 1) % emailCrawlMessages.length)
-      }, 2000)
-      return () => clearInterval(interval)
+      try {
+        const interval = setInterval(() => {
+          setCurrentMessageIndex((prev) => (prev + 1) % emailCrawlMessages.length)
+        }, 2000)
+        return () => clearInterval(interval)
+      } catch (err) {
+        console.error('Error cycling messages:', err)
+      }
     }
   }, [emailCrawlMessages.length])
 
   const transitionToStep = (newStep) => {
-    setIsTransitioning(true)
-    setTimeout(() => {
+    try {
+      setIsTransitioning(true)
+      setTimeout(() => {
+        setStep(newStep)
+        setIsTransitioning(false)
+      }, 300)
+    } catch (err) {
       setStep(newStep)
       setIsTransitioning(false)
-    }, 300)
+    }
   }
 
   const setLoadingState = (loading, message = '') => {
@@ -163,103 +199,150 @@ const Onboarding = () => {
   }
 
   const fetchSignature = async () => {
-    try {
+    await handleAsyncOperation(async () => {
       setLoadingState(true, 'Fetching your signature...')
-      const res = await fetch(`${api}/signature`, {
-        credentials: 'include'
-      })
-      const data = await res.json()
-      setSignature(data.signature || '')
-      transitionToStep('signature')
-    } catch (err) {
-      alert('Failed to fetch signature.')
-    } finally {
-      setLoadingState(false)
-    }
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      
+      try {
+        const res = await fetch(`${api}/signature`, {
+          credentials: 'include',
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('401 Unauthorized')
+          if (res.status === 403) throw new Error('403 Forbidden')
+          if (res.status >= 500) throw new Error('500 Server Error')
+          throw new Error(`HTTP ${res.status}`)
+        }
+        
+        const data = await res.json()
+        setSignature(data.signature || '')
+        transitionToStep('signature')
+      } finally {
+        clearTimeout(timeoutId)
+        setLoadingState(false)
+      }
+    }, "Failed to fetch your signature. Please try again.")
   }
 
   const updateSignature = async () => {
-    try {
+    await handleAsyncOperation(async () => {
       setLoadingState(true, 'Saving your signature...')
-      const res = await fetch(`${api}/signature`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ signature })
-      })
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      
+      try {
+        const res = await fetch(`${api}/signature`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ signature }),
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('401 Unauthorized')
+          if (res.status >= 500) throw new Error('500 Server Error')
+          throw new Error(`Failed to save signature (${res.status})`)
+        }
 
-      if (res.ok) {
         transitionToStep('inventory')
-      } else {
-        alert('Failed to update signature.')
+      } finally {
+        clearTimeout(timeoutId)
+        setLoadingState(false)
       }
-    } catch (err) {
-      alert('Error while updating signature.')
-    } finally {
-      setLoadingState(false)
-    }
+    }, "Failed to save your signature. Please try again.")
   }
 
   const fetchBrandSummary = async () => {
-    try {
+    await handleAsyncOperation(async () => {
       setLoadingState(true, 'Generating your brand summary...')
-      const res = await fetch(`${api}/get-brand-summary`, {
-        credentials: 'include'
-      })
-      const data = await res.json()
-      setBrandSummary(data.summary || 'No summary found.')
-      transitionToStep('summary')
-    } catch (err) {
-      alert('Failed to fetch brand summary.')
-    } finally {
-      setLoadingState(false)
-    }
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      
+      try {
+        const res = await fetch(`${api}/get-brand-summary`, {
+          credentials: 'include',
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('401 Unauthorized')
+          if (res.status >= 500) throw new Error('500 Server Error')
+          throw new Error(`Failed to generate summary (${res.status})`)
+        }
+        
+        const data = await res.json()
+        setBrandSummary(data.summary || 'No summary found.')
+        transitionToStep('summary')
+      } finally {
+        clearTimeout(timeoutId)
+        setLoadingState(false)
+      }
+    }, "Failed to generate your brand summary. Please try again.")
   }
 
   const handleConfirmBrandSummary = async () => {
-    try {
+    await handleAsyncOperation(async () => {
       setLoadingState(true, 'Saving your brand summary...')
-      const res = await fetch(`${api}/update-brand-summary`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ summary: brandSummary })
-      })
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      
+      try {
+        const res = await fetch(`${api}/update-brand-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ summary: brandSummary }),
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('401 Unauthorized')
+          if (res.status >= 500) throw new Error('500 Server Error')
+          throw new Error(`Failed to update summary (${res.status})`)
+        }
 
-      if (res.ok) {
         transitionToStep('tone')
-      } else {
-        alert("Failed to update brand summary.")
+      } finally {
+        clearTimeout(timeoutId)
+        setLoadingState(false)
       }
-    } catch (err) {
-      alert("Error while updating brand summary.")
-    } finally {
-      setLoadingState(false)
-    }
+    }, "Failed to save your brand summary. Please try again.")
   }
 
   const normalizeUrl = (url) => {
     try {
-      if (!/^https?:\/\//i.test(url)) {
-        url = 'https://' + url
+      if (!url || typeof url !== 'string') return null
+      
+      let normalizedUrl = url.trim()
+      if (!/^https?:\/\//i.test(normalizedUrl)) {
+        normalizedUrl = 'https://' + normalizedUrl
       }
-      const parsed = new URL(url)
+      
+      const parsed = new URL(normalizedUrl)
       const hostname = parsed.hostname
 
-      if (
-        !hostname.includes('.') ||
-        hostname.endsWith('.') ||
-        !/[a-zA-Z]/.test(hostname)
-      ) {
+      if (!hostname.includes('.') || hostname.endsWith('.') || !/[a-zA-Z]/.test(hostname)) {
         return null
       }
 
       return parsed.href
-    } catch (_) {
+    } catch (err) {
       return null
     }
   }
@@ -272,136 +355,182 @@ const Onboarding = () => {
     }
 
     setErrors({ ...errors, websiteUrl: null })
-    setLoadingState(true, 'Analyzing your website...')
+    
     try {
+      setLoadingState(true, 'Analyzing your website...')
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 45000)
+      
       const res = await fetch(`${api}/website-scrape?url=${encodeURIComponent(normalized)}`, {
         credentials: 'include',
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
       
       if (res.ok) {
         await fetchBrandSummary()
       } else {
-        // Website scrape failed, redirect to manual entry
         console.log('Website scrape failed, switching to manual entry')
         setHasWebsite(false)
-        setLoadingState(false)
-        return
+        setError("Couldn't analyze your website. Please fill out the information manually.")
       }
     } catch (err) {
-      // Network error or other failure, redirect to manual entry
       console.log('Website scrape error, switching to manual entry:', err)
       setHasWebsite(false)
+      setError("Failed to analyze website. Switching to manual entry.")
     } finally {
       setLoadingState(false)
     }
   }
 
   const validateAndNextStep = async () => {
-    const stepConfig = manualSteps[manualStep]
-    const value = brandInfo[stepConfig.key].trim()
-    const isOptional = stepConfig.optional
-    const newErrors = { ...errors }
+    try {
+      const stepConfig = manualSteps[manualStep]
+      const value = brandInfo[stepConfig.key].trim()
+      const isOptional = stepConfig.optional
+      const newErrors = { ...errors }
 
-    if (!isOptional && (value.length < stepConfig.min || value.length > stepConfig.max)) {
-      newErrors[stepConfig.key] = `${stepConfig.label} must be between ${stepConfig.min} and ${stepConfig.max} characters.`
-      setErrors(newErrors)
-      return
-    }
+      if (!isOptional && (value.length < stepConfig.min || value.length > stepConfig.max)) {
+        newErrors[stepConfig.key] = `${stepConfig.label} must be between ${stepConfig.min} and ${stepConfig.max} characters.`
+        setErrors(newErrors)
+        return
+      }
 
-    if (isOptional && value.length > stepConfig.max) {
-      newErrors[stepConfig.key] = `${stepConfig.label} must be at most ${stepConfig.max} characters.`
-      setErrors(newErrors)
-      return
-    }
+      if (isOptional && value.length > stepConfig.max) {
+        newErrors[stepConfig.key] = `${stepConfig.label} must be at most ${stepConfig.max} characters.`
+        setErrors(newErrors)
+        return
+      }
 
-    setErrors({})
-    const nextStep = manualStep + 1
+      setErrors({})
+      const nextStep = manualStep + 1
 
-    if (nextStep < manualSteps.length) {
-      setManualStep(nextStep)
-    } else {
-      await handleManualSubmit()
+      if (nextStep < manualSteps.length) {
+        setManualStep(nextStep)
+      } else {
+        await handleManualSubmit()
+      }
+    } catch (err) {
+      setError("Validation failed. Please check your input and try again.")
     }
   }
 
   const handleManualSubmit = async () => {
-    setLoadingState(true, 'Processing your information...')
-    try {
-      const res = await fetch(`${api}/upload-brand-summary`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(brandInfo),
-        credentials: 'include',
-      })
-      await fetchBrandSummary()
-    } catch (err) {
-      alert('Failed to upload brand info.')
-    } finally {
-      setLoadingState(false)
-    }
+    await handleAsyncOperation(async () => {
+      setLoadingState(true, 'Processing your information...')
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      
+      try {
+        const res = await fetch(`${api}/upload-brand-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(brandInfo),
+          credentials: 'include',
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('401 Unauthorized')
+          if (res.status >= 500) throw new Error('500 Server Error')
+          throw new Error(`Failed to process information (${res.status})`)
+        }
+        
+        await fetchBrandSummary()
+      } finally {
+        clearTimeout(timeoutId)
+        setLoadingState(false)
+      }
+    }, "Failed to process your information. Please try again.")
   }
 
   const handleEmailCrawl = async () => {
-    try {
+    await handleAsyncOperation(async () => {
       setEmailCrawlMessages(crawlMessages)
       setCurrentMessageIndex(0)
       setLoadingState(true)
       
-      const res = await fetch(`${api}/crawl-emails`, {
-        credentials: 'include'
-      })
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 120000)
       
-      // Show success message
-      setShowSuccessMessage(true)
-      setEmailCrawlMessages([])
-      setLoadingMessage('Successfully analyzed your emails!')
-      
-      // Wait 2 seconds to show success, then proceed
-      setTimeout(async () => {
-        await fetchSignature()
-      }, 2000)
-    } catch (err) {
-      alert('Error crawling emails.')
-      setLoadingState(false)
-    }
+      try {
+        const res = await fetch(`${api}/crawl-emails`, {
+          credentials: 'include',
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('401 Unauthorized')
+          if (res.status >= 500) throw new Error('500 Server Error')
+          throw new Error(`Email analysis failed (${res.status})`)
+        }
+        
+        setShowSuccessMessage(true)
+        setEmailCrawlMessages([])
+        setLoadingMessage('Successfully analyzed your emails!')
+        
+        setTimeout(async () => {
+          await fetchSignature()
+        }, 2000)
+      } finally {
+        clearTimeout(timeoutId)
+      }
+    }, "Failed to analyze your emails. Please try again.")
   }
 
-const handleGenericTone = async () => {
-  try {
-    console.log('Starting generic tone setup...')
-    setLoadingState(true, 'Setting up default tone...')
-    
-    const res = await fetch(`${api}/set-generic-tone`, {
-      method: 'POST',
-      credentials: 'include'
-    })
-    
-    console.log('API response status:', res.status)
-    
-    if (!res.ok) {
-      const errorData = await res.text()
-      console.error('API error:', errorData)
-      throw new Error(`HTTP error! status: ${res.status}`)
-    }
-    
-    console.log('Generic tone set successfully, fetching signature...')
-    await fetchSignature()
-  } catch (err) {
-    console.error('Error in handleGenericTone:', err)
-    alert('Error setting generic tone.')
-  } finally {
-    setLoadingState(false)
+  const handleGenericTone = async () => {
+    await handleAsyncOperation(async () => {
+      setLoadingState(true, 'Setting up default tone...')
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+      
+      try {
+        const res = await fetch(`${api}/set-generic-tone`, {
+          method: 'POST',
+          credentials: 'include',
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!res.ok) {
+          if (res.status === 401) throw new Error('401 Unauthorized')
+          if (res.status >= 500) throw new Error('500 Server Error')
+          throw new Error(`Failed to set default tone (${res.status})`)
+        }
+        
+        await fetchSignature()
+      } finally {
+        clearTimeout(timeoutId)
+        setLoadingState(false)
+      }
+    }, "Failed to set up default tone. Please try again.")
   }
-}
 
   useEffect(() => {
     if (step === 'finalizing') {
-      const timer = setTimeout(() => {
-        window.location.href = '/home'
-      }, 2000)
-      return () => clearTimeout(timer)
+      try {
+        const timer = setTimeout(() => {
+          try {
+            window.location.href = '/home'
+          } catch (err) {
+            navigate('/home')
+          }
+        }, 2000)
+        return () => clearTimeout(timer)
+      } catch (err) {
+        navigate('/home')
+      }
     }
-  }, [step])
+  }, [step, navigate])
 
   const getStepIcon = () => {
     switch (step) {
@@ -483,6 +612,11 @@ const handleGenericTone = async () => {
             100% { opacity: 0; transform: translateY(-10px); }
           }
           
+          @keyframes slideDown {
+            from { transform: translateY(-100%); }
+            to { transform: translateY(0); }
+          }
+          
           .step-content {
             animation: fadeIn 0.5s ease-out;
           }
@@ -518,8 +652,26 @@ const handleGenericTone = async () => {
           .crawl-message {
             animation: messageSlide 2s ease-in-out;
           }
+          
+          .error-close-button:hover {
+            background: rgba(255, 255, 255, 0.2) !important;
+          }
         `}
       </style>
+
+      {/* Error Banner */}
+      {error && (
+        <div style={styles.errorBanner}>
+          <span>{error}</span>
+          <button 
+            style={styles.errorCloseButton}
+            className="error-close-button"
+            onClick={() => setError(null)}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Animated Background */}
       <div style={styles.backgroundOrb1}></div>
@@ -552,7 +704,6 @@ const handleGenericTone = async () => {
           <div style={styles.loadingContent}>
             <div style={styles.spinner}></div>
             
-            {/* Show cycling messages for email crawling */}
             {emailCrawlMessages.length > 0 && (
               <div style={styles.crawlMessageContainer}>
                 <p style={styles.crawlMessage} className="crawl-message" key={currentMessageIndex}>
@@ -561,7 +712,6 @@ const handleGenericTone = async () => {
               </div>
             )}
             
-            {/* Show success message */}
             {showSuccessMessage && (
               <div style={styles.successMessageContainer}>
                 <CheckCircle />
@@ -569,12 +719,10 @@ const handleGenericTone = async () => {
               </div>
             )}
             
-            {/* Regular loading message */}
             {!emailCrawlMessages.length && !showSuccessMessage && loadingMessage && (
               <p style={styles.loadingText}>{loadingMessage}</p>
             )}
             
-            {/* Default processing message */}
             {!emailCrawlMessages.length && !showSuccessMessage && !loadingMessage && (
               <p style={styles.loadingText}>Processing...</p>
             )}
@@ -608,14 +756,24 @@ const handleGenericTone = async () => {
                     setErrors({ ...errors, websiteUrl: null })
                   }}
                   style={styles.input}
+                  disabled={isLoading}
                 />
                 {errors.websiteUrl && <p style={styles.error}>{errors.websiteUrl}</p>}
               </div>
-              <button onClick={handleWebsiteSubmit} style={styles.primaryButton} className="primary-button">
+              <button 
+                onClick={handleWebsiteSubmit} 
+                style={styles.primaryButton} 
+                className="primary-button"
+                disabled={isLoading}
+              >
                 <span>Analyze Website</span>
                 <ArrowRight />
               </button>
-              <p style={styles.toggleLink} className="toggle-link" onClick={() => setHasWebsite(false)}>
+              <p 
+                style={{...styles.toggleLink, opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto'}} 
+                className="toggle-link" 
+                onClick={() => !isLoading && setHasWebsite(false)}
+              >
                 Don't have a website? Fill out manually instead
               </p>
             </div>
@@ -647,6 +805,7 @@ const handleGenericTone = async () => {
                         }}
                         style={styles.textarea}
                         placeholder="Tell us more..."
+                        disabled={isLoading}
                       />
                     ) : (
                       <input
@@ -658,17 +817,27 @@ const handleGenericTone = async () => {
                         }}
                         style={styles.input}
                         placeholder="Enter here..."
+                        disabled={isLoading}
                       />
                     )}
                     {errors[manualSteps[manualStep].key] && (
                       <p style={styles.error}>{errors[manualSteps[manualStep].key]}</p>
                     )}
                   </div>
-                  <button onClick={validateAndNextStep} style={styles.primaryButton} className="primary-button">
+                  <button 
+                    onClick={validateAndNextStep} 
+                    style={styles.primaryButton} 
+                    className="primary-button"
+                    disabled={isLoading}
+                  >
                     <span>{manualStep === manualSteps.length - 1 ? 'Complete' : 'Next'}</span>
                     <ArrowRight />
                   </button>
-                  <p style={styles.toggleLink} className="toggle-link" onClick={() => setHasWebsite(true)}>
+                  <p 
+                    style={{...styles.toggleLink, opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto'}} 
+                    className="toggle-link" 
+                    onClick={() => !isLoading && setHasWebsite(true)}
+                  >
                     Actually, I do have a website
                   </p>
                 </>
@@ -687,9 +856,15 @@ const handleGenericTone = async () => {
                   value={brandSummary}
                   onChange={(e) => setBrandSummary(e.target.value)}
                   style={styles.largeTextarea}
+                  disabled={isLoading}
                 />
               </div>
-              <button onClick={handleConfirmBrandSummary} style={styles.primaryButton} className="primary-button">
+              <button 
+                onClick={handleConfirmBrandSummary} 
+                style={styles.primaryButton} 
+                className="primary-button"
+                disabled={isLoading}
+              >
                 <span>Save & Continue</span>
                 <ArrowRight />
               </button>
@@ -710,6 +885,7 @@ const handleGenericTone = async () => {
                   onClick={handleEmailCrawl}
                   style={styles.primaryButton}
                   className="primary-button"
+                  disabled={isLoading}
                 >
                   <span>Analyze My Emails</span>
                   <ArrowRight />
@@ -718,6 +894,7 @@ const handleGenericTone = async () => {
                   onClick={handleGenericTone}
                   style={styles.secondaryButton}
                   className="secondary-button"
+                  disabled={isLoading}
                 >
                   Skip - Use Default Tone
                 </button>
@@ -769,50 +946,85 @@ const handleGenericTone = async () => {
                 <button
                   style={styles.dangerButton}
                   className="danger-button"
+                  disabled={isLoading}
                   onClick={async () => {
                     const confirmed = window.confirm(
                       '⚠️ WARNING: This action is IRREVERSIBLE.\n\nAre you absolutely sure you want to permanently delete your account and all associated data?\n\nThis cannot be undone.'
                     )
                     if (!confirmed) return
 
-                    setLoadingState(true, 'Deleting your account...')
-                    const res = await fetch(`${api}/user/delete`, {
-                      method: 'DELETE',
-                      credentials: 'include'
-                    })
-                    if (res.ok) {
-                      alert('Your account has been deleted. Goodbye 🫡')
-                      window.location.href = '/'
-                    } else {
-                      alert('Something went wrong while deleting your account.')
-                    }
-                    setLoadingState(false)
+                    await handleAsyncOperation(async () => {
+                      setLoadingState(true, 'Deleting your account...')
+                      
+                      const controller = new AbortController()
+                      const timeoutId = setTimeout(() => controller.abort(), 10000)
+                      
+                      try {
+                        const res = await fetch(`${api}/user/delete`, {
+                          method: 'DELETE',
+                          credentials: 'include',
+                          signal: controller.signal
+                        })
+                        
+                        clearTimeout(timeoutId)
+                        
+                        if (res.ok) {
+                          alert('Your account has been deleted. Goodbye 🫡')
+                          window.location.href = '/'
+                        } else {
+                          throw new Error('Failed to delete account')
+                        }
+                      } finally {
+                        clearTimeout(timeoutId)
+                        setLoadingState(false)
+                      }
+                    }, "Failed to delete account. Please try again.")
                   }}
                 >
                   Delete Account
                 </button>
                 <button
                   onClick={async () => {
-                    setLoadingState(true, 'Enabling email monitoring...')
-                    const res = await fetch(`${api}/start-monitoring`, {
-                      method: 'POST',
-                      credentials: 'include'
-                    })
+                    await handleAsyncOperation(async () => {
+                      setLoadingState(true, 'Enabling email monitoring...')
+                      
+                      const controller = new AbortController()
+                      const timeoutId = setTimeout(() => controller.abort(), 30000)
+                      
+                      try {
+                        const res = await fetch(`${api}/start-monitoring`, {
+                          method: 'POST',
+                          credentials: 'include',
+                          signal: controller.signal
+                        })
+                        
+                        clearTimeout(timeoutId)
 
-                    if (res.ok) {
-                      setLoadingMessage('Finalizing your setup...')
-                      await fetch(`${api}/finish-onboarding`, {
-                        method: 'POST',
-                        credentials: 'include'
-                      })
-                      transitionToStep('finalizing')
-                    } else {
-                      alert('Something went wrong enabling monitoring.')
-                    }
-                    setLoadingState(false)
+                        if (!res.ok) {
+                          throw new Error(`Failed to start monitoring (${res.status})`)
+                        }
+                        
+                        setLoadingMessage('Finalizing your setup...')
+                        
+                        const finishRes = await fetch(`${api}/finish-onboarding`, {
+                          method: 'POST',
+                          credentials: 'include'
+                        })
+                        
+                        if (!finishRes.ok) {
+                          console.warn('Finish onboarding failed, but continuing...')
+                        }
+                        
+                        transitionToStep('finalizing')
+                      } finally {
+                        clearTimeout(timeoutId)
+                        setLoadingState(false)
+                      }
+                    }, "Failed to enable monitoring. Please try again.")
                   }}
                   style={styles.successButton}
                   className="success-button"
+                  disabled={isLoading}
                 >
                   Start Monitoring
                 </button>
@@ -848,6 +1060,35 @@ const styles = {
     fontFamily: 'Arial, sans-serif',
     position: 'relative',
     overflow: 'hidden'
+  },
+  errorBanner: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    background: 'linear-gradient(45deg, #dc2626, #ef4444)',
+    color: 'white',
+    padding: '12px 24px',
+    textAlign: 'center',
+    zIndex: 10000,
+    fontSize: '14px',
+    fontWeight: '500',
+    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
+    animation: 'slideDown 0.3s ease-out'
+  },
+  errorCloseButton: {
+    background: 'none',
+    border: 'none',
+    color: 'white',
+    fontSize: '16px',
+    cursor: 'pointer',
+    position: 'absolute',
+    right: '16px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    transition: 'background 0.2s'
   },
   backgroundOrb1: {
     position: 'absolute',
@@ -944,8 +1185,8 @@ const styles = {
   },
   header: {
     textAlign: 'center',
-    marginBottom: '24px', // Reduced from 48px
-    padding: '24px 0' // Reduced from 48px 0
+    marginBottom: '24px',
+    padding: '24px 0'
   },
   stepIcon: {
     display: 'inline-flex',
@@ -975,7 +1216,7 @@ const styles = {
     width: '100%',
     display: 'flex',
     justifyContent: 'center',
-    paddingTop: '20px' // Added spacing from header
+    paddingTop: '20px'
   },
   card: {
     width: '100%',
