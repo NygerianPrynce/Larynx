@@ -133,6 +133,11 @@ const Navbar = () => {
             animation: slideDown 0.3s ease-out;
           }
           
+          .mobile-link:hover {
+            background: rgba(139, 92, 246, 0.2) !important;
+            transform: translateX(4px);
+          }
+          
           @media (max-width: 1024px) {
             .desktop-nav {
               display: none !important;
@@ -303,36 +308,33 @@ const Navbar = () => {
         </button>
       </nav>
 
-      {/* Mobile Menu - Moved outside nav for better positioning */}
+      {/* Mobile Menu - Cleaned up to remove duplicates */}
       {mobileMenuOpen && (
         <div style={styles.mobileMenu} className="mobile-menu-container mobile-menu-slide">
           <div style={styles.mobileMenuContent}>
-            <Link to="/home" style={styles.mobileLink} onClick={() => setMobileMenuOpen(false)}>
+            {/* Main Navigation Links */}
+            <Link to="/home" style={styles.mobileLink} className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
               <span style={{...styles.mobileLinkIcon, color: '#3b82f6'}}><Home /></span>
               <span>Dashboard</span>
             </Link>
-            <Link to="/manage-inventory" style={styles.mobileLink} onClick={() => setMobileMenuOpen(false)}>
+            <Link to="/manage-inventory" style={styles.mobileLink} className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
               <span style={{...styles.mobileLinkIcon, color: '#8b5cf6'}}><Package /></span>
               <span>Inventory</span>
             </Link>
-            <Link to="/analytics" style={styles.mobileLink} onClick={() => setMobileMenuOpen(false)}>
+            <Link to="/analytics" style={styles.mobileLink} className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
               <span style={{...styles.mobileLinkIcon, color: '#10b981'}}><TrendingUp /></span>
               <span>Analytics</span>
             </Link>
-            <Link to="/settings" style={styles.mobileLink} onClick={() => setMobileMenuOpen(false)}>
+            <Link to="/settings" style={styles.mobileLink} className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
               <span style={{...styles.mobileLinkIcon, color: '#f59e0b'}}><Settings /></span>
               <span>Settings</span>
             </Link>
+            
+            {/* Divider */}
             <div style={styles.mobileDivider}></div>
-            <div style={styles.mobileLink} onClick={() => { navigate('/analytics'); setMobileMenuOpen(false); }}>
-              <span style={{...styles.mobileLinkIcon, color: '#10b981'}}><TrendingUp /></span>
-              <span>Analytics</span>
-            </div>
-            <div style={styles.mobileLink} onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}>
-              <span style={{...styles.mobileLinkIcon, color: '#8b5cf6'}}><Bot /></span>
-              <span>AI Settings</span>
-            </div>
-            <div style={styles.mobileLink} onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
+            
+            {/* Account Actions */}
+            <div style={styles.mobileLink} className="mobile-link" onClick={() => { handleLogout(); setMobileMenuOpen(false); }}>
               <span style={{...styles.mobileLinkIcon, color: '#ef4444'}}><LogOut /></span>
               <span>Logout</span>
             </div>
