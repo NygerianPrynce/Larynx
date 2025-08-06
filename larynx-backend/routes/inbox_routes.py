@@ -386,7 +386,7 @@ async def monitor_user_emails(user_id: str):
                 
                 # Wait before next check
                 logging.info(f"⏰ User {user_id}: Waiting another 2 minutes...")
-                await asyncio.sleep(300)  # CHANGE TO 30 mins -- 1800/ an HOUR 
+                await asyncio.sleep(1800)  # CHANGE TO 30 mins -- 1800/ an HOUR 
                 
             except Exception as e:
                 consecutive_errors += 1
@@ -786,7 +786,7 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         # Generate draft
         draft_text = create_draft_with_gpt(prompt)
         
-
+        
         # Fetch existing analytics
         analytics_resp = supabase.table("analytics").select("*").eq("user_id", user_id).execute()
         analytics_data = analytics_resp.data[0] if analytics_resp.data else {}
@@ -988,7 +988,7 @@ def create_reply_message(reply_body: str, original_subject: str,
             plain_text_body += f"\n\n{plain_signature}"
         
         # Create HTML version
-        html_body = reply_body.replace('\n', '<br>')
+        html_body = reply_body.replace('\n', '<br>\n')
         if signature_html:
             html_body += f"<br><br>{signature_html}"
         
