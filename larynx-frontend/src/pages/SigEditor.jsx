@@ -85,9 +85,21 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     updateValue()
   }
 
-  const updateValue = () => {
+    const updateValue = () => {
     if (editorRef.current) {
-      setValue(editorRef.current.innerHTML)
+      // Convert HTML back to clean plain text
+      let plainText = editorRef.current.innerHTML
+        .replace(/<br\s*\/?>/gi, '\n')     // Convert <br> to \n
+        .replace(/<\/div><div>/gi, '\n')   // Convert </div><div> to \n
+        .replace(/<div>/gi, '\n')          // Convert <div> to \n
+        .replace(/<\/div>/gi, '')          // Remove </div>
+        .replace(/<[^>]*>/g, '')           // Remove all other HTML tags
+        .replace(/&nbsp;/g, ' ')           // Convert &nbsp; to spaces
+        .replace(/^\n+/, '')               // Remove leading newlines
+        .replace(/\n+$/, '')               // Remove trailing newlines
+        .replace(/\n{3,}/g, '\n\n')        // Max 2 consecutive newlines
+      
+      setValue(plainText)
     }
   }
 
@@ -116,6 +128,10 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           execCommand('underline')
           break
       }
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      execCommand('insertHTML', '<br><br>')
     }
   }
 

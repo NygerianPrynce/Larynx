@@ -983,14 +983,21 @@ def create_reply_message(reply_body: str, original_subject: str,
         # Create plain text version
         plain_text_body = reply_body
         if signature_html:
-            # Convert signature HTML to plain text for fallback
-            plain_signature = clean_html_to_text(signature_html)
+            # Always treat signature as plain text for email generation
+            plain_signature = signature_html
+            # Convert any HTML to plain text if it somehow got saved as HTML
+            if '<' in plain_signature and '>' in plain_signature:
+                plain_signature = clean_html_to_text(plain_signature)
             plain_text_body += f"\n\n{plain_signature}"
-        
-        # Create HTML version
-        html_body = reply_body.replace('\n', '<br>\n')
+
+        # Create HTML version  
+        html_body = reply_body.replace('\n', '<br>\n')  # Keep both \n and <br>
         if signature_html:
-            html_body += f"<br><br>{signature_html}"
+            html_signature = signature_html
+            # Convert plain text to HTML if needed
+            if not ('<' in html_signature and '>' in html_signature):
+                html_signature = html_signature.replace('\n', '<br>\n')
+            html_body += f"<br><br>{html_signature}"
         
         # Wrap HTML in proper structure
         html_content = f"""
