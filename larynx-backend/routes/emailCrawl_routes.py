@@ -79,7 +79,7 @@ async def crawl_emails(request: Request):
             # Clean with Talon + custom logic
             body, sig = clean_email_body(raw_body)
             if sig:
-                normalized_sig = "\n".join([line.rstrip() for line in sig.strip().splitlines()])
+                normalized_sig = "\n".join([line.strip() for line in sig.strip().splitlines() if line.strip()])
                 signature_counter[normalized_sig] += 1
 
             # Only add emails with meaningful content
