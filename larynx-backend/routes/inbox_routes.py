@@ -766,6 +766,7 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         - If the email isn't asking about products, services, or business-related matters, just respond naturally in a friendly, conversational way
         - For business inquiries: Write a SHORT, helpful reply (2-3 sentences max) that sounds like a real person
         - Address the sender by name ({sender_name}) in a natural way - use their name once, early in the email
+        - ALWAYS put a line break after the greeting (e.g., "Hello {sender_name}!\n\nYour message here...")
         - Be direct and conversational - NO corporate fluff like "greatly appreciated" or "we are here to help"
         - Get straight to the point - if they want pricing, give pricing; if they want availability, confirm availability
         - Include specific numbers/totals when relevant (e.g., "$40 for all 5")
@@ -775,7 +776,7 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
 
         BAD example: "Thank you for your message about the ear savers. We have the ear savers available for $8.00 each. Since you're interested in 5 ear savers, just let me know if this works for you. Your interest in our products is greatly appreciated."
 
-        GOOD example: "Hey {sender_name}! We've got ear savers for $8 each, so $40 for all 5. Should I set those aside for you?"
+        GOOD example: "Hey {sender_name}!\n\nWe've got ear savers for $8 each, so $40 for all 5. Should I set those aside for you?"
 
         —— Incoming email ——
         From: {sender_name}
