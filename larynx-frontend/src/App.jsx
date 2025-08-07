@@ -13,7 +13,7 @@ import { Error404, Error500, Error403 } from './pages/ErrorPage'
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" />} />
+      <Route path="/" element={<LoginPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/onboarding/*" element={<Onboarding />} />
       <Route path="/settings" element={<SettingsPage />} />
