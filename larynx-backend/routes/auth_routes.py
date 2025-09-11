@@ -25,12 +25,12 @@ async def login(request: Request):
     if not redirect_uri:
         raise HTTPException(status_code=500, detail="GOOGLE_REDIRECT_URI not configured")
     
-    # Manually add access_type=offline
+    # Manually add access_type=offline and prompt=consent to ensure refresh tokens
     return await oauth.google.authorize_redirect(
         request, 
         redirect_uri,
         access_type="offline", 
-        #prompt="consent",
+        prompt="consent",  # Force consent to get refresh token
     )
 
 # Step 2: Google sends the user back here (with a code)
@@ -88,6 +88,12 @@ async def auth_callback(request: Request):
 
         # Use new refresh_token if present, otherwise fallback to existing
         refresh_token_to_store = token.get("refresh_token") or existing_refresh_token
+        
+        # If we still don't have a refresh token, this is a problem
+        if not refresh_token_to_store:
+            logging.warning(f"No refresh token received for user {user_id} - this will cause issues later")
+            # We could redirect to re-auth here, but for now just log the warning
+        
         # Upsert token
         supabase.table("tokens").upsert({
             "user_id": user_id,
@@ -95,6 +101,9 @@ async def auth_callback(request: Request):
             "refresh_token": refresh_token_to_store,
             "scope": token.get("scope"),
             "expires_at": expires_at.isoformat(),
+            "token_status": "valid",  # Mark as valid when we get fresh tokens
+            "token_error_reason": None,
+            "last_token_error": None
         }, on_conflict=["user_id"]).execute()
 
 
@@ -251,3 +260,45 @@ async def finish_onboarding(request: Request):
     supabase.table("users").update({"has_onboarded": True}).eq("id", user_id).execute()
 
     return {"message": "Onboarding completed"}
+
+@router.get("/token-status")
+async def get_token_status(request: Request):
+    """
+    Check if user's OAuth tokens are valid
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    
+    try:
+        # Check token status from database
+        user_data = supabase.table("users").select("token_status, token_error_reason, last_token_error, is_monitoring").eq("id", user_id).execute()
+        token_data = supabase.table("tokens").select("expires_at, refresh_token").eq("user_id", user_id).execute()
+        
+        if not user_data.data or not token_data.data:
+            return {"status": "no_tokens", "needs_reauth": True}
+        
+        user_info = user_data.data[0]
+        token_info = token_data.data[0]
+        
+        # Check if access token is expired
+        expires_at = datetime.fromisoformat(token_info["expires_at"])
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
+        is_expired = datetime.now(timezone.utc) >= expires_at
+        has_refresh_token = bool(token_info.get("refresh_token"))
+        
+        return {
+            "status": user_info.get("token_status", "unknown"),
+            "is_monitoring": user_info.get("is_monitoring", False),
+            "access_token_expired": is_expired,
+            "has_refresh_token": has_refresh_token,
+            "error_reason": user_info.get("token_error_reason"),
+            "last_error": user_info.get("last_token_error"),
+            "needs_reauth": user_info.get("token_status") == "expired" or not has_refresh_token
+        }
+        
+    except Exception as e:
+        logging.error(f"Error checking token status for user {user_id}: {str(e)}")
+        return {"status": "error", "needs_reauth": True}

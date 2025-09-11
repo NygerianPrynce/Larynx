@@ -44,6 +44,11 @@ async def refresh_access_token_if_needed(user_id: str, supabase):
 
     # Expired – refresh it
     refresh_token = token_row["refresh_token"]
+    if not refresh_token:
+        # No refresh token available - user needs to re-authorize
+        await handle_token_refresh_failure(user_id, supabase, "No refresh token available")
+        raise Exception("No refresh token available - user needs to re-authorize")
+
     client_id = os.getenv("GOOGLE_CLIENT_ID")
     client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
 
@@ -57,7 +62,15 @@ async def refresh_access_token_if_needed(user_id: str, supabase):
     async with httpx.AsyncClient() as client:
         resp = await client.post("https://oauth2.googleapis.com/token", data=refresh_payload)
         if resp.status_code != 200:
-            raise Exception(f"Failed to refresh token: {resp.text}")
+            error_data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {"error": "unknown", "error_description": resp.text}
+            
+            # Handle specific OAuth errors
+            if error_data.get("error") == "invalid_grant":
+                await handle_token_refresh_failure(user_id, supabase, "Refresh token expired or revoked")
+                raise Exception("Refresh token expired or revoked - user needs to re-authorize")
+            else:
+                raise Exception(f"Failed to refresh token: {resp.text}")
+        
         new_token = resp.json()
 
     new_access_token = new_token["access_token"]
@@ -70,6 +83,24 @@ async def refresh_access_token_if_needed(user_id: str, supabase):
     }).eq("user_id", user_id).execute()
 
     return new_access_token
+
+async def handle_token_refresh_failure(user_id: str, supabase, reason: str):
+    """
+    Handle cases where token refresh fails - stop monitoring and notify user
+    """
+    try:
+        # Stop email monitoring for this user
+        supabase.table("users").update({
+            "is_monitoring": False,
+            "token_status": "expired",
+            "token_error_reason": reason,
+            "last_token_error": datetime.utcnow().isoformat()
+        }).eq("id", user_id).execute()
+        
+        logging.warning(f"🛑 Stopped email monitoring for user {user_id} due to token issue: {reason}")
+        
+    except Exception as e:
+        logging.error(f"Error handling token refresh failure for user {user_id}: {str(e)}")
 
 def clean_email_body(raw_body: str) -> str:
     # Step 1: Remove quoted reply history
