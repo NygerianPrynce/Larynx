@@ -202,6 +202,14 @@ async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: 
         # Extract body
         raw_body = extract_email_body(full_msg)
         if not raw_body or len(raw_body.strip()) < 10:
+            # Log more details about why the body is empty
+            payload_info = {
+                "has_body_data": "data" in full_msg["payload"].get("body", {}),
+                "has_parts": "parts" in full_msg["payload"],
+                "mime_type": full_msg["payload"].get("mimeType", "unknown"),
+                "body_length": len(raw_body) if raw_body else 0
+            }
+            logging.warning(f"Email {msg_id} from {sender} has empty body. Payload info: {payload_info}")
             await mark_email_as_filtered(user_id, msg_id, "empty_body", sender, subject)
             return None
         
@@ -405,6 +413,77 @@ async def monitor_user_emails(user_id: str):
         active_monitoring_tasks.discard(user_id)
         logging.info(f"🔴 STOPPED email monitoring for user {user_id}")
         
+@router.get("/debug/email/{message_id}")
+async def debug_email_structure(request: Request, message_id: str):
+    """
+    Debug endpoint to inspect email structure and understand why it might be filtered
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    
+    try:
+        access_token = await refresh_access_token_if_needed(user_id, supabase)
+        headers = {"Authorization": f"Bearer {access_token}"}
+        
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{message_id}",
+                headers=headers
+            )
+            
+            if r.status_code != 200:
+                return {"error": f"Gmail API error: {r.text}"}
+            
+            full_msg = r.json()
+            
+            # Extract basic info
+            headers_list = full_msg["payload"].get("headers", [])
+            subject = next((h["value"] for h in headers_list if h["name"] == "Subject"), "(No Subject)")
+            sender = next((h["value"] for h in headers_list if h["name"] == "From"), "(Unknown Sender)")
+            
+            # Analyze payload structure
+            payload = full_msg["payload"]
+            payload_info = {
+                "mime_type": payload.get("mimeType"),
+                "has_body_data": "data" in payload.get("body", {}),
+                "has_parts": "parts" in payload,
+                "parts_count": len(payload.get("parts", [])),
+                "body_size": len(payload.get("body", {}).get("data", "")) if "data" in payload.get("body", {}) else 0
+            }
+            
+            # Extract body using our function
+            extracted_body = extract_email_body(full_msg)
+            
+            # Analyze parts structure
+            parts_info = []
+            if "parts" in payload:
+                for i, part in enumerate(payload["parts"]):
+                    part_info = {
+                        "index": i,
+                        "mime_type": part.get("mimeType"),
+                        "has_body_data": "data" in part.get("body", {}),
+                        "body_size": len(part.get("body", {}).get("data", "")) if "data" in part.get("body", {}) else 0,
+                        "has_subparts": "parts" in part,
+                        "subparts_count": len(part.get("parts", []))
+                    }
+                    parts_info.append(part_info)
+            
+            return {
+                "message_id": message_id,
+                "subject": subject,
+                "sender": sender,
+                "payload_info": payload_info,
+                "parts_info": parts_info,
+                "extracted_body_length": len(extracted_body),
+                "extracted_body_preview": extracted_body[:200] + "..." if len(extracted_body) > 200 else extracted_body,
+                "is_empty": len(extracted_body.strip()) < 10
+            }
+            
+    except Exception as e:
+        logging.error(f"Error debugging email {message_id}: {str(e)}")
+        return {"error": str(e)}
+
 async def get_user_monitoring_status(user_id: str) -> Dict:
     """
     Get monitoring status from database
@@ -670,29 +749,65 @@ async def get_user_account_creation_date(user_id: str) -> Optional[datetime]:
 
 def extract_email_body(full_msg: dict) -> str:
     """
-    Extract the email body from Gmail API response
+    Extract the email body from Gmail API response with improved handling of various email formats
     """
-    body = ""
-    
-    # Check if body is directly in payload
-    if "data" in full_msg["payload"].get("body", {}):
-        try:
-            body = base64.urlsafe_b64decode(full_msg["payload"]["body"]["data"]).decode("utf-8", errors="ignore")
-        except Exception as e:
-            logging.error(f"Error decoding body: {e}")
-    
-    # Check parts for text/plain content
-    elif "parts" in full_msg["payload"]:
-        for part in full_msg["payload"]["parts"]:
-            if part["mimeType"] == "text/plain" and "data" in part["body"]:
-                try:
-                    body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="ignore")
+    def extract_from_payload(payload: dict) -> tuple[str, str]:
+        """Extract text from a payload, returns (plain_text, html_text)"""
+        plain_text = ""
+        html_text = ""
+        
+        # Check if body is directly in payload
+        if "data" in payload.get("body", {}):
+            try:
+                content = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="ignore")
+                if payload.get("mimeType") == "text/plain":
+                    plain_text = content
+                elif payload.get("mimeType") == "text/html":
+                    html_text = content
+            except Exception as e:
+                logging.error(f"Error decoding body: {e}")
+        
+        # Check parts for content
+        if "parts" in payload:
+            for part in payload["parts"]:
+                part_plain, part_html = extract_from_payload(part)
+                if part_plain:
+                    plain_text = part_plain
+                if part_html:
+                    html_text = part_html
+                
+                # If we found both, we can stop
+                if plain_text and html_text:
                     break
-                except Exception as e:
-                    logging.error(f"Error decoding part: {e}")
-                    continue
+        
+        return plain_text, html_text
     
-    return body
+    # Extract content from the main payload
+    plain_text, html_text = extract_from_payload(full_msg["payload"])
+    
+    # Prefer plain text, fallback to HTML
+    if plain_text and len(plain_text.strip()) >= 10:
+        return plain_text
+    elif html_text and len(html_text.strip()) >= 10:
+        # Convert HTML to plain text using BeautifulSoup
+        try:
+            from bs4 import BeautifulSoup
+            soup = BeautifulSoup(html_text, 'html.parser')
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            # Get text and clean it up
+            text = soup.get_text()
+            # Clean up whitespace
+            lines = (line.strip() for line in text.splitlines())
+            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+            text = ' '.join(chunk for chunk in chunks if chunk)
+            return text if len(text.strip()) >= 10 else ""
+        except Exception as e:
+            logging.error(f"Error converting HTML to text: {e}")
+            return html_text  # Return raw HTML as fallback
+    
+    return ""
 
 async def generate_draft_for_email(user_id: str, subject: str, body: str, sender_name: str) -> tuple[str, Optional[List[Dict]]]:
     """
