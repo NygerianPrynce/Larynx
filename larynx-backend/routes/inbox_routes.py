@@ -1028,6 +1028,16 @@ async def create_gmail_draft(user_id: str, original_message_id: str, reply_body:
         # Get the original message to extract proper headers for reply
         original_message = await get_original_message_headers(headers, original_message_id)
         
+        if not original_message:
+            logging.error(f"Could not retrieve original message {original_message_id}")
+            return None
+        
+        # Extract thread ID from the original message
+        thread_id = original_message.get("threadId")
+        if not thread_id:
+            logging.warning(f"No thread ID found for message {original_message_id}, using message ID as fallback")
+            thread_id = original_message_id  # Fallback to message ID
+        
         # Create the reply message WITH HTML signature support
         reply_message = create_reply_message(
             reply_body=reply_body,
@@ -1037,8 +1047,8 @@ async def create_gmail_draft(user_id: str, original_message_id: str, reply_body:
             signature_html=signature_html
         )
         
-        # Create draft via Gmail API
-        draft_id = await send_draft_to_gmail(headers, reply_message, original_message_id)
+        # Create draft via Gmail API (using thread_id, not message_id)
+        draft_id = await send_draft_to_gmail(headers, reply_message, thread_id)
         
         logging.info(f"Created Gmail draft {draft_id} for user {user_id}")
         return draft_id
@@ -1181,6 +1191,8 @@ async def send_draft_to_gmail(headers: dict, raw_message: str, thread_id: str) -
             }
         }
         
+        logging.info(f"Creating draft for thread_id: {thread_id}")
+        
         async with httpx.AsyncClient() as client:
             r = await client.post(
                 "https://gmail.googleapis.com/gmail/v1/users/me/drafts",
@@ -1190,9 +1202,17 @@ async def send_draft_to_gmail(headers: dict, raw_message: str, thread_id: str) -
             
             if r.status_code == 200:
                 draft_response = r.json()
-                return draft_response.get("id")
+                draft_id = draft_response.get("id")
+                logging.info(f"Successfully created draft {draft_id} for thread {thread_id}")
+                return draft_id
             else:
-                logging.error(f"Failed to create draft: {r.text}")
+                error_details = {
+                    "status_code": r.status_code,
+                    "response": r.text,
+                    "thread_id": thread_id,
+                    "message_size": len(raw_message)
+                }
+                logging.error(f"Failed to create draft: {error_details}")
                 return None
                 
     except Exception as e:
