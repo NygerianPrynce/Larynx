@@ -330,7 +330,9 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
               <ColorPicker />
             </button>
             {showColorPicker && (
-              <div className="color-picker-dialog">
+              <>
+                <div className="color-picker-backdrop" onClick={() => setShowColorPicker(false)}></div>
+                <div className="color-picker-dialog">
                 <div className="color-grid">
                   {['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#008000', '#000080'].map(color => (
                     <button
@@ -343,6 +345,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
                   ))}
                 </div>
               </div>
+              </>
             )}
           </div>
           
@@ -380,7 +383,9 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
               <Link />
             </button>
             {showLinkDialog && (
-              <div className="link-dialog">
+              <>
+                <div className="link-dialog-backdrop" onClick={cancelLinkDialog}></div>
+                <div className="link-dialog">
                 {selectedText && (
                   <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>
                     Selected text: "{selectedText}"
@@ -410,6 +415,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
                   </button>
                 </div>
               </div>
+              </>
             )}
           </div>
           

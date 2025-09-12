@@ -43,16 +43,28 @@
 }
 
 .link-dialog {
-  position: absolute;
-  top: 100%;
-  left: 0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: rgba(17, 24, 39, 0.95);
   border: 1px solid #374151;
   border-radius: 8px;
   padding: 16px;
   backdrop-filter: blur(20px);
-  z-index: 1000;
+  z-index: 10000;
   width: 300px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.link-dialog-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 9999;
 }
 
 .link-input {
@@ -97,16 +109,28 @@
 }
 
 .color-picker-dialog {
-  position: absolute;
-  top: 100%;
-  left: 0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: rgba(17, 24, 39, 0.95);
   border: 1px solid #374151;
   border-radius: 8px;
   padding: 12px;
   backdrop-filter: blur(20px);
-  z-index: 1000;
+  z-index: 10000;
   width: 200px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.color-picker-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 9999;
 }
 
 .color-grid {
