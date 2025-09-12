@@ -26,12 +26,27 @@ async def login(request: Request):
     if not redirect_uri:
         raise HTTPException(status_code=500, detail="GOOGLE_REDIRECT_URI not configured")
     
-    # For new users or users without refresh tokens, we'll handle consent in the callback
-    # This avoids forcing consent on every login for existing users
+    # Check if user is already authenticated
+    user_id = request.session.get("user_id")
+    if user_id:
+        # User has a session, check if they need to re-authenticate
+        try:
+            user_data = supabase.table("users").select("token_status").eq("id", user_id).execute()
+            if user_data.data:
+                token_status = user_data.data[0].get("token_status", "unknown")
+                if token_status != "expired":
+                    # User is already authenticated, redirect to home
+                    from fastapi.responses import RedirectResponse
+                    return RedirectResponse(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/home")
+        except Exception as e:
+            logging.warning(f"Error checking existing session: {e}")
+    
+    # Use account selection for existing users, no consent prompt
     return await oauth.google.authorize_redirect(
         request, 
         redirect_uri,
-        access_type="offline"
+        access_type="offline",
+        prompt="select_account"  # Show account picker but don't force consent
     )
 
 # Step 2: Google sends the user back here (with a code)
@@ -306,6 +321,49 @@ async def get_token_status(request: Request):
     except Exception as e:
         logging.error(f"Error checking token status for user {user_id}: {str(e)}")
         return {"status": "error", "needs_reauth": True}
+
+@router.get("/auth/check")
+async def check_auth_status(request: Request):
+    """
+    Check if user is already authenticated without requiring session
+    """
+    try:
+        # Check if there's an existing session
+        user_id = request.session.get("user_id")
+        user_email = request.session.get("user_email")
+        
+        if not user_id or not user_email:
+            return {"authenticated": False, "redirect_to": "/login"}
+        
+        # Check if user exists and has valid tokens
+        user_data = supabase.table("users").select("has_onboarded, token_status").eq("id", user_id).execute()
+        
+        if not user_data.data:
+            return {"authenticated": False, "redirect_to": "/login"}
+        
+        user_info = user_data.data[0]
+        has_onboarded = user_info.get("has_onboarded", False)
+        token_status = user_info.get("token_status", "unknown")
+        
+        # Determine where to redirect based on onboarding status
+        if not has_onboarded:
+            redirect_to = "/onboarding"
+        elif token_status == "expired":
+            redirect_to = "/login"  # Need to re-authenticate
+        else:
+            redirect_to = "/home"  # User is fully set up
+        
+        return {
+            "authenticated": True,
+            "user_email": user_email,
+            "has_onboarded": has_onboarded,
+            "token_status": token_status,
+            "redirect_to": redirect_to
+        }
+        
+    except Exception as e:
+        logging.error(f"Error checking auth status: {str(e)}")
+        return {"authenticated": False, "redirect_to": "/login"}
 
 @router.get("/auth/reauth")
 async def reauth_with_consent(request: Request):
