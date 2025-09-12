@@ -62,19 +62,21 @@ const ColorPicker = () => (
   </svg>
 )
 
-const FontSize = () => (
-  <svg style={{ display: 'inline', width: '16px', height: '16px' }} fill="currentColor" viewBox="0 0 24 24">
-    <path d="M9 4v3h5.5l-5.5 6H9v3h6v-3h-5.5L16 7H15V4H9z"/>
-  </svg>
+const FontDecrease = () => (
+  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>-A</span>
+)
+
+const FontIncrease = () => (
+  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>A+</span>
 )
 
 const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const editorRef = useRef(null)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
-  const [showFontSizeMenu, setShowFontSizeMenu] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [isInitialized, setIsInitialized] = useState(false)
+  const [selectedText, setSelectedText] = useState('')
 
   // Initialize editor content only once
   useEffect(() => {
@@ -113,7 +115,14 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
 
   const insertLink = () => {
     if (linkUrl) {
-      execCommand('createLink', linkUrl)
+      // Check if there's selected text, if not, use the URL as the link text
+      const selection = window.getSelection()
+      if (selection.toString().trim()) {
+        execCommand('createLink', linkUrl)
+      } else {
+        // Insert the URL as both the text and the link
+        execCommand('insertHTML', `<a href="${linkUrl}">${linkUrl}</a>`)
+      }
       setShowLinkDialog(false)
       setLinkUrl('')
     }
@@ -124,9 +133,14 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     setShowColorPicker(false)
   }
 
-  const changeFontSize = (size) => {
-    execCommand('fontSize', size)
-    setShowFontSizeMenu(false)
+  const increaseFontSize = () => {
+    execCommand('fontSize', '7') // Use a large size
+    execCommand('fontSize', '6') // Then reduce to make it bigger than current
+  }
+
+  const decreaseFontSize = () => {
+    execCommand('fontSize', '1') // Use a small size
+    execCommand('fontSize', '2') // Then increase slightly
   }
 
   const handleKeyDown = (e) => {
@@ -149,13 +163,32 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     }
     if (e.key === 'Enter') {
       e.preventDefault()
-      execCommand('insertHTML', '<br><br>')
+      // Insert a line break and maintain cursor position
+      const selection = window.getSelection()
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        const br = document.createElement('br')
+        range.deleteContents()
+        range.insertNode(br)
+        range.setStartAfter(br)
+        range.setEndAfter(br)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
     }
   }
 
   const handleInput = () => {
+    // Track selected text for link creation
+    const selection = window.getSelection()
+    setSelectedText(selection.toString())
     // Don't update immediately to avoid cursor issues
     // The debounced updateValue will handle this
+  }
+
+  const handleSelectionChange = () => {
+    const selection = window.getSelection()
+    setSelectedText(selection.toString())
   }
 
   return (
@@ -292,35 +325,6 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
             transform: scale(1.1);
           }
           
-          .font-size-dialog {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: rgba(17, 24, 39, 0.95);
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 8px;
-            backdrop-filter: blur(20px);
-            z-index: 1000;
-            width: 120px;
-          }
-          
-          .font-size-button {
-            width: 100%;
-            padding: 8px 12px;
-            background: transparent;
-            border: 1px solid #374151;
-            border-radius: 4px;
-            color: white;
-            cursor: pointer;
-            transition: all 0.2s;
-            margin-bottom: 4px;
-          }
-          
-          .font-size-button:hover {
-            background: rgba(139, 92, 246, 0.3);
-            border-color: #8b5cf6;
-          }
         `}
       </style>
       
@@ -382,30 +386,21 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
             )}
           </div>
           
-          {/* Font Size */}
-          <div style={styles.fontSizeContainer}>
-            <button
-              className="toolbar-button"
-              onClick={() => setShowFontSizeMenu(!showFontSizeMenu)}
-              title="Font Size"
-            >
-              <FontSize />
-            </button>
-            {showFontSizeMenu && (
-              <div className="font-size-dialog">
-                {[1, 2, 3, 4, 5, 6, 7].map(size => (
-                  <button
-                    key={size}
-                    className="font-size-button"
-                    onClick={() => changeFontSize(size)}
-                    title={`Size ${size}`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* Font Size Controls */}
+          <button
+            className="toolbar-button"
+            onClick={decreaseFontSize}
+            title="Decrease Font Size"
+          >
+            <FontDecrease />
+          </button>
+          <button
+            className="toolbar-button"
+            onClick={increaseFontSize}
+            title="Increase Font Size"
+          >
+            <FontIncrease />
+          </button>
           
           <div style={styles.separator}></div>
           
@@ -485,6 +480,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           style={styles.editor}
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onSelect={handleSelectionChange}
           suppressContentEditableWarning={true}
         >
           {!value && <div style={{ color: '#9ca3af', pointerEvents: 'none' }}>Enter your email signature...</div>}
@@ -552,9 +548,6 @@ const styles = {
     position: 'relative'
   },
   colorContainer: {
-    position: 'relative'
-  },
-  fontSizeContainer: {
     position: 'relative'
   },
   editor: {
