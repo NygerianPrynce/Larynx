@@ -165,11 +165,31 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   }
 
   const increaseFontSize = () => {
-    execCommand('fontSize', '7')
+    // Try to increase font size by using larger font sizes
+    const sizes = ['1', '2', '3', '4', '5', '6', '7']
+    const currentSize = document.queryCommandValue('fontSize') || '3'
+    const currentIndex = sizes.indexOf(currentSize)
+    
+    if (currentIndex < sizes.length - 1) {
+      execCommand('fontSize', sizes[currentIndex + 1])
+    } else {
+      // If already at max, try to make it even bigger
+      execCommand('fontSize', '7')
+    }
   }
 
   const decreaseFontSize = () => {
-    execCommand('fontSize', '1')
+    // Try to decrease font size by using smaller font sizes
+    const sizes = ['1', '2', '3', '4', '5', '6', '7']
+    const currentSize = document.queryCommandValue('fontSize') || '3'
+    const currentIndex = sizes.indexOf(currentSize)
+    
+    if (currentIndex > 0) {
+      execCommand('fontSize', sizes[currentIndex - 1])
+    } else {
+      // If already at min, try to make it even smaller
+      execCommand('fontSize', '1')
+    }
   }
 
   const handleKeyDown = (e) => {
