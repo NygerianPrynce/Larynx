@@ -190,6 +190,12 @@ const Onboarding = () => {
     'Almost done...'
   ]
 
+  const defaultProcessingMessages = [
+    'Processing...',
+    'Working on it...',
+    'Almost ready...'
+  ]
+
   useEffect(() => {
     try {
       const generateParticles = () => {
@@ -223,8 +229,18 @@ const Onboarding = () => {
       } catch (err) {
         console.error('Error cycling messages:', err)
       }
+    } else if (isLoading && !loadingMessage) {
+      // Cycle default processing messages when no specific messages are set
+      try {
+        const interval = setInterval(() => {
+          setCurrentMessageIndex((prev) => (prev + 1) % defaultProcessingMessages.length)
+        }, 2000)
+        return () => clearInterval(interval)
+      } catch (err) {
+        console.error('Error cycling default messages:', err)
+      }
     }
-  }, [emailCrawlMessages.length])
+  }, [emailCrawlMessages.length, isLoading, loadingMessage])
 
   const transitionToStep = (newStep) => {
     try {
@@ -784,7 +800,11 @@ const Onboarding = () => {
             )}
             
             {!emailCrawlMessages.length && !showSuccessMessage && !loadingMessage && (
-              <p style={styles.loadingText}>Processing...</p>
+              <div style={styles.crawlMessageContainer}>
+                <p style={styles.crawlMessage} className="crawl-message" key={currentMessageIndex}>
+                  {defaultProcessingMessages[currentMessageIndex % defaultProcessingMessages.length]}
+                </p>
+              </div>
             )}
           </div>
         </div>

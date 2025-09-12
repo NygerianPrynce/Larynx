@@ -86,6 +86,16 @@ const FontSizeControl = ({ onDecrease, onIncrease }) => (
 )
 
 const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
+  // Validate required props
+  if (!setValue || typeof setValue !== 'function') {
+    console.error('SigEditor: setValue prop is required and must be a function')
+    return (
+      <div style={{ padding: '20px', textAlign: 'center', color: '#ef4444' }}>
+        <p>Error: Missing required props for Signature Editor</p>
+      </div>
+    )
+  }
+
   const editorRef = useRef(null)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
@@ -111,44 +121,63 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   }, [setValue, isInitialized])
 
   const execCommand = (command, value = null) => {
-    document.execCommand(command, false, value)
-    editorRef.current?.focus()
-    updateValue()
+    try {
+      if (document.execCommand) {
+        document.execCommand(command, false, value)
+        editorRef.current?.focus()
+        updateValue()
+      } else {
+        console.warn('document.execCommand is not supported')
+      }
+    } catch (error) {
+      console.error('Error executing command:', error)
+    }
   }
 
   const openLinkDialog = () => {
-    // Save the current selection before opening dialog
-    const selection = window.getSelection()
-    if (selection.rangeCount > 0) {
-      setSavedSelection(selection.getRangeAt(0).cloneRange())
-      setSelectedText(selection.toString())
-    } else {
-      setSavedSelection(null)
-      setSelectedText('')
+    try {
+      // Save the current selection before opening dialog
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        setSavedSelection(selection.getRangeAt(0).cloneRange())
+        setSelectedText(selection.toString())
+      } else {
+        setSavedSelection(null)
+        setSelectedText('')
+      }
+      setShowLinkDialog(true)
+    } catch (error) {
+      console.error('Error opening link dialog:', error)
+      setShowLinkDialog(true)
     }
-    setShowLinkDialog(true)
   }
 
   const insertLink = () => {
-    if (linkUrl) {
-      // Restore the saved selection
-      if (savedSelection) {
-        const selection = window.getSelection()
-        selection.removeAllRanges()
-        selection.addRange(savedSelection)
+    try {
+      if (linkUrl) {
+        // Restore the saved selection
+        if (savedSelection) {
+          const selection = window.getSelection()
+          if (selection) {
+            selection.removeAllRanges()
+            selection.addRange(savedSelection)
+          }
+          
+          // Create the link with the selected text
+          execCommand('createLink', linkUrl)
+        } else {
+          // No selection, insert the URL as both text and link
+          execCommand('insertHTML', `<a href="${linkUrl}">${linkUrl}</a>`)
+        }
         
-        // Create the link with the selected text
-        execCommand('createLink', linkUrl)
-      } else {
-        // No selection, insert the URL as both text and link
-        execCommand('insertHTML', `<a href="${linkUrl}">${linkUrl}</a>`)
+        // Clean up
+        setShowLinkDialog(false)
+        setLinkUrl('')
+        setSavedSelection(null)
+        setSelectedText('')
       }
-      
-      // Clean up
-      setShowLinkDialog(false)
-      setLinkUrl('')
-      setSavedSelection(null)
-      setSelectedText('')
+    } catch (error) {
+      console.error('Error inserting link:', error)
     }
   }
 
@@ -193,55 +222,71 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   }
 
   const handleKeyDown = (e) => {
-    // Handle common keyboard shortcuts
-    if (e.ctrlKey || e.metaKey) {
-      switch (e.key) {
-        case 'b':
-          e.preventDefault()
-          execCommand('bold')
-          break
-        case 'i':
-          e.preventDefault()
-          execCommand('italic')
-          break
-        case 'u':
-          e.preventDefault()
-          execCommand('underline')
-          break
+    try {
+      // Handle common keyboard shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+          case 'b':
+            e.preventDefault()
+            execCommand('bold')
+            break
+          case 'i':
+            e.preventDefault()
+            execCommand('italic')
+            break
+          case 'u':
+            e.preventDefault()
+            execCommand('underline')
+            break
+        }
       }
-    }
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      // Insert a line break and maintain cursor position
-      const selection = window.getSelection()
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        const br = document.createElement('br')
-        range.deleteContents()
-        range.insertNode(br)
-        range.setStartAfter(br)
-        range.setEndAfter(br)
-        selection.removeAllRanges()
-        selection.addRange(range)
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        // Insert a line break and maintain cursor position
+        const selection = window.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          const br = document.createElement('br')
+          range.deleteContents()
+          range.insertNode(br)
+          range.setStartAfter(br)
+          range.setEndAfter(br)
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
       }
+    } catch (error) {
+      console.error('Error handling key down:', error)
     }
   }
 
   const handleInput = () => {
-    // Simple input handling - just update the value
-    updateValue()
-  }
-
-  const handleSelectionChange = () => {
-    // Only track selection when needed for link creation
-    if (showLinkDialog) {
-      const selection = window.getSelection()
-      setSelectedText(selection.toString())
+    try {
+      // Simple input handling - just update the value
+      updateValue()
+    } catch (error) {
+      console.error('Error handling input:', error)
     }
   }
 
-  return (
-    <div style={styles.container}>
+  const handleSelectionChange = () => {
+    try {
+      // Only track selection when needed for link creation
+      if (showLinkDialog) {
+        const selection = window.getSelection()
+        if (selection) {
+          setSelectedText(selection.toString())
+        }
+      }
+    } catch (error) {
+      console.error('Error handling selection change:', error)
+    }
+  }
+
+  // Add error boundary for rendering
+  try {
+    return (
+      <div style={styles.container}>
       
       <div style={styles.editorHeader}>
         <Edit />
@@ -412,6 +457,26 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
       </div>
     </div>
   )
+  } catch (error) {
+    console.error('Error rendering SigEditor:', error)
+    return (
+      <div style={styles.container}>
+        <div style={styles.editorHeader}>
+          <Edit />
+          <span style={styles.editorTitle}>Signature Editor</span>
+        </div>
+        <div style={{ padding: '20px', textAlign: 'center', color: '#ef4444' }}>
+          <p>Error loading signature editor. Please refresh the page.</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={styles.saveButton}
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    )
+  }
 }
 
 const styles = {
