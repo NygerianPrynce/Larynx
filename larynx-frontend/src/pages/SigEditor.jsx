@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
+import './SigEditor.css'
 
 // Custom SVG Icons
 const Save = () => (
@@ -93,34 +94,21 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const [selectedText, setSelectedText] = useState('')
   const [savedSelection, setSavedSelection] = useState(null)
 
-  // Initialize editor content only once
+  // Initialize editor content only once - simplified
   useEffect(() => {
     if (editorRef.current && !isInitialized) {
-      let htmlContent = value || ''
-      
-      // If the value looks like plain text (no HTML tags), convert line breaks
-      if (htmlContent && !htmlContent.includes('<') && htmlContent.includes('\n')) {
-        htmlContent = htmlContent.replace(/\n/g, '<br>')
-      }
-      
-      editorRef.current.innerHTML = htmlContent
+      // Simple initialization - just set the content
+      editorRef.current.innerHTML = value || ''
       setIsInitialized(true)
     }
   }, [value, isInitialized])
 
-  // Update value only when user stops typing (debounced)
+  // Simplified update function - no debouncing for better performance
   const updateValue = useCallback(() => {
     if (editorRef.current && isInitialized) {
-      const htmlContent = editorRef.current.innerHTML
-      setValue(htmlContent)
+      setValue(editorRef.current.innerHTML)
     }
   }, [setValue, isInitialized])
-
-  // Debounced update function
-  useEffect(() => {
-    const timeoutId = setTimeout(updateValue, 300)
-    return () => clearTimeout(timeoutId)
-  }, [updateValue])
 
   const execCommand = (command, value = null) => {
     document.execCommand(command, false, value)
@@ -177,31 +165,11 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   }
 
   const increaseFontSize = () => {
-    // Try to increase font size by using larger font sizes
-    const sizes = ['1', '2', '3', '4', '5', '6', '7']
-    const currentSize = document.queryCommandValue('fontSize') || '3'
-    const currentIndex = sizes.indexOf(currentSize)
-    
-    if (currentIndex < sizes.length - 1) {
-      execCommand('fontSize', sizes[currentIndex + 1])
-    } else {
-      // If already at max, try to make it even bigger
-      execCommand('fontSize', '7')
-    }
+    execCommand('fontSize', '7')
   }
 
   const decreaseFontSize = () => {
-    // Try to decrease font size by using smaller font sizes
-    const sizes = ['1', '2', '3', '4', '5', '6', '7']
-    const currentSize = document.queryCommandValue('fontSize') || '3'
-    const currentIndex = sizes.indexOf(currentSize)
-    
-    if (currentIndex > 0) {
-      execCommand('fontSize', sizes[currentIndex - 1])
-    } else {
-      // If already at min, try to make it even smaller
-      execCommand('fontSize', '1')
-    }
+    execCommand('fontSize', '1')
   }
 
   const handleKeyDown = (e) => {
@@ -240,154 +208,20 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   }
 
   const handleInput = () => {
-    // Track selected text for link creation
-    const selection = window.getSelection()
-    setSelectedText(selection.toString())
-    // Don't update immediately to avoid cursor issues
-    // The debounced updateValue will handle this
+    // Simple input handling - just update the value
+    updateValue()
   }
 
   const handleSelectionChange = () => {
-    const selection = window.getSelection()
-    setSelectedText(selection.toString())
+    // Only track selection when needed for link creation
+    if (showLinkDialog) {
+      const selection = window.getSelection()
+      setSelectedText(selection.toString())
+    }
   }
 
   return (
     <div style={styles.container}>
-      <style>
-        {`
-          .toolbar-button {
-            background: transparent !important;
-            border: 1px solid transparent !important;
-            border-radius: 6px !important;
-            color: #d1d5db !important;
-            padding: 8px !important;
-            cursor: pointer !important;
-            transition: all 0.3s ease !important;
-          }
-          
-          .toolbar-button:hover {
-            background: rgba(139, 92, 246, 0.3) !important;
-            border-color: rgba(139, 92, 246, 0.5) !important;
-          }
-          
-          .toolbar-button.active {
-            background: rgba(139, 92, 246, 0.5) !important;
-            border-color: rgba(139, 92, 246, 0.7) !important;
-          }
-          
-          .editor-content {
-            outline: none !important;
-          }
-          
-          .editor-content p {
-            margin: 0 0 12px 0 !important;
-          }
-          
-          .editor-content ul, .editor-content ol {
-            margin: 12px 0 !important;
-            padding-left: 20px !important;
-          }
-          
-          .editor-content a {
-            color: #8b5cf6 !important;
-            text-decoration: underline !important;
-          }
-          
-          .save-button:hover {
-            transform: scale(1.02) !important;
-            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4) !important;
-          }
-          
-          .link-dialog {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: rgba(17, 24, 39, 0.95);
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 16px;
-            backdrop-filter: blur(20px);
-            z-index: 1000;
-            width: 300px;
-          }
-          
-          .link-input {
-            width: 100%;
-            padding: 8px 12px;
-            background: rgba(55, 65, 81, 0.8);
-            border: 1px solid #374151;
-            border-radius: 6px;
-            color: white;
-            font-size: 14px;
-            margin-bottom: 12px;
-          }
-          
-          .link-buttons {
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-          }
-          
-          .link-button {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-          
-          .link-button.primary {
-            background: #8b5cf6;
-            color: white;
-          }
-          
-          .link-button.secondary {
-            background: transparent;
-            color: #d1d5db;
-            border: 1px solid #374151;
-          }
-          
-          .link-button:hover {
-            opacity: 0.8;
-          }
-          
-          .color-picker-dialog {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            background: rgba(17, 24, 39, 0.95);
-            border: 1px solid #374151;
-            border-radius: 8px;
-            padding: 12px;
-            backdrop-filter: blur(20px);
-            z-index: 1000;
-            width: 200px;
-          }
-          
-          .color-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-          }
-          
-          .color-button {
-            width: 32px;
-            height: 32px;
-            border: 2px solid #374151;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-          
-          .color-button:hover {
-            border-color: #8b5cf6;
-            transform: scale(1.1);
-          }
-          
-        `}
-      </style>
       
       <div style={styles.editorHeader}>
         <Edit />
