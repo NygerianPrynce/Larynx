@@ -17,8 +17,9 @@ from fastapi import APIRouter, Request, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
 from config import supabase
-from functions import clean_email_body, refresh_access_token_if_needed, fetch_tone_profile
+from functions import refresh_access_token_if_needed, fetch_tone_profile
 from routes.draft_routes import InventoryMatcher, create_draft_with_gpt
+from services.email_service import EmailProcessingService
 
 router = APIRouter()
 
@@ -199,9 +200,9 @@ async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: 
             except:
                 pass
         
-        # Extract body
-        raw_body = extract_email_body(full_msg)
-        if not raw_body or len(raw_body.strip()) < 10:
+        # Extract body using centralized service
+        raw_body = EmailProcessingService.extract_email_body(full_msg)
+        if EmailProcessingService.is_email_empty_or_too_short(raw_body):
             # Log more details about why the body is empty
             payload_info = {
                 "has_body_data": "data" in full_msg["payload"].get("body", {}),
@@ -747,67 +748,7 @@ async def get_user_account_creation_date(user_id: str) -> Optional[datetime]:
 
 
 
-def extract_email_body(full_msg: dict) -> str:
-    """
-    Extract the email body from Gmail API response with improved handling of various email formats
-    """
-    def extract_from_payload(payload: dict) -> tuple[str, str]:
-        """Extract text from a payload, returns (plain_text, html_text)"""
-        plain_text = ""
-        html_text = ""
-        
-        # Check if body is directly in payload
-        if "data" in payload.get("body", {}):
-            try:
-                content = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="ignore")
-                if payload.get("mimeType") == "text/plain":
-                    plain_text = content
-                elif payload.get("mimeType") == "text/html":
-                    html_text = content
-            except Exception as e:
-                logging.error(f"Error decoding body: {e}")
-        
-        # Check parts for content
-        if "parts" in payload:
-            for part in payload["parts"]:
-                part_plain, part_html = extract_from_payload(part)
-                if part_plain:
-                    plain_text = part_plain
-                if part_html:
-                    html_text = part_html
-                
-                # If we found both, we can stop
-                if plain_text and html_text:
-                    break
-        
-        return plain_text, html_text
-    
-    # Extract content from the main payload
-    plain_text, html_text = extract_from_payload(full_msg["payload"])
-    
-    # Prefer plain text, fallback to HTML
-    if plain_text and len(plain_text.strip()) >= 10:
-        return plain_text
-    elif html_text and len(html_text.strip()) >= 10:
-        # Convert HTML to plain text using BeautifulSoup
-        try:
-            from bs4 import BeautifulSoup
-            soup = BeautifulSoup(html_text, 'html.parser')
-            # Remove script and style elements
-            for script in soup(["script", "style"]):
-                script.decompose()
-            # Get text and clean it up
-            text = soup.get_text()
-            # Clean up whitespace
-            lines = (line.strip() for line in text.splitlines())
-            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-            text = ' '.join(chunk for chunk in chunks if chunk)
-            return text if len(text.strip()) >= 10 else ""
-        except Exception as e:
-            logging.error(f"Error converting HTML to text: {e}")
-            return html_text  # Return raw HTML as fallback
-    
-    return ""
+# Email body extraction moved to EmailProcessingService
 
 async def generate_draft_for_email(user_id: str, subject: str, body: str, sender_name: str) -> tuple[str, Optional[List[Dict]]]:
     """
@@ -1223,15 +1164,15 @@ async def process_and_store_email(user_id: str, email_data: Dict):
     Process a single email: clean, generate draft, store, and create Gmail draft
     """
     try:
-        # Clean the email body
-        cleaned_body, extracted_signature = clean_email_body(email_data['raw_body'])
+        # Clean the email body using centralized service
+        cleaned_body, extracted_signature = EmailProcessingService.clean_email_body(email_data['raw_body'])
         
-        if not cleaned_body or len(cleaned_body.strip()) < 5:
+        if EmailProcessingService.is_email_empty_or_too_short(cleaned_body, min_length=5):
             logging.info(f"Skipping email with empty cleaned body: {email_data['message_id']}")
             return
         
-        # Extract sender name for personalization
-        sender_name = extract_sender_name(email_data['sender'])
+        # Extract sender name for personalization using centralized service
+        sender_name = EmailProcessingService.extract_sender_name(email_data['sender'])
         
         # Generate draft response (now with sender_name)
         draft_text, matched_inventory = await generate_draft_for_email(

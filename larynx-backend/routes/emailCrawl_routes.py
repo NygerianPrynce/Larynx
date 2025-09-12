@@ -11,7 +11,8 @@ from fastapi import APIRouter, Request, HTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from config import supabase
-from functions import clean_email_body, analyze_email_batch, store_tone_profile, refresh_access_token_if_needed
+from functions import analyze_email_batch, store_tone_profile, refresh_access_token_if_needed
+from services.email_service import EmailProcessingService
 
 
 router = APIRouter()
@@ -60,24 +61,9 @@ async def crawl_emails(request: Request):
             if any(bot_id in sender.lower() for bot_id in bot_senders):
                 continue
 
-            # Initialize variables
-            raw_body = ""
-            
-            # Decode the body
-            try:
-                if "data" in full_msg["payload"].get("body", {}):
-                    raw_body = base64.urlsafe_b64decode(full_msg["payload"]["body"]["data"]).decode("utf-8", errors="ignore")
-                elif "parts" in full_msg["payload"]:
-                    for part in full_msg["payload"]["parts"]:
-                        if part["mimeType"] == "text/plain" and "data" in part["body"]:
-                            raw_body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="ignore")
-                            break
-            except Exception as e:
-                print(f"Error decoding email body for message {msg_id}: {e}")
-                raw_body = ""
-
-            # Clean with Talon + custom logic
-            body, sig = clean_email_body(raw_body)
+            # Extract and clean body using centralized service
+            raw_body = EmailProcessingService.extract_email_body(full_msg)
+            body, sig = EmailProcessingService.clean_email_body(raw_body)
             if sig:
                 normalized_sig = "\n".join([line.strip() for line in sig.strip().splitlines() if line.strip()])
                 signature_counter[normalized_sig] += 1

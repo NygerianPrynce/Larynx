@@ -1,11 +1,10 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Depends
 from starlette.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from auth.google_oauth import oauth
 from dotenv import load_dotenv
 from supabase import create_client
 from datetime import datetime, timedelta, timezone
-from fastapi import Depends
 import httpx
 import base64
 import logging
@@ -18,7 +17,6 @@ import json
 from collections import Counter
 import pprint
 from config import supabase
-import httpx
 from bs4 import BeautifulSoup
 from openai import OpenAI
 from urllib.parse import urljoin
