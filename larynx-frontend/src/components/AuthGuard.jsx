@@ -36,9 +36,20 @@ const AuthGuard = ({ children }) => {
       setCurrentMessageIndex(0)
       
       const apiUrl = import.meta.env.VITE_API_URL
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+      
+      console.log('Starting auth check...')
+      const startTime = Date.now()
+      
       const response = await fetch(`${apiUrl}/auth/check`, {
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       })
+      
+      clearTimeout(timeoutId)
+      const endTime = Date.now()
+      console.log(`Auth check completed in ${endTime - startTime}ms`)
 
       if (response.ok) {
         const data = await response.json()
@@ -59,6 +70,9 @@ const AuthGuard = ({ children }) => {
       }
     } catch (error) {
       console.error('Auth check failed:', error)
+      if (error.name === 'AbortError') {
+        console.error('Auth check timed out after 10 seconds')
+      }
       setIsAuthenticated(false)
     } finally {
       setIsChecking(false)
@@ -74,8 +88,7 @@ const AuthGuard = ({ children }) => {
         left: 0,
         width: '100vw',
         height: '100vh',
-        background: 'rgba(0, 0, 0, 0.8)',
-        backdropFilter: 'blur(10px)',
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #000000 50%, #2d2d2d 100%)',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',

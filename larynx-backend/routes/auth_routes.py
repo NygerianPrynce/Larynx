@@ -328,6 +328,10 @@ async def check_auth_status(request: Request):
     Check if user is already authenticated without requiring session
     """
     try:
+        import time
+        start_time = time.time()
+        logging.info("Starting auth check...")
+        
         # Check if there's an existing session
         user_id = request.session.get("user_id")
         user_email = request.session.get("user_email")
@@ -336,7 +340,10 @@ async def check_auth_status(request: Request):
             return {"authenticated": False, "redirect_to": "/login"}
         
         # Check if user exists and has valid tokens
+        db_start = time.time()
         user_data = supabase.table("users").select("has_onboarded, token_status").eq("id", user_id).execute()
+        db_time = time.time() - db_start
+        logging.info(f"Database query took {db_time:.3f}s")
         
         if not user_data.data:
             return {"authenticated": False, "redirect_to": "/login"}
@@ -352,6 +359,9 @@ async def check_auth_status(request: Request):
             redirect_to = "/login"  # Need to re-authenticate
         else:
             redirect_to = "/home"  # User is fully set up
+        
+        total_time = time.time() - start_time
+        logging.info(f"Auth check completed in {total_time:.3f}s")
         
         return {
             "authenticated": True,
