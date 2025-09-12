@@ -46,11 +46,20 @@ const AuthGuard = ({ children }) => {
   if (isChecking) {
     return (
       <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        margin: 0,
+        padding: 0,
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        overflow: 'hidden'
       }}>
         <div style={{
           textAlign: 'center',
@@ -71,6 +80,11 @@ const AuthGuard = ({ children }) => {
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+          }
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
           }
         `}</style>
       </div>
