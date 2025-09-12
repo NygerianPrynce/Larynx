@@ -1207,7 +1207,11 @@ async def process_and_store_email(user_id: str, email_data: Dict):
     """
     try:
         # Clean the email body using centralized service
-        cleaned_body, extracted_signature = EmailProcessingService.clean_email_body(email_data['raw_body'])
+        # Try HTML signature extraction first if the body contains HTML
+        if '<' in email_data['raw_body'] and '>' in email_data['raw_body']:
+            cleaned_body, extracted_signature = EmailProcessingService.extract_html_signature(email_data['raw_body'])
+        else:
+            cleaned_body, extracted_signature = EmailProcessingService.clean_email_body(email_data['raw_body'])
         
         if EmailProcessingService.is_email_empty_or_too_short(cleaned_body, min_length=5):
             logging.info(f"Skipping email with empty cleaned body: {email_data['message_id']}")

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
 
 // Custom SVG Icons
 const Save = () => (
@@ -56,15 +56,29 @@ const ClearFormat = () => (
   </svg>
 )
 
+const ColorPicker = () => (
+  <svg style={{ display: 'inline', width: '16px', height: '16px' }} fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 8 6.5 8 8 8.67 8 9.5 7.33 11 6.5 11zm3-4C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4s1.5.67 1.5 1.5S10.33 7 9.5 7zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 4 14.5 4s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 8 17.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+  </svg>
+)
+
+const FontSize = () => (
+  <svg style={{ display: 'inline', width: '16px', height: '16px' }} fill="currentColor" viewBox="0 0 24 24">
+    <path d="M9 4v3h5.5l-5.5 6H9v3h6v-3h-5.5L16 7H15V4H9z"/>
+  </svg>
+)
+
 const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const editorRef = useRef(null)
   const [showLinkDialog, setShowLinkDialog] = useState(false)
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showFontSizeMenu, setShowFontSizeMenu] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
+  const [isInitialized, setIsInitialized] = useState(false)
 
-  // Properly sync the value with the contentEditable div
+  // Initialize editor content only once
   useEffect(() => {
-    if (editorRef.current) {
-      // Convert plain text line breaks to HTML line breaks if needed
+    if (editorRef.current && !isInitialized) {
       let htmlContent = value || ''
       
       // If the value looks like plain text (no HTML tags), convert line breaks
@@ -72,35 +86,29 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
         htmlContent = htmlContent.replace(/\n/g, '<br>')
       }
       
-      // Only update if the content is actually different to avoid cursor issues
-      if (editorRef.current.innerHTML !== htmlContent) {
-        editorRef.current.innerHTML = htmlContent
-      }
+      editorRef.current.innerHTML = htmlContent
+      setIsInitialized(true)
     }
-  }, [value])
+  }, [value, isInitialized])
+
+  // Update value only when user stops typing (debounced)
+  const updateValue = useCallback(() => {
+    if (editorRef.current && isInitialized) {
+      const htmlContent = editorRef.current.innerHTML
+      setValue(htmlContent)
+    }
+  }, [setValue, isInitialized])
+
+  // Debounced update function
+  useEffect(() => {
+    const timeoutId = setTimeout(updateValue, 300)
+    return () => clearTimeout(timeoutId)
+  }, [updateValue])
 
   const execCommand = (command, value = null) => {
     document.execCommand(command, false, value)
     editorRef.current?.focus()
     updateValue()
-  }
-
-    const updateValue = () => {
-    if (editorRef.current) {
-      // Convert HTML back to clean plain text
-      let plainText = editorRef.current.innerHTML
-        .replace(/<br\s*\/?>/gi, '\n')     // Convert <br> to \n
-        .replace(/<\/div><div>/gi, '\n')   // Convert </div><div> to \n
-        .replace(/<div>/gi, '\n')          // Convert <div> to \n
-        .replace(/<\/div>/gi, '')          // Remove </div>
-        .replace(/<[^>]*>/g, '')           // Remove all other HTML tags
-        .replace(/&nbsp;/g, ' ')           // Convert &nbsp; to spaces
-        .replace(/^\n+/, '')               // Remove leading newlines
-        .replace(/\n+$/, '')               // Remove trailing newlines
-        .replace(/\n{3,}/g, '\n\n')        // Max 2 consecutive newlines
-      
-      setValue(plainText)
-    }
   }
 
   const insertLink = () => {
@@ -109,6 +117,16 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
       setShowLinkDialog(false)
       setLinkUrl('')
     }
+  }
+
+  const changeTextColor = (color) => {
+    execCommand('foreColor', color)
+    setShowColorPicker(false)
+  }
+
+  const changeFontSize = (size) => {
+    execCommand('fontSize', size)
+    setShowFontSizeMenu(false)
   }
 
   const handleKeyDown = (e) => {
@@ -136,7 +154,8 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   }
 
   const handleInput = () => {
-    updateValue()
+    // Don't update immediately to avoid cursor issues
+    // The debounced updateValue will handle this
   }
 
   return (
@@ -239,6 +258,69 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           .link-button:hover {
             opacity: 0.8;
           }
+          
+          .color-picker-dialog {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 12px;
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            width: 200px;
+          }
+          
+          .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+          }
+          
+          .color-button {
+            width: 32px;
+            height: 32px;
+            border: 2px solid #374151;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+          }
+          
+          .color-button:hover {
+            border-color: #8b5cf6;
+            transform: scale(1.1);
+          }
+          
+          .font-size-dialog {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: rgba(17, 24, 39, 0.95);
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 8px;
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            width: 120px;
+          }
+          
+          .font-size-button {
+            width: 100%;
+            padding: 8px 12px;
+            background: transparent;
+            border: 1px solid #374151;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 4px;
+          }
+          
+          .font-size-button:hover {
+            background: rgba(139, 92, 246, 0.3);
+            border-color: #8b5cf6;
+          }
         `}
       </style>
       
@@ -271,6 +353,59 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           >
             <Underline />
           </button>
+          
+          <div style={styles.separator}></div>
+          
+          {/* Color Picker */}
+          <div style={styles.colorContainer}>
+            <button
+              className="toolbar-button"
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              title="Text Color"
+            >
+              <ColorPicker />
+            </button>
+            {showColorPicker && (
+              <div className="color-picker-dialog">
+                <div className="color-grid">
+                  {['#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF', '#FFA500', '#800080', '#008000', '#000080'].map(color => (
+                    <button
+                      key={color}
+                      className="color-button"
+                      style={{ backgroundColor: color }}
+                      onClick={() => changeTextColor(color)}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Font Size */}
+          <div style={styles.fontSizeContainer}>
+            <button
+              className="toolbar-button"
+              onClick={() => setShowFontSizeMenu(!showFontSizeMenu)}
+              title="Font Size"
+            >
+              <FontSize />
+            </button>
+            {showFontSizeMenu && (
+              <div className="font-size-dialog">
+                {[1, 2, 3, 4, 5, 6, 7].map(size => (
+                  <button
+                    key={size}
+                    className="font-size-button"
+                    onClick={() => changeFontSize(size)}
+                    title={`Size ${size}`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           
           <div style={styles.separator}></div>
           
@@ -414,6 +549,12 @@ const styles = {
     margin: '0 8px'
   },
   linkContainer: {
+    position: 'relative'
+  },
+  colorContainer: {
+    position: 'relative'
+  },
+  fontSizeContainer: {
     position: 'relative'
   },
   editor: {

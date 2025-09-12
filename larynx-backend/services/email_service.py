@@ -105,6 +105,78 @@ class EmailProcessingService:
         return cleaned, signature.strip() if signature else None
     
     @staticmethod
+    def extract_html_signature(raw_body: str) -> Tuple[str, Optional[str]]:
+        """
+        Enhanced signature extraction that preserves HTML formatting
+        Returns: (cleaned_body, html_signature)
+        """
+        try:
+            # Parse HTML content
+            soup = BeautifulSoup(raw_body, 'html.parser')
+            
+            # Remove quoted reply history (look for common quote patterns)
+            for quote_pattern in ['blockquote', '.gmail_quote', '[data-ogsc]']:
+                for element in soup.select(quote_pattern):
+                    element.decompose()
+            
+            # Look for signature patterns in HTML
+            signature_elements = []
+            signature_text = None
+            
+            # Common signature patterns
+            signature_selectors = [
+                'div[data-smartmail="gmail_signature"]',
+                '.gmail_signature',
+                'div[data-ogsc]',
+                'div[style*="font-family:arial,sans-serif"]',
+                'div[style*="color:rgb(136,136,136)"]'
+            ]
+            
+            for selector in signature_selectors:
+                elements = soup.select(selector)
+                if elements:
+                    signature_elements.extend(elements)
+                    break
+            
+            # If no specific signature elements found, try to detect by content patterns
+            if not signature_elements:
+                # Look for elements that might contain signatures
+                all_divs = soup.find_all('div')
+                for div in all_divs:
+                    text_content = div.get_text().strip()
+                    if (text_content and 
+                        len(text_content) < 500 and  # Signatures are usually short
+                        any(pattern in text_content.lower() for pattern in [
+                            'best regards', 'sincerely', 'thanks', 'cheers',
+                            'sent from my', 'get outlook', 'get gmail'
+                        ])):
+                        signature_elements.append(div)
+                        break
+            
+            # Extract signature HTML
+            if signature_elements:
+                signature_html = ""
+                for element in signature_elements:
+                    signature_html += str(element)
+                    element.decompose()  # Remove from main content
+                
+                signature_text = signature_html.strip()
+            
+            # Clean the remaining body
+            cleaned_body = str(soup)
+            
+            # Convert to plain text for the cleaned body
+            cleaned_text = soup.get_text()
+            cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+            
+            return cleaned_text, signature_text
+            
+        except Exception as e:
+            logging.warning(f"HTML signature extraction failed: {e}")
+            # Fallback to plain text extraction
+            return EmailProcessingService.clean_email_body(raw_body)
+    
+    @staticmethod
     def extract_sender_name(sender: str) -> str:
         """
         Extract sender name from email address, returning only the first name

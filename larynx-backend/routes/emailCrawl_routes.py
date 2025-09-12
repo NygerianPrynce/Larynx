@@ -63,7 +63,11 @@ async def crawl_emails(request: Request):
 
             # Extract and clean body using centralized service
             raw_body = EmailProcessingService.extract_email_body(full_msg)
-            body, sig = EmailProcessingService.clean_email_body(raw_body)
+            # Try HTML signature extraction first if the body contains HTML
+            if '<' in raw_body and '>' in raw_body:
+                body, sig = EmailProcessingService.extract_html_signature(raw_body)
+            else:
+                body, sig = EmailProcessingService.clean_email_body(raw_body)
             if sig:
                 normalized_sig = "\n".join([line.strip() for line in sig.strip().splitlines() if line.strip()])
                 signature_counter[normalized_sig] += 1
