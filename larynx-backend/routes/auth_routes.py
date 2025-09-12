@@ -25,12 +25,12 @@ async def login(request: Request):
     if not redirect_uri:
         raise HTTPException(status_code=500, detail="GOOGLE_REDIRECT_URI not configured")
     
-    # Manually add access_type=offline and prompt=consent to ensure refresh tokens
+    # For new users or users without refresh tokens, we'll handle consent in the callback
+    # This avoids forcing consent on every login for existing users
     return await oauth.google.authorize_redirect(
         request, 
         redirect_uri,
-        access_type="offline", 
-        prompt="consent",  # Force consent to get refresh token
+        access_type="offline"
     )
 
 # Step 2: Google sends the user back here (with a code)
@@ -89,10 +89,13 @@ async def auth_callback(request: Request):
         # Use new refresh_token if present, otherwise fallback to existing
         refresh_token_to_store = token.get("refresh_token") or existing_refresh_token
         
-        # If we still don't have a refresh token, this is a problem
+        # If we still don't have a refresh token, redirect back to Google with consent
         if not refresh_token_to_store:
-            logging.warning(f"No refresh token received for user {user_id} - this will cause issues later")
-            # We could redirect to re-auth here, but for now just log the warning
+            logging.info(f"No refresh token received for user {user_id} - redirecting with consent")
+            from fastapi.responses import RedirectResponse
+            redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+            consent_url = f"https://accounts.google.com/oauth/authorize?client_id={os.getenv('GOOGLE_CLIENT_ID')}&redirect_uri={redirect_uri}&scope=openid%20email%20profile%20https://www.googleapis.com/auth/gmail.readonly%20https://www.googleapis.com/auth/gmail.compose&response_type=code&access_type=offline&prompt=consent"
+            return RedirectResponse(consent_url)
         
         # Upsert token
         supabase.table("tokens").upsert({
@@ -302,3 +305,21 @@ async def get_token_status(request: Request):
     except Exception as e:
         logging.error(f"Error checking token status for user {user_id}: {str(e)}")
         return {"status": "error", "needs_reauth": True}
+
+@router.get("/auth/reauth")
+async def reauth_with_consent(request: Request):
+    """
+    Re-authenticate with Google, forcing consent to get a new refresh token.
+    Use this when existing users need to refresh their tokens.
+    """
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
+    if not redirect_uri:
+        raise HTTPException(status_code=500, detail="GOOGLE_REDIRECT_URI not configured")
+    
+    # Force consent to get a new refresh token
+    return await oauth.google.authorize_redirect(
+        request, 
+        redirect_uri,
+        access_type="offline",
+        prompt="consent"  # Force consent for re-authentication
+    )
