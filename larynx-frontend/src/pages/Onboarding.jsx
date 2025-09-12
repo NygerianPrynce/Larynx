@@ -140,6 +140,56 @@ const Onboarding = () => {
     'Almost done...'
   ]
 
+  const signatureMessages = [
+    'Fetching your signature...',
+    'Analyzing your email style...',
+    'Extracting formatting details...',
+    'Almost ready...'
+  ]
+
+  const websiteAnalysisMessages = [
+    'Analyzing your website...',
+    'Extracting brand information...',
+    'Understanding your business...',
+    'Processing content...',
+    'Almost done...'
+  ]
+
+  const brandSummaryMessages = [
+    'Generating your brand summary...',
+    'Analyzing your content...',
+    'Creating your profile...',
+    'Almost ready...'
+  ]
+
+  const toneSetupMessages = [
+    'Setting up your tone...',
+    'Configuring preferences...',
+    'Finalizing setup...',
+    'Almost done...'
+  ]
+
+  const processingMessages = [
+    'Processing your information...',
+    'Analyzing your data...',
+    'Setting up your profile...',
+    'Almost ready...'
+  ]
+
+  const monitoringMessages = [
+    'Enabling email monitoring...',
+    'Setting up permissions...',
+    'Configuring your inbox...',
+    'Almost done...'
+  ]
+
+  const deleteAccountMessages = [
+    'Deleting your account...',
+    'Removing your data...',
+    'Cleaning up...',
+    'Almost done...'
+  ]
+
   useEffect(() => {
     try {
       const generateParticles = () => {
@@ -189,9 +239,19 @@ const Onboarding = () => {
     }
   }
 
-  const setLoadingState = (loading, message = '') => {
+  const setLoadingState = (loading, messages = []) => {
     setIsLoading(loading)
-    setLoadingMessage(message)
+    if (Array.isArray(messages) && messages.length > 0) {
+      setEmailCrawlMessages(messages)
+      setCurrentMessageIndex(0)
+      setLoadingMessage('')
+    } else if (typeof messages === 'string') {
+      setLoadingMessage(messages)
+      setEmailCrawlMessages([])
+    } else {
+      setLoadingMessage('')
+      setEmailCrawlMessages([])
+    }
     if (!loading) {
       setEmailCrawlMessages([])
       setShowSuccessMessage(false)
@@ -200,7 +260,7 @@ const Onboarding = () => {
 
   const fetchSignature = async () => {
     await handleAsyncOperation(async () => {
-      setLoadingState(true, 'Fetching your signature...')
+      setLoadingState(true, signatureMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
@@ -232,7 +292,7 @@ const Onboarding = () => {
 
   const updateSignature = async () => {
     await handleAsyncOperation(async () => {
-      setLoadingState(true, 'Saving your signature...')
+      setLoadingState(true, signatureMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
@@ -264,7 +324,7 @@ const Onboarding = () => {
 
   const fetchBrandSummary = async () => {
     await handleAsyncOperation(async () => {
-      setLoadingState(true, 'Generating your brand summary...')
+      setLoadingState(true, brandSummaryMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000)
@@ -295,7 +355,7 @@ const Onboarding = () => {
 
   const handleConfirmBrandSummary = async () => {
     await handleAsyncOperation(async () => {
-      setLoadingState(true, 'Saving your brand summary...')
+      setLoadingState(true, brandSummaryMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
@@ -357,7 +417,7 @@ const Onboarding = () => {
     setErrors({ ...errors, websiteUrl: null })
     
     try {
-      setLoadingState(true, 'Analyzing your website...')
+      setLoadingState(true, websiteAnalysisMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 45000)
@@ -419,7 +479,7 @@ const Onboarding = () => {
 
   const handleManualSubmit = async () => {
     await handleAsyncOperation(async () => {
-      setLoadingState(true, 'Processing your information...')
+      setLoadingState(true, processingMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000)
@@ -487,7 +547,7 @@ const Onboarding = () => {
 
   const handleGenericTone = async () => {
     await handleAsyncOperation(async () => {
-      setLoadingState(true, 'Setting up default tone...')
+      setLoadingState(true, toneSetupMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
@@ -954,7 +1014,7 @@ const Onboarding = () => {
                     if (!confirmed) return
 
                     await handleAsyncOperation(async () => {
-                      setLoadingState(true, 'Deleting your account...')
+                      setLoadingState(true, deleteAccountMessages)
                       
                       const controller = new AbortController()
                       const timeoutId = setTimeout(() => controller.abort(), 10000)
@@ -986,7 +1046,7 @@ const Onboarding = () => {
                 <button
                   onClick={async () => {
                     await handleAsyncOperation(async () => {
-                      setLoadingState(true, 'Enabling email monitoring...')
+                      setLoadingState(true, monitoringMessages)
                       
                       const controller = new AbortController()
                       const timeoutId = setTimeout(() => controller.abort(), 30000)
