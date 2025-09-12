@@ -58,39 +58,81 @@ async def is_email_already_seen(user_id: str, message_id: str) -> bool:
     Check if we've already evaluated this email (processed OR filtered)
     Returns True if we should skip this email
     """
-    try:
-        # Check if already processed successfully
-        processed = supabase.table("drafts").select("id").eq("user_id", user_id).eq("message_id", message_id).limit(1).execute()
-        if len(processed.data) > 0:
-            return True
-        
-        # Check if already filtered out
-        filtered = supabase.table("filtered_emails").select("id").eq("user_id", user_id).eq("message_id", message_id).limit(1).execute()
-        if len(filtered.data) > 0:
-            return True
+    import asyncio
+    
+    for attempt in range(3):  # Retry up to 3 times
+        try:
+            # Check if already processed successfully
+            processed = supabase.table("drafts").select("id").eq("user_id", user_id).eq("message_id", message_id).limit(1).execute()
+            if len(processed.data) > 0:
+                return True
             
-        return False
-    except Exception as e:
-        logging.error(f"Error checking if email already seen: {str(e)}")
-        return False
+            # Check if already filtered out
+            filtered = supabase.table("filtered_emails").select("id").eq("user_id", user_id).eq("message_id", message_id).limit(1).execute()
+            if len(filtered.data) > 0:
+                return True
+                
+            return False
+            
+        except Exception as e:
+            error_str = str(e)
+            logging.warning(f"Database query attempt {attempt + 1} failed: {error_str}")
+            
+            # Check if it's a 502/connection error
+            if "502" in error_str or "Bad Gateway" in error_str or "JSON could not be generated" in error_str:
+                if attempt < 2:  # Don't wait on last attempt
+                    wait_time = (attempt + 1) * 2  # 2, 4 seconds
+                    logging.info(f"Retrying database query in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logging.error(f"All database query attempts failed for email {message_id}: {error_str}")
+                    return False  # Assume not seen to avoid skipping emails
+            else:
+                # Non-retryable error
+                logging.error(f"Non-retryable error checking if email already seen: {error_str}")
+                return False
+    
+    return False
 
 async def mark_email_as_filtered(user_id: str, message_id: str, reason: str, sender: str = "", subject: str = ""):
     """
     Mark an email as filtered so we don't check it again
     """
-    try:
-        supabase.table("filtered_emails").upsert({
-            "user_id": user_id,
-            "message_id": message_id,
-            "filter_reason": reason,
-            "sender": sender[:255] if sender else "",  # Limit length
-            "subject": subject[:255] if subject else "",  # Limit length
-            "created_at": datetime.utcnow().isoformat()
-        }, on_conflict="user_id,message_id").execute()
-        
-        logging.info(f"Marked email {message_id} as filtered: {reason}")
-    except Exception as e:
-        logging.error(f"Error marking email as filtered: {str(e)}")
+    import asyncio
+    
+    for attempt in range(3):  # Retry up to 3 times
+        try:
+            supabase.table("filtered_emails").upsert({
+                "user_id": user_id,
+                "message_id": message_id,
+                "filter_reason": reason,
+                "sender": sender[:255] if sender else "",  # Limit length
+                "subject": subject[:255] if subject else "",  # Limit length
+                "created_at": datetime.utcnow().isoformat()
+            }, on_conflict="user_id,message_id").execute()
+            
+            logging.info(f"Marked email {message_id} as filtered: {reason}")
+            return  # Success, exit retry loop
+            
+        except Exception as e:
+            error_str = str(e)
+            logging.warning(f"Database upsert attempt {attempt + 1} failed: {error_str}")
+            
+            # Check if it's a 502/connection error
+            if "502" in error_str or "Bad Gateway" in error_str or "JSON could not be generated" in error_str:
+                if attempt < 2:  # Don't wait on last attempt
+                    wait_time = (attempt + 1) * 2  # 2, 4 seconds
+                    logging.info(f"Retrying database upsert in {wait_time} seconds...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                else:
+                    logging.error(f"All database upsert attempts failed for email {message_id}: {error_str}")
+                    return  # Give up after 3 attempts
+            else:
+                # Non-retryable error
+                logging.error(f"Non-retryable error marking email as filtered: {error_str}")
+                return
 
 async def check_for_new_emails(user_id: str) -> List[Dict]:
     """
