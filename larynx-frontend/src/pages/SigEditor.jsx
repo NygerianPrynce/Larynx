@@ -62,12 +62,26 @@ const ColorPicker = () => (
   </svg>
 )
 
-const FontDecrease = () => (
-  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>-A</span>
-)
-
-const FontIncrease = () => (
-  <span style={{ fontSize: '14px', fontWeight: 'bold' }}>A+</span>
+const FontSizeControl = ({ onDecrease, onIncrease }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+    <button
+      className="toolbar-button"
+      onClick={onDecrease}
+      title="Decrease Font Size"
+      style={{ padding: '4px 8px', minWidth: 'auto' }}
+    >
+      <span style={{ fontSize: '12px', fontWeight: 'bold' }}>-</span>
+    </button>
+    <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#d1d5db', minWidth: '16px', textAlign: 'center' }}>A</span>
+    <button
+      className="toolbar-button"
+      onClick={onIncrease}
+      title="Increase Font Size"
+      style={{ padding: '4px 8px', minWidth: 'auto' }}
+    >
+      <span style={{ fontSize: '12px', fontWeight: 'bold' }}>+</span>
+    </button>
+  </div>
 )
 
 const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
@@ -134,13 +148,31 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   }
 
   const increaseFontSize = () => {
-    execCommand('fontSize', '7') // Use a large size
-    execCommand('fontSize', '6') // Then reduce to make it bigger than current
+    // Try to increase font size by using larger font sizes
+    const sizes = ['1', '2', '3', '4', '5', '6', '7']
+    const currentSize = document.queryCommandValue('fontSize') || '3'
+    const currentIndex = sizes.indexOf(currentSize)
+    
+    if (currentIndex < sizes.length - 1) {
+      execCommand('fontSize', sizes[currentIndex + 1])
+    } else {
+      // If already at max, try to make it even bigger
+      execCommand('fontSize', '7')
+    }
   }
 
   const decreaseFontSize = () => {
-    execCommand('fontSize', '1') // Use a small size
-    execCommand('fontSize', '2') // Then increase slightly
+    // Try to decrease font size by using smaller font sizes
+    const sizes = ['1', '2', '3', '4', '5', '6', '7']
+    const currentSize = document.queryCommandValue('fontSize') || '3'
+    const currentIndex = sizes.indexOf(currentSize)
+    
+    if (currentIndex > 0) {
+      execCommand('fontSize', sizes[currentIndex - 1])
+    } else {
+      // If already at min, try to make it even smaller
+      execCommand('fontSize', '1')
+    }
   }
 
   const handleKeyDown = (e) => {
@@ -386,21 +418,11 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
             )}
           </div>
           
-          {/* Font Size Controls */}
-          <button
-            className="toolbar-button"
-            onClick={decreaseFontSize}
-            title="Decrease Font Size"
-          >
-            <FontDecrease />
-          </button>
-          <button
-            className="toolbar-button"
-            onClick={increaseFontSize}
-            title="Increase Font Size"
-          >
-            <FontIncrease />
-          </button>
+          {/* Font Size Control */}
+          <FontSizeControl 
+            onDecrease={decreaseFontSize}
+            onIncrease={increaseFontSize}
+          />
           
           <div style={styles.separator}></div>
           
