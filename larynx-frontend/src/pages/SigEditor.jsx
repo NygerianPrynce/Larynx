@@ -91,6 +91,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const [linkUrl, setLinkUrl] = useState('')
   const [isInitialized, setIsInitialized] = useState(false)
   const [selectedText, setSelectedText] = useState('')
+  const [savedSelection, setSavedSelection] = useState(null)
 
   // Initialize editor content only once
   useEffect(() => {
@@ -127,19 +128,47 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     updateValue()
   }
 
+  const openLinkDialog = () => {
+    // Save the current selection before opening dialog
+    const selection = window.getSelection()
+    if (selection.rangeCount > 0) {
+      setSavedSelection(selection.getRangeAt(0).cloneRange())
+      setSelectedText(selection.toString())
+    } else {
+      setSavedSelection(null)
+      setSelectedText('')
+    }
+    setShowLinkDialog(true)
+  }
+
   const insertLink = () => {
     if (linkUrl) {
-      // Check if there's selected text, if not, use the URL as the link text
-      const selection = window.getSelection()
-      if (selection.toString().trim()) {
+      // Restore the saved selection
+      if (savedSelection) {
+        const selection = window.getSelection()
+        selection.removeAllRanges()
+        selection.addRange(savedSelection)
+        
+        // Create the link with the selected text
         execCommand('createLink', linkUrl)
       } else {
-        // Insert the URL as both the text and the link
+        // No selection, insert the URL as both text and link
         execCommand('insertHTML', `<a href="${linkUrl}">${linkUrl}</a>`)
       }
+      
+      // Clean up
       setShowLinkDialog(false)
       setLinkUrl('')
+      setSavedSelection(null)
+      setSelectedText('')
     }
+  }
+
+  const cancelLinkDialog = () => {
+    setShowLinkDialog(false)
+    setLinkUrl('')
+    setSavedSelection(null)
+    setSelectedText('')
   }
 
   const changeTextColor = (color) => {
@@ -446,13 +475,18 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           <div style={styles.linkContainer}>
             <button
               className="toolbar-button"
-              onClick={() => setShowLinkDialog(!showLinkDialog)}
+              onClick={openLinkDialog}
               title="Insert Link"
             >
               <Link />
             </button>
             {showLinkDialog && (
               <div className="link-dialog">
+                {selectedText && (
+                  <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px' }}>
+                    Selected text: "{selectedText}"
+                  </div>
+                )}
                 <input
                   type="text"
                   className="link-input"
@@ -465,10 +499,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
                 <div className="link-buttons">
                   <button
                     className="link-button secondary"
-                    onClick={() => {
-                      setShowLinkDialog(false)
-                      setLinkUrl('')
-                    }}
+                    onClick={cancelLinkDialog}
                   >
                     Cancel
                   </button>
