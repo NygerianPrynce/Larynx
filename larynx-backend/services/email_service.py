@@ -107,22 +107,32 @@ class EmailProcessingService:
     @staticmethod
     def extract_sender_name(sender: str) -> str:
         """
-        Extract sender name from email address
+        Extract sender name from email address, returning only the first name
         """
         if not sender:
             return "there"
+        
+        full_name = ""
         
         # Handle "Name <email@domain.com>" format
         if '<' in sender and '>' in sender:
             name_part = sender.split('<')[0].strip()
             if name_part:
-                return name_part
+                full_name = name_part
         
         # Handle "email@domain.com" format
-        if '@' in sender:
-            return sender.split('@')[0].replace('.', ' ').title()
+        elif '@' in sender:
+            full_name = sender.split('@')[0].replace('.', ' ').title()
         
-        return sender
+        else:
+            full_name = sender
+        
+        # Extract first name only
+        if full_name:
+            first_name = full_name.split()[0] if full_name.split() else full_name
+            return first_name
+        
+        return "there"
     
     @staticmethod
     def is_email_empty_or_too_short(email_body: str, min_length: int = 10) -> bool:

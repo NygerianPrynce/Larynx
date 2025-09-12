@@ -1327,29 +1327,7 @@ async def create_gmail_draft_endpoint(draft_id: str, request: Request):
         logging.error(f"Error creating Gmail draft: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
     
-def extract_sender_name(sender: str) -> str:
-    """
-    Extract just the first name from email sender (e.g., "John Doe <john@example.com>" -> "John")
-    """
-    import re
-    
-    # Pattern to match "Name <email>" or just "Name"
-    name_match = re.match(r'^([^<]+)<.*>$', sender.strip())
-    if name_match:
-        full_name = name_match.group(1).strip().strip('"')
-        # Get just the first name (first word)
-        return full_name.split()[0] if full_name else ""
-    
-    # If no angle brackets, check if it's just an email or a name
-    if '@' in sender:
-        # It's likely just an email, try to make a name from the part before @
-        email_part = sender.split('@')[0]
-        # Replace dots and underscores with spaces and title case, then take first word
-        formatted_name = email_part.replace('.', ' ').replace('_', ' ').title()
-        return formatted_name.split()[0] if formatted_name else ""
-    
-    # Otherwise, assume it's already just a name - take first word
-    return sender.strip().split()[0] if sender.strip() else ""
+# Note: extract_sender_name function moved to EmailProcessingService for centralization
 
 
 
