@@ -279,7 +279,7 @@ const Navbar = () => {
             </Link>
             <Link to="/manage-inventory" style={styles.link} className="navbar-link">
               <span style={{...styles.linkIcon, color: '#8b5cf6'}}><Package /></span>
-              <span>Inventory</span>
+              <span>Offerings</span>
             </Link>
             <Link to="/analytics" style={styles.link} className="navbar-link">
               <span style={{...styles.linkIcon, color: '#10b981'}}><TrendingUp /></span>
@@ -328,7 +328,7 @@ const Navbar = () => {
               </div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/manage-inventory')}>
                 <span style={{...styles.dropdownIcon, color: '#8b5cf6'}}><Package /></span>
-                <span>Inventory</span>
+                <span>Offerings</span>
               </div>
               <div style={styles.dropdownSeparator}></div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={handleLogout}>
@@ -360,7 +360,7 @@ const Navbar = () => {
             </Link>
             <Link to="/manage-inventory" style={styles.mobileLink} className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
               <span style={{...styles.mobileLinkIcon, color: '#8b5cf6'}}><Package /></span>
-              <span>Inventory</span>
+              <span>Offerings</span>
             </Link>
             <Link to="/analytics" style={styles.mobileLink} className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
               <span style={{...styles.mobileLinkIcon, color: '#10b981'}}><TrendingUp /></span>

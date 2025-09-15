@@ -415,20 +415,20 @@ const InventoryPage = ({ onNext, embedded = false }) => {
         {/* Header - only show if not embedded */}
         {!embedded && (
           <div style={styles.header}>
-            <h1 style={styles.title}>Inventory Management</h1>
+            <h1 style={styles.title}>What You Offer</h1>
             <p style={styles.subtitle}>
-              Manage your product catalog and pricing - include delivery fees and special charges
+              Add your products, services, packages, consultations, or any offerings your customers can book or purchase.
             </p>
           </div>
         )}
 
         {/* Add New Item Section */}
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Add New Item</h2>
+          <h2 style={styles.sectionTitle}>Add New Offering</h2>
           <div style={styles.addItemForm}>
             <input
               style={styles.input}
-              placeholder="Product name"
+              placeholder="Offering name"
               value={newItem.name}
               onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
               onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
@@ -449,14 +449,14 @@ const InventoryPage = ({ onNext, embedded = false }) => {
               disabled={!newItem.name?.trim() || !newItem.price}
             >
               <Plus />
-              <span>Add Item</span>
+              <span>Add Offering</span>
             </button>
           </div>
         </div>
 
         {/* Bulk Upload Section */}
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Bulk Upload</h2>
+          <h2 style={styles.sectionTitle}>Bulk Upload Your Offerings</h2>
           <div style={styles.uploadForm}>
             <div style={styles.fileInputWrapper}>
               <input
@@ -477,7 +477,7 @@ const InventoryPage = ({ onNext, embedded = false }) => {
               onClick={handleCSVUpload}
               disabled={!file || loading}
             >
-              <span>{loading ? 'Uploading...' : 'Upload to Inventory'}</span>
+              <span>{loading ? 'Uploading...' : 'Add Offerings'}</span>
             </button>
           </div>
           <div style={styles.uploadHint}>
@@ -494,12 +494,12 @@ const InventoryPage = ({ onNext, embedded = false }) => {
 
         {/* Inventory Table */}
         <div style={styles.section}>
-          <h2 style={styles.sectionTitle}>Current Inventory ({inventory.length} items)</h2>
+          <h2 style={styles.sectionTitle}>Your Offerings ({inventory.length} total)</h2>
           <div style={styles.tableContainer}>
             <table style={styles.table}>
               <thead>
                 <tr style={styles.tableHeader}>
-                  <th style={styles.th}>Product Name</th>
+                  <th style={styles.th}>Offering Name</th>
                   <th style={styles.th}>Price</th>
                   <th style={styles.th}>Actions</th>
                 </tr>
