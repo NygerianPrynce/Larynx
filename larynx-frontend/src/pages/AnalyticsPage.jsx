@@ -113,7 +113,7 @@ const AnalyticsPage = () => {
   // Helper functions for activity categorization
   const getActivityType = (activityType) => {
     if (activityType === 'email_draft') return 'email'
-    if (activityType.startsWith('inventory_')) return 'inventory'
+    if (activityType.startsWith('inventory_')) return 'offerings'
     return 'other'  // This includes special_instructions and anything else
   }
 
@@ -270,10 +270,10 @@ const AnalyticsPage = () => {
   const getActivityStats = () => {
     const total = filteredActivity.length
     const emailCount = filteredActivity.filter(a => a.type === 'email').length
-    const inventoryCount = filteredActivity.filter(a => a.type === 'inventory').length
-    const otherCount = total - emailCount - inventoryCount
+    const offeringsCount = filteredActivity.filter(a => a.type === 'offerings').length
+    const otherCount = total - emailCount - offeringsCount
 
-    return { total, emailCount, inventoryCount, otherCount }
+    return { total, emailCount, offeringsCount, otherCount }
   }
 
   // If there's an error, show the error page
@@ -425,8 +425,8 @@ const AnalyticsPage = () => {
                     <Package />
                   </div>
                   <div style={styles.breakdownContent}>
-                    <div style={{...styles.breakdownNumber, color: '#3b82f6'}}>{activityStats.inventoryCount}</div>
-                    <div style={styles.breakdownLabel}>Inventory Updates</div>
+                    <div style={{...styles.breakdownNumber, color: '#3b82f6'}}>{activityStats.offeringsCount}</div>
+                    <div style={styles.breakdownLabel}>Offering Updates</div>
                   </div>
                 </div>
                 <div style={styles.breakdownCard}>
@@ -449,7 +449,7 @@ const AnalyticsPage = () => {
                   <div style={styles.filterGroup}>
                     <span style={styles.filterLabel}>Type:</span>
                     <div style={styles.filterButtons}>
-                      {['all', 'email', 'inventory', 'other'].map((filter) => (
+                      {['all', 'email', 'offerings', 'other'].map((filter) => (
                         <button
                           key={filter}
                           style={{

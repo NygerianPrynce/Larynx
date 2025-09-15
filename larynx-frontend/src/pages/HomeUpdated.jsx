@@ -254,7 +254,7 @@ const Home = () => {
                   fontWeight: '500'
                 }}
               >
-                Manage Inventory <ArrowRight />
+                Manage Offerings <ArrowRight />
               </button>
               
               <button

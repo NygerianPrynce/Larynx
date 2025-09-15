@@ -191,8 +191,8 @@ const LarynxAILaunch = () => {
     },
     {
       icon: Layers,
-      title: "Smart Inventory Integration",
-      description: "Our AI analyzes incoming email content to identify relevant products or services mentioned, then automatically incorporates accurate inventory information, pricing, and availability into your draft responses."
+      title: "Smart Offerings Integration",
+      description: "Our AI analyzes incoming email content to identify relevant products or services mentioned, then automatically incorporates accurate offering information, pricing, and availability into your draft responses."
     }
   ]
 
@@ -1131,7 +1131,7 @@ const LarynxAILaunch = () => {
           </h1>
           <p style={styles.heroSubtitle} className="hero-subtitle">
             <strong>Larynx AI writes emails that sound just like you—automatically.</strong><br />
-            It stays perfectly in sync with your inventory, services, and business needs.<br />
+            It stays perfectly in sync with your offerings, services, and business needs.<br />
             <strong>Ideal for small businesses</strong> like caterers, rental companies, retailers, salons, and service providers.<br />
             <em>Experience the future of email automation.</em>
           </p>
@@ -1180,7 +1180,7 @@ const LarynxAILaunch = () => {
             </div>
             <div>
               <div style={{...styles.statNumber, color: '#3b82f6'}}>Smart</div>
-              <div style={styles.statLabel}>Inventory Sync</div>
+              <div style={styles.statLabel}>Offerings Sync</div>
             </div>
             <div>
               <div style={styles.statNumber}>Instant</div>
@@ -1195,12 +1195,12 @@ const LarynxAILaunch = () => {
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>1</div>
               <h3 style={styles.stepTitle}>Complete Setup</h3>
-              <p style={styles.stepDescription}>Add your business info, writing style, sign off, and inventory through our guided onboarding process</p>
+              <p style={styles.stepDescription}>Add your business info, writing style, sign off, and offerings through our guided onboarding process</p>
             </div>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>2</div>
               <h3 style={styles.stepTitle}>AI Takes Over</h3>
-              <p style={styles.stepDescription}>Our system monitors your Gmail and automatically generates draft replies using your business context and inventory data</p>
+              <p style={styles.stepDescription}>Our system monitors your Gmail and automatically generates draft replies using your business context and offerings data</p>
             </div>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>3</div>

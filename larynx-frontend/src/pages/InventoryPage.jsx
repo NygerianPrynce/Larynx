@@ -589,7 +589,7 @@ const InventoryPage = ({ onNext, embedded = false }) => {
             </table>
             {inventory.length === 0 && (
               <div style={styles.emptyState}>
-                <p>No items in inventory yet. Add your first item above!</p>
+                <p>No offerings yet. Add your first offering above!</p>
               </div>
             )}
           </div>

@@ -51,7 +51,7 @@ const PrivacyPolicy = () => {
           <ul style={styles.list}>
             <li>Provide and improve our AI email drafting service</li>
             <li>Generate personalized email responses that match your writing style</li>
-            <li>Sync with your inventory and business data for accurate communications</li>
+            <li>Sync with your offerings and business data for accurate communications</li>
             <li>Provide customer support and technical assistance</li>
             <li>Ensure security and prevent fraud</li>
             <li>Comply with legal obligations</li>

@@ -626,7 +626,7 @@ const Onboarding = () => {
       case 'summary': return 'Review your brand summary'
       case 'tone': return 'Personalize your email tone'
       case 'signoff': return 'Create your email sign off'
-      case 'inventory': return 'Add your products/services'
+      case 'inventory': return 'Add your offerings'
       case 'monitoringConsent': return 'Enable email monitoring'
       case 'finalizing': return 'Setting up your account'
       default: return 'Welcome to Larynx AI'

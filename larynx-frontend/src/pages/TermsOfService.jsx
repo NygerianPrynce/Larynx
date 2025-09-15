@@ -41,7 +41,7 @@ const TermsOfService = () => {
           </p>
           <ul style={styles.list}>
             <li>Generate email responses that match your writing style</li>
-            <li>Sync with your business inventory for accurate communications</li>
+            <li>Sync with your business offerings for accurate communications</li>
             <li>Automate email drafting while maintaining your authentic voice</li>
             <li>Provide analytics and insights on your email communications</li>
           </ul>
