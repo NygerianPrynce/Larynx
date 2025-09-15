@@ -104,21 +104,47 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const [selectedText, setSelectedText] = useState('')
   const [savedSelection, setSavedSelection] = useState(null)
 
-  // Initialize editor content only once - simplified
+  // Initialize editor content only once
   useEffect(() => {
     if (editorRef.current && !isInitialized) {
-      // Simple initialization - just set the content
+      // Set initial content
       editorRef.current.innerHTML = value || ''
       setIsInitialized(true)
     }
-  }, [value, isInitialized])
+  }, [isInitialized]) // Only depend on isInitialized to prevent loops
 
-  // Simplified update function - no debouncing for better performance
-  const updateValue = useCallback(() => {
+  // Handle external value changes (from parent component)
+  useEffect(() => {
     if (editorRef.current && isInitialized) {
-      setValue(editorRef.current.innerHTML)
+      const currentContent = getCurrentContent()
+      // Only update if the external value is different from current content
+      if (value !== currentContent) {
+        editorRef.current.innerHTML = value || ''
+      }
     }
-  }, [setValue, isInitialized])
+  }, [value, isInitialized, getCurrentContent])
+
+  // Cleanup: save content when component unmounts
+  useEffect(() => {
+    return () => {
+      // Save current content when component unmounts
+      if (editorRef.current && isInitialized) {
+        const currentContent = getCurrentContent()
+        setValue(currentContent)
+      }
+    }
+  }, [getCurrentContent, setValue, isInitialized])
+
+  // Get current content without updating state
+  const getCurrentContent = useCallback(() => {
+    return editorRef.current?.innerHTML || ''
+  }, [])
+
+  // Update parent component's state only when saving
+  const updateValue = useCallback(() => {
+    const currentContent = getCurrentContent()
+    setValue(currentContent)
+  }, [setValue, getCurrentContent])
 
   const execCommand = (command, value = null) => {
     try {
@@ -260,18 +286,22 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     }
   }
 
-  const handleInput = useCallback(() => {
+  // No handleInput - let the user type freely without state updates
+  // We'll only update state when saving
+
+  const handleSave = useCallback(() => {
     try {
-      // Use requestAnimationFrame to avoid interrupting the input flow
-      requestAnimationFrame(() => {
-        if (editorRef.current && isInitialized) {
-          setValue(editorRef.current.innerHTML)
-        }
-      })
+      // Get current content and update state before saving
+      const currentContent = getCurrentContent()
+      setValue(currentContent)
+      // Small delay to ensure state is updated
+      setTimeout(() => {
+        onSave()
+      }, 10)
     } catch (error) {
-      console.error('Error handling input:', error)
+      console.error('Error saving:', error)
     }
-  }, [setValue, isInitialized])
+  }, [getCurrentContent, setValue, onSave])
 
   const handleSelectionChange = () => {
     try {
@@ -440,7 +470,6 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           className="editor-content"
           contentEditable={true}
           style={styles.editor}
-          onInput={handleInput}
           onKeyDown={handleKeyDown}
           onSelect={handleSelectionChange}
           suppressContentEditableWarning={true}
@@ -457,7 +486,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           </span>
         </div>
         <button 
-          onClick={onSave}
+          onClick={handleSave}
           style={styles.saveButton}
           className="save-button"
         >
