@@ -103,42 +103,26 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   const [isInitialized, setIsInitialized] = useState(false)
   const [selectedText, setSelectedText] = useState('')
   const [savedSelection, setSavedSelection] = useState(null)
-
-  // Initialize editor content only once
-  useEffect(() => {
-    if (editorRef.current && !isInitialized) {
-      // Set initial content
-      editorRef.current.innerHTML = value || ''
-      setIsInitialized(true)
-    }
-  }, [isInitialized]) // Only depend on isInitialized to prevent loops
-
-  // Handle external value changes (from parent component)
-  useEffect(() => {
-    if (editorRef.current && isInitialized) {
-      const currentContent = getCurrentContent()
-      // Only update if the external value is different from current content
-      if (value !== currentContent) {
-        editorRef.current.innerHTML = value || ''
-      }
-    }
-  }, [value, isInitialized, getCurrentContent])
-
-  // Cleanup: save content when component unmounts
-  useEffect(() => {
-    return () => {
-      // Save current content when component unmounts
-      if (editorRef.current && isInitialized) {
-        const currentContent = getCurrentContent()
-        setValue(currentContent)
-      }
-    }
-  }, [getCurrentContent, setValue, isInitialized])
+  const [hasError, setHasError] = useState(false)
 
   // Get current content without updating state
   const getCurrentContent = useCallback(() => {
     return editorRef.current?.innerHTML || ''
   }, [])
+
+  // Initialize editor content only once when component mounts
+  useEffect(() => {
+    try {
+      if (editorRef.current && !isInitialized) {
+        // Set initial content
+        editorRef.current.innerHTML = value || ''
+        setIsInitialized(true)
+      }
+    } catch (error) {
+      console.error('Error initializing SigEditor:', error)
+      setHasError(true)
+    }
+  }, []) // Empty dependency array - only run once on mount
 
   // Update parent component's state only when saving
   const updateValue = useCallback(() => {
@@ -318,6 +302,20 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   }
 
   // Add error boundary for rendering
+  if (hasError) {
+    return (
+      <div style={{ padding: '20px', textAlign: 'center', color: '#ef4444' }}>
+        <p>Error loading sign off editor. Please refresh the page.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          style={styles.saveButton}
+        >
+          Refresh Page
+        </button>
+      </div>
+    )
+  }
+
   try {
     return (
       <div style={styles.container}>
@@ -498,21 +496,16 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
   )
   } catch (error) {
     console.error('Error rendering SigEditor:', error)
+    setHasError(true)
     return (
-      <div style={styles.container}>
-        <div style={styles.editorHeader}>
-          <Edit />
-          <span style={styles.editorTitle}>Sign Off Editor</span>
-        </div>
-        <div style={{ padding: '20px', textAlign: 'center', color: '#ef4444' }}>
-          <p>Error loading sign off editor. Please refresh the page.</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            style={styles.saveButton}
-          >
-            Refresh Page
-          </button>
-        </div>
+      <div style={{ padding: '20px', textAlign: 'center', color: '#ef4444' }}>
+        <p>Error loading sign off editor. Please refresh the page.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          style={styles.saveButton}
+        >
+          Refresh Page
+        </button>
       </div>
     )
   }
