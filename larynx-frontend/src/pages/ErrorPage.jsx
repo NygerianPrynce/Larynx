@@ -246,7 +246,7 @@ const ErrorPage = ({
         {/* Help Text */}
         <div style={styles.helpText}>
           <p style={styles.helpMessage}>
-            Need help? <a href="mailto:fadhillawal06@gmail.com" style={styles.helpLink}>Contact Support</a>
+            Need help? <a href="mailto:larynxai.official@gmail.com" style={styles.helpLink}>Contact Support</a>
           </p>
         </div>
       </div>

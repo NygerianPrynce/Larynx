@@ -125,7 +125,7 @@ const PrivacyPolicy = () => {
             If you have questions about this privacy policy or your data, contact us at:
           </p>
           <p style={styles.text}>
-            Email: fadhillawal06@gmail.com
+            Email: larynxai.official@gmail.com
           </p>
         </div>
 

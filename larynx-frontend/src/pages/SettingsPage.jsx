@@ -69,12 +69,12 @@ const SettingsPage = () => {
   const [error, setError] = useState('')
   const [nameSuccess, setNameSuccess] = useState('')
   const [summarySuccess, setSummarySuccess] = useState('')
-  const [signatureSuccess, setSignatureSuccess] = useState('')
+  const [signoffSuccess, setSignoffSuccess] = useState('')
   const [monitoringSuccess, setMonitoringSuccess] = useState('')
   const [particles, setParticles] = useState([])
   const api = import.meta.env.VITE_API_URL
   const [summary, setSummary] = useState(null) // Change from '' to null
-  const [signature, setSignature] = useState(null) // Change from '' to null  
+  const [signoff, setSignoff] = useState(null) // Change from '' to null  
   const [name, setName] = useState(null) // Change from '' to null
 
   useEffect(() => {
@@ -113,13 +113,13 @@ const SettingsPage = () => {
       // Use empty string as fallback, but only set once
       setSummary(summaryData.summary || '')
       setName(nameData.name || '')
-      setSignature(sigData.signature || '')
+      setSignoff(sigData.signature || '')
     } catch (err) {
       console.error('Error fetching settings data:', err)
       // Set empty strings on error
       setSummary('')
       setName('')
-      setSignature('')
+      setSignoff('')
     }
   }
 
@@ -148,11 +148,11 @@ const SettingsPage = () => {
   }, [summarySuccess])
 
   useEffect(() => {
-    if (signatureSuccess) {
-      const timer = setTimeout(() => setSignatureSuccess(''), 4000)
+    if (signoffSuccess) {
+      const timer = setTimeout(() => setSignoffSuccess(''), 4000)
       return () => clearTimeout(timer)
     }
-  }, [signatureSuccess])
+  }, [signoffSuccess])
 
   useEffect(() => {
     if (monitoringSuccess) {
@@ -186,16 +186,16 @@ const SettingsPage = () => {
     setSummarySuccess('Brand summary updated!')
   }
 
-  const updateSignature = async () => {
-    setSignatureSuccess('')
+  const updateSignoff = async () => {
+    setSignoffSuccess('')
     setError('')
     await fetch(`${api}/signature`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ signature })
+      body: JSON.stringify({ signature: signoff })
     })
-    setSignatureSuccess('Signature updated!')
+    setSignoffSuccess('Sign off updated!')
   }
 
   const stopMonitoring = async () => {
@@ -341,11 +341,11 @@ const SettingsPage = () => {
             </div>
           </div>
           <a 
-            href="mailto:fadhillawal06@gmail.com" 
+            href="mailto:larynxai.official@gmail.com" 
             style={styles.feedbackLink}
             className="feedback-link"
           >
-            fadhillawal06@gmail.com
+            larynxai.official@gmail.com
           </a>
         </div>
 
@@ -425,21 +425,21 @@ const SettingsPage = () => {
           </div>
         </div>
 
-        {/* Email Signature Section */}
+        {/* Email Sign Off Section */}
         <div style={styles.section}>
           <div style={styles.sectionHeader}>
             <Mail />
-            <h2 style={styles.sectionTitle}>Email Signature</h2>
+            <h2 style={styles.sectionTitle}>Email Sign Off</h2>
           </div>
           <div style={styles.card}>
-            {/* Only render SigEditor after signature is loaded */}
-            {signature !== null && signature !== undefined ? (
+            {/* Only render SigEditor after sign off is loaded */}
+            {signoff !== null && signoff !== undefined ? (
               <SigEditor
-                key={`signature-${signature.length}`}
-                value={signature}
-                setValue={setSignature}
+                key={`signoff-${signoff.length}`}
+                value={signoff}
+                setValue={setSignoff}
                 onBack={null}
-                onSave={updateSignature}
+                onSave={updateSignoff}
               />
             ) : (
               <div style={{
@@ -449,15 +449,15 @@ const SettingsPage = () => {
                 justifyContent: 'center',
                 color: '#9ca3af'
               }}>
-                Loading signature editor...
+                Loading sign off editor...
               </div>
             )}
             
-            {/* Signature Success Message - Now with proper spacing */}
-            {signatureSuccess && (
+            {/* Sign Off Success Message - Now with proper spacing */}
+            {signoffSuccess && (
               <div style={{...styles.successMessage, marginTop: '24px'}}>
                 <Save />
-                <span>{signatureSuccess}</span>
+                <span>{signoffSuccess}</span>
               </div>
             )}
           </div>

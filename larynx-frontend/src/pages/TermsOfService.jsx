@@ -167,7 +167,7 @@ const TermsOfService = () => {
             For questions about these terms, contact us at:
           </p>
           <p style={styles.text}>
-            Email: fadhillawal06@gmail.com
+            Email: larynxai.official@gmail.com
           </p>
         </div>
       </div>

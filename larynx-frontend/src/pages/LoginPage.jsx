@@ -1195,7 +1195,7 @@ const LarynxAILaunch = () => {
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>1</div>
               <h3 style={styles.stepTitle}>Complete Setup</h3>
-              <p style={styles.stepDescription}>Add your business info, writing style, signature, and inventory through our guided onboarding process</p>
+              <p style={styles.stepDescription}>Add your business info, writing style, sign off, and inventory through our guided onboarding process</p>
             </div>
             <div style={styles.stepCard}>
               <div style={styles.stepNumber}>2</div>

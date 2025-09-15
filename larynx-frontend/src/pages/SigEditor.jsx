@@ -91,7 +91,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     console.error('SigEditor: setValue prop is required and must be a function')
     return (
       <div style={{ padding: '20px', textAlign: 'center', color: '#ef4444' }}>
-        <p>Error: Missing required props for Signature Editor</p>
+        <p>Error: Missing required props for Sign Off Editor</p>
       </div>
     )
   }
@@ -124,8 +124,8 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     try {
       if (document.execCommand) {
         document.execCommand(command, false, value)
+        // Don't call updateValue() here - let the onInput handler manage it
         editorRef.current?.focus()
-        updateValue()
       } else {
         console.warn('document.execCommand is not supported')
       }
@@ -260,14 +260,18 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
     }
   }
 
-  const handleInput = () => {
+  const handleInput = useCallback(() => {
     try {
-      // Simple input handling - just update the value
-      updateValue()
+      // Use requestAnimationFrame to avoid interrupting the input flow
+      requestAnimationFrame(() => {
+        if (editorRef.current && isInitialized) {
+          setValue(editorRef.current.innerHTML)
+        }
+      })
     } catch (error) {
       console.error('Error handling input:', error)
     }
-  }
+  }, [setValue, isInitialized])
 
   const handleSelectionChange = () => {
     try {
@@ -290,7 +294,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
       
       <div style={styles.editorHeader}>
         <Edit />
-        <span style={styles.editorTitle}>Signature Editor</span>
+        <span style={styles.editorTitle}>Sign Off Editor</span>
       </div>
       
       <div style={styles.editorWrapper}>
@@ -441,7 +445,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           onSelect={handleSelectionChange}
           suppressContentEditableWarning={true}
         >
-          {!value && <div style={{ color: '#9ca3af', pointerEvents: 'none' }}>Enter your email signature...</div>}
+          {!value && <div style={{ color: '#9ca3af', pointerEvents: 'none' }}>Enter your email sign off...</div>}
         </div>
       </div>
       
@@ -449,7 +453,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
         <div style={styles.hint}>
           <span style={styles.hintIcon}>💡</span>
           <span style={styles.hintText}>
-            Use the toolbar above to format your signature. Try Ctrl+B for bold, Ctrl+I for italic, Ctrl+U for underline
+            Use the toolbar above to format your sign off. Try Ctrl+B for bold, Ctrl+I for italic, Ctrl+U for underline
           </span>
         </div>
         <button 
@@ -458,7 +462,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
           className="save-button"
         >
           <Save />
-          <span>Save Signature</span>
+          <span>Save Sign Off</span>
         </button>
       </div>
     </div>
@@ -469,10 +473,10 @@ const SigEditor = ({ value = '', setValue, onBack, onSave }) => {
       <div style={styles.container}>
         <div style={styles.editorHeader}>
           <Edit />
-          <span style={styles.editorTitle}>Signature Editor</span>
+          <span style={styles.editorTitle}>Sign Off Editor</span>
         </div>
         <div style={{ padding: '20px', textAlign: 'center', color: '#ef4444' }}>
-          <p>Error loading signature editor. Please refresh the page.</p>
+          <p>Error loading sign off editor. Please refresh the page.</p>
           <button 
             onClick={() => window.location.reload()} 
             style={styles.saveButton}

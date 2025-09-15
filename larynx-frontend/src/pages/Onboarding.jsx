@@ -69,7 +69,7 @@ const Onboarding = () => {
   const [brandSummary, setBrandSummary] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
-  const [signature, setSignature] = useState('')
+  const [signoff, setSignoff] = useState('')
   const [particles, setParticles] = useState([])
   const [emailCrawlMessages, setEmailCrawlMessages] = useState([])
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
@@ -134,14 +134,14 @@ const Onboarding = () => {
     'Connecting to your email...',
     'Analyzing your writing style...',
     'Learning your tone and voice...',
-    'Extracting your email signature...',
+    'Extracting your email sign off...',
     'Identifying common phrases...',
     'Understanding your communication patterns...',
     'Almost done...'
   ]
 
-  const signatureMessages = [
-    'Fetching your signature...',
+  const signoffMessages = [
+    'Fetching your sign off...',
     'Analyzing your email style...',
     'Extracting formatting details...',
     'Almost ready...'
@@ -274,9 +274,9 @@ const Onboarding = () => {
     }
   }
 
-  const fetchSignature = async () => {
+  const fetchSignoff = async () => {
     await handleAsyncOperation(async () => {
-      setLoadingState(true, signatureMessages)
+      setLoadingState(true, signoffMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 10000)
@@ -297,18 +297,18 @@ const Onboarding = () => {
         }
         
         const data = await res.json()
-        setSignature(data.signature || '')
-        transitionToStep('signature')
+        setSignoff(data.signature || '')
+        transitionToStep('signoff')
       } finally {
         clearTimeout(timeoutId)
         setLoadingState(false)
       }
-    }, "Failed to fetch your signature. Please try again.")
+    }, "Failed to fetch your sign off. Please try again.")
   }
 
-  const updateSignature = async () => {
+  const updateSignoff = async () => {
     await handleAsyncOperation(async () => {
-      setLoadingState(true, signatureMessages)
+      setLoadingState(true, signoffMessages)
       
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 15000)
@@ -318,7 +318,7 @@ const Onboarding = () => {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ signature }),
+          body: JSON.stringify({ signature: signoff }),
           signal: controller.signal
         })
         
@@ -327,7 +327,7 @@ const Onboarding = () => {
         if (!res.ok) {
           if (res.status === 401) throw new Error('401 Unauthorized')
           if (res.status >= 500) throw new Error('500 Server Error')
-          throw new Error(`Failed to save signature (${res.status})`)
+          throw new Error(`Failed to save sign off (${res.status})`)
         }
 
         transitionToStep('inventory')
@@ -335,7 +335,7 @@ const Onboarding = () => {
         clearTimeout(timeoutId)
         setLoadingState(false)
       }
-    }, "Failed to save your signature. Please try again.")
+    }, "Failed to save your sign off. Please try again.")
   }
 
   const fetchBrandSummary = async () => {
@@ -553,7 +553,7 @@ const Onboarding = () => {
         setLoadingMessage('Successfully analyzed your emails!')
         
         setTimeout(async () => {
-          await fetchSignature()
+          await fetchSignoff()
         }, 2000)
       } finally {
         clearTimeout(timeoutId)
@@ -583,7 +583,7 @@ const Onboarding = () => {
           throw new Error(`Failed to set default tone (${res.status})`)
         }
         
-        await fetchSignature()
+        await fetchSignoff()
       } finally {
         clearTimeout(timeoutId)
         setLoadingState(false)
@@ -613,7 +613,7 @@ const Onboarding = () => {
       case 'intro': return <Globe />
       case 'summary': return <Edit />
       case 'tone': return <Mail />
-      case 'signature': return <Edit />
+      case 'signoff': return <Edit />
       case 'inventory': return <Package />
       case 'monitoringConsent': return <Shield />
       default: return <Globe />
@@ -625,7 +625,7 @@ const Onboarding = () => {
       case 'intro': return hasWebsite ? 'Tell us about your business' : 'Let\'s get to know you'
       case 'summary': return 'Review your brand summary'
       case 'tone': return 'Personalize your email tone'
-      case 'signature': return 'Create your email signature'
+      case 'signoff': return 'Create your email sign off'
       case 'inventory': return 'Add your products/services'
       case 'monitoringConsent': return 'Enable email monitoring'
       case 'finalizing': return 'Setting up your account'
@@ -982,13 +982,13 @@ const Onboarding = () => {
             </div>
           )}
 
-          {step === 'signature' && (
+          {step === 'signoff' && (
             <div style={styles.card}>
               <SigEditor
-                value={signature}
-                setValue={setSignature}
+                value={signoff}
+                setValue={setSignoff}
                 onBack={() => transitionToStep('tone')}
-                onSave={updateSignature}
+                onSave={updateSignoff}
               />
             </div>
           )}
@@ -997,7 +997,7 @@ const Onboarding = () => {
             <div style={styles.inventoryWrapper}>
               <InventoryPage
                 embedded={true}
-                onBack={() => transitionToStep('signature')}
+                onBack={() => transitionToStep('signoff')}
                 onNext={() => transitionToStep('monitoringConsent')}
               />
             </div>
