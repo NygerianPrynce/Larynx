@@ -192,7 +192,7 @@ const LarynxAILaunch = () => {
     {
       icon: Layers,
       title: "Smart Offerings Integration",
-      description: "Our AI analyzes incoming email content to identify relevant products or services mentioned, then automatically incorporates accurate offering information, pricing, and availability into your draft responses."
+      description: "Our AI analyzes incoming email content to identify relevant products or services mentioned, then automatically incorporates accurate offering information and pricing into your draft responses."
     }
   ]
 

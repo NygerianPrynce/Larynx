@@ -244,7 +244,7 @@ const Home = () => {
   const quickActions = [
     {
       title: 'Manage Offerings',
-      description: 'Update your products, services, and availability',
+      description: 'Update your products and services',
       icon: <Package />,
       color: '#8b5cf6',
       action: () => navigate('/manage-inventory')
