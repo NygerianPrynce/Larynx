@@ -55,10 +55,8 @@ async def add_inventory_item(request: Request, item: InventoryItem):
         "updated_at": datetime.utcnow().isoformat()
     }).execute()
 
-    # Add category to category_analytics if provided
-    if item.category and item.category.strip():
-        from routes.analytics_routes import update_category_analytics
-        await update_category_analytics(user_id, item.category.strip())
+    # Note: Category analytics should only be updated when emails are processed, 
+    # not when manually adding inventory items
 
     return {"message": "Item added successfully", "item": result.data[0]}
 

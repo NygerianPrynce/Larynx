@@ -171,7 +171,7 @@ const OfferingsModern = () => {
 
     try {
       const normalizedPrice = normalizePrice(newOffering.price)
-      await fetchWithErrorHandling(`${api}/inventory/add`, {
+      const response = await fetchWithErrorHandling(`${api}/inventory/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,8 +182,13 @@ const OfferingsModern = () => {
         })
       })
       
-      // Refresh the inventory after successful addition
-      await fetchInventory()
+      // Add the new item directly to state instead of refetching
+      if (response.item) {
+        setOfferings(prev => [...prev, response.item])
+      } else {
+        // Fallback: refresh inventory if response doesn't include the item
+        await fetchInventory()
+      }
       
       setNewOffering({ name: '', price: '', pricingType: '', category: '' })
       setShowAddForm(false)

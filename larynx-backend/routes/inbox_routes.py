@@ -1255,13 +1255,17 @@ async def process_and_store_email(user_id: str, email_data: Dict):
         from routes.analytics_routes import update_email_processing_analytics, update_category_analytics
         await update_email_processing_analytics(user_id)
         
-        # Update category analytics if we have matched inventory
+        # Update category analytics only if we have matched inventory with actual categories
         if matched_inventory and len(matched_inventory) > 0:
-            # Get the most relevant category from matched inventory
-            # For now, we'll use a default category since inventory doesn't have categories yet
-            # This could be enhanced later to extract categories from inventory items
-            primary_category = "General Inquiry"  # Default category
-            await update_category_analytics(user_id, primary_category)
+            # Extract categories from matched inventory items
+            categories = set()
+            for match in matched_inventory:
+                if match.get('inventory_item', {}).get('category'):
+                    categories.add(match['inventory_item']['category'])
+            
+            # Only update analytics for actual categories found in inventory
+            for category in categories:
+                await update_category_analytics(user_id, category)
         
         logging.info(f"Successfully processed email {email_data['message_id']} and created draft {gmail_draft_id}")
         
