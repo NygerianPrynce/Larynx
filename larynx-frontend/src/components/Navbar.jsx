@@ -122,12 +122,13 @@ const Navbar = () => {
       <style>
         {`
           .navbar-link:hover {
-            color: #8b5cf6 !important;
-            transform: translateY(-2px);
+            color: #7c3aed !important;
+            background: #f3f4f6 !important;
+            transform: translateY(-1px);
           }
           
           .navbar-profile:hover {
-            background: rgba(139, 92, 246, 0.2) !important;
+            background: #f3f4f6 !important;
             transform: scale(1.02);
           }
           
@@ -146,7 +147,7 @@ const Navbar = () => {
           }
           
           .dropdown-item:hover {
-            background: rgba(139, 92, 246, 0.3) !important;
+            background: #f9fafb !important;
           }
           
           .mobile-menu-slide {
@@ -154,7 +155,7 @@ const Navbar = () => {
           }
           
           .mobile-link:hover {
-            background: rgba(139, 92, 246, 0.2) !important;
+            background: #f9fafb !important;
             transform: translateX(4px);
           }
           
@@ -230,19 +231,9 @@ const Navbar = () => {
             }
           }
           
-          .nav-glow::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, #8b5cf6, transparent);
-            opacity: 0.5;
-          }
           
           .mobile-menu-button:hover {
-            background: rgba(139, 92, 246, 0.2) !important;
+            background: #f3f4f6 !important;
             transform: scale(1.05);
           }
           
@@ -255,7 +246,7 @@ const Navbar = () => {
           }
         `}
       </style>
-      <nav style={styles.nav} className="navbar-container nav-glow">
+      <nav style={styles.nav} className="navbar-container">
         <div style={styles.leftSection}>
           <div 
             style={styles.logo} 
@@ -391,14 +382,13 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '20px 40px',
-    background: 'linear-gradient(145deg, rgba(0, 0, 0, 0.9), rgba(17, 24, 39, 0.9))',
-    backdropFilter: 'blur(20px)',
-    borderBottom: '1px solid #374151',
-    color: 'white',
-    fontFamily: 'Arial, sans-serif',
+    padding: '16px 24px',
+    background: 'white',
+    borderBottom: '1px solid #e5e7eb',
+    color: '#1f2937',
+    fontFamily: 'Inter, system-ui, sans-serif',
     position: 'relative',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     zIndex: 1000
   },
   leftSection: {
@@ -418,21 +408,17 @@ const styles = {
     minWidth: 'fit-content' // Ensures logo area doesn't compress
   },
   logoImage: {
-    width: '48px', // Increased from 32px
-    height: '48px', // Increased from 32px
-    borderRadius: '12px', // Increased border radius proportionally
+    width: '40px',
+    height: '40px',
+    borderRadius: '8px',
     objectFit: 'contain',
     transition: 'all 0.3s ease',
-    filter: 'drop-shadow(0 6px 12px rgba(139, 92, 246, 0.4))', // Enhanced shadow
     flexShrink: 0 // Prevents image from shrinking
   },
   logoText: {
     fontSize: '20px',
-    fontWeight: 'bold',
-    background: 'linear-gradient(45deg, #a855f7, #8b5cf6)',
-    backgroundClip: 'text',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
+    fontWeight: '700',
+    color: '#1f2937',
     whiteSpace: 'nowrap', // Prevents text wrapping
     flexShrink: 0 // Prevents text from shrinking
   },
@@ -444,14 +430,14 @@ const styles = {
   link: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '8px',
     textDecoration: 'none',
-    color: '#d1d5db',
+    color: '#6b7280',
     fontWeight: '500',
-    padding: '12px 20px',
-    borderRadius: '10px',
-    transition: 'all 0.3s ease',
-    fontSize: '18px'
+    padding: '8px 16px',
+    borderRadius: '8px',
+    transition: 'all 0.2s ease',
+    fontSize: '15px'
   },
   linkIcon: {
     fontSize: '16px'
@@ -463,17 +449,16 @@ const styles = {
   profileButton: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
-    background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.8), rgba(17, 24, 39, 0.8))',
-    color: 'white',
-    padding: '14px 22px',
-    border: '1px solid #374151',
-    borderRadius: '10px',
+    gap: '8px',
+    background: '#f9fafb',
+    color: '#374151',
+    padding: '8px 16px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
     cursor: 'pointer',
     fontWeight: '500',
-    fontSize: '18px',
-    transition: 'all 0.3s ease',
-    backdropFilter: 'blur(10px)'
+    fontSize: '15px',
+    transition: 'all 0.2s ease'
   },
   profileIcon: {
     fontSize: '16px'
@@ -489,23 +474,22 @@ const styles = {
     marginTop: '8px',
     width: '100%', // Match the width of the profile button
     minWidth: '200px', // Ensure minimum width for readability
-    background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.95), rgba(0, 0, 0, 0.95))',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid #374151',
-    borderRadius: '12px',
+    background: 'white',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
     overflow: 'hidden',
-    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     zIndex: 9999
   },
   dropdownItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
-    padding: '16px 22px',
-    color: '#d1d5db',
+    gap: '12px',
+    padding: '12px 16px',
+    color: '#374151',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    fontSize: '16px'
+    fontSize: '14px'
   },
   dropdownIcon: {
     fontSize: '16px',
@@ -513,34 +497,32 @@ const styles = {
   },
   dropdownSeparator: {
     height: '1px',
-    background: '#374151',
+    background: '#e5e7eb',
     margin: '4px 0'
   },
   mobileMenuButton: {
     display: 'none',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.8), rgba(17, 24, 39, 0.8))',
-    color: 'white',
-    padding: '12px',
-    border: '1px solid #374151',
+    background: '#f9fafb',
+    color: '#374151',
+    padding: '8px',
+    border: '1px solid #e5e7eb',
     borderRadius: '8px',
     cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    backdropFilter: 'blur(10px)',
-    width: '48px',
-    height: '48px'
+    transition: 'all 0.2s ease',
+    width: '40px',
+    height: '40px'
   },
   mobileMenu: {
     position: 'fixed',
-    top: '90px',
+    top: '80px',
     left: 0,
     right: 0,
-    background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.98), rgba(0, 0, 0, 0.98))',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid #374151',
+    background: 'white',
+    border: '1px solid #e5e7eb',
     borderTop: 'none',
-    boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
     zIndex: 9998
   },
   mobileMenuContent: {
@@ -552,14 +534,14 @@ const styles = {
   mobileLink: {
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
+    gap: '12px',
     textDecoration: 'none',
-    color: '#d1d5db',
-    padding: '16px 20px',
-    borderRadius: '10px',
+    color: '#374151',
+    padding: '12px 16px',
+    borderRadius: '8px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    fontSize: '16px',
+    fontSize: '14px',
     fontWeight: '500'
   },
   mobileLinkIcon: {
@@ -568,8 +550,8 @@ const styles = {
   },
   mobileDivider: {
     height: '1px',
-    background: '#374151',
-    margin: '12px 0'
+    background: '#e5e7eb',
+    margin: '8px 0'
   }
 }
 

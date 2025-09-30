@@ -1,62 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import InventoryPage from './InventoryPage'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Globe, Edit, Mail, Package, Shield, ArrowRight, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react'
+import OnboardingInventory from './OnboardingInventory'
 import SigEditor from './SigEditor'
-
-// Custom SVG Icons
-const Globe = () => (
-  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
-
-const Edit = () => (
-  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
-)
-
-const Mail = () => (
-  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 3.26a2 2 0 001.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-  </svg>
-)
-
-const Package = () => (
-  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-  </svg>
-)
-
-const Shield = () => (
-  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
-
-const ArrowRight = () => (
-  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-  </svg>
-)
-
-const CheckCircle = () => (
-  <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
-
-const Trash = () => (
-  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-  </svg>
-)
-
-const AlertTriangle = () => (
-  <svg style={{ display: 'inline', width: '20px', height: '20px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 3h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
-  </svg>
-)
 
 const Onboarding = () => {
   const navigate = useNavigate()
@@ -70,11 +17,10 @@ const Onboarding = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
   const [signoff, setSignoff] = useState('')
-  const [particles, setParticles] = useState([])
   const [emailCrawlMessages, setEmailCrawlMessages] = useState([])
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
-  const [error, setError] = useState(null) // New error state
+  const [error, setError] = useState(null)
   const [brandInfo, setBrandInfo] = useState({
     brand_name: '',
     business_description: '',
@@ -133,700 +79,392 @@ const Onboarding = () => {
   const crawlMessages = [
     'Connecting to your email...',
     'Analyzing your writing style...',
-    'Learning your tone and voice...',
-    'Extracting your email sign off...',
-    'Identifying common phrases...',
-    'Understanding your communication patterns...',
+    'Learning your communication patterns...',
+    'Understanding your tone and voice...',
+    'Processing email templates...',
     'Almost done...'
-  ]
-
-  const signoffMessages = [
-    'Fetching your sign off...',
-    'Analyzing your email style...',
-    'Extracting formatting details...',
-    'Almost ready...'
-  ]
-
-  const websiteAnalysisMessages = [
-    'Analyzing your website...',
-    'Extracting brand information...',
-    'Understanding your business...',
-    'Processing content...',
-    'Almost done...'
-  ]
-
-  const brandSummaryMessages = [
-    'Generating your brand summary...',
-    'Analyzing your content...',
-    'Creating your profile...',
-    'Almost ready...'
-  ]
-
-  const toneSetupMessages = [
-    'Setting up your tone...',
-    'Configuring preferences...',
-    'Finalizing setup...',
-    'Almost done...'
-  ]
-
-  const processingMessages = [
-    'Processing your information...',
-    'Analyzing your data...',
-    'Setting up your profile...',
-    'Almost ready...'
   ]
 
   const monitoringMessages = [
-    'Enabling email monitoring...',
-    'Setting up permissions...',
-    'Configuring your inbox...',
-    'Almost done...'
+    'Setting up email monitoring...',
+    'Configuring AI responses...',
+    'Finalizing your setup...'
   ]
 
   const deleteAccountMessages = [
     'Deleting your account...',
-    'Removing your data...',
-    'Cleaning up...',
-    'Almost done...'
+    'Removing all data...',
+    'Goodbye...'
   ]
 
-  const defaultProcessingMessages = [
-    'Processing...',
-    'Working on it...',
-    'Almost ready...'
-  ]
-
-  useEffect(() => {
-    try {
-      const generateParticles = () => {
-        const newParticles = []
-        for (let i = 0; i < 60; i++) {
-          newParticles.push({
-            id: i,
-            x: Math.random() * 100,
-            y: Math.random() * 100,
-            size: Math.random() * 3 + 1,
-            opacity: Math.random() * 0.3 + 0.1,
-            duration: Math.random() * 20 + 15,
-            delay: Math.random() * 10
-          })
-        }
-        setParticles(newParticles)
-      }
-      generateParticles()
-    } catch (err) {
-      console.error('Error generating particles:', err)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (emailCrawlMessages.length > 0) {
-      try {
-        const interval = setInterval(() => {
-          setCurrentMessageIndex((prev) => (prev + 1) % emailCrawlMessages.length)
-        }, 2000)
-        return () => clearInterval(interval)
-      } catch (err) {
-        console.error('Error cycling messages:', err)
-      }
-    } else if (isLoading && !loadingMessage) {
-      // Cycle default processing messages when no specific messages are set
-      try {
-        const interval = setInterval(() => {
-          setCurrentMessageIndex((prev) => (prev + 1) % defaultProcessingMessages.length)
-        }, 2000)
-        return () => clearInterval(interval)
-      } catch (err) {
-        console.error('Error cycling default messages:', err)
-      }
-    }
-  }, [emailCrawlMessages.length, isLoading, loadingMessage])
-
-  const transitionToStep = (newStep) => {
-    try {
-      setIsTransitioning(true)
-      setTimeout(() => {
-        setStep(newStep)
-        setIsTransitioning(false)
-      }, 300)
-    } catch (err) {
-      setStep(newStep)
-      setIsTransitioning(false)
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.6, staggerChildren: 0.1 }
     }
   }
 
-  const setLoadingState = (loading, messages = []) => {
-    setIsLoading(loading)
-    if (Array.isArray(messages) && messages.length > 0) {
-      setEmailCrawlMessages(messages)
-      setCurrentMessageIndex(0)
-      setLoadingMessage('')
-    } else if (typeof messages === 'string') {
-      setLoadingMessage(messages)
-      setEmailCrawlMessages([])
-    } else {
-      setLoadingMessage('')
-      setEmailCrawlMessages([])
-    }
-    if (!loading) {
-      setEmailCrawlMessages([])
-      setShowSuccessMessage(false)
-    }
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0 }
   }
-
-  const fetchSignoff = async () => {
-    await handleAsyncOperation(async () => {
-      setLoadingState(true, signoffMessages)
-      
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
-      
-      try {
-        const res = await fetch(`${api}/signature`, {
-          credentials: 'include',
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!res.ok) {
-          if (res.status === 401) throw new Error('401 Unauthorized')
-          if (res.status === 403) throw new Error('403 Forbidden')
-          if (res.status >= 500) throw new Error('500 Server Error')
-          throw new Error(`HTTP ${res.status}`)
-        }
-        
-        const data = await res.json()
-        setSignoff(data.signature || '')
-        transitionToStep('signoff')
-      } finally {
-        clearTimeout(timeoutId)
-        setLoadingState(false)
-      }
-    }, "Failed to fetch your sign off. Please try again.")
-  }
-
-  const updateSignoff = async () => {
-    await handleAsyncOperation(async () => {
-      setLoadingState(true, signoffMessages)
-      
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
-      
-      try {
-        const res = await fetch(`${api}/signature`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ signature: signoff }),
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!res.ok) {
-          if (res.status === 401) throw new Error('401 Unauthorized')
-          if (res.status >= 500) throw new Error('500 Server Error')
-          throw new Error(`Failed to save sign off (${res.status})`)
-        }
-
-        transitionToStep('inventory')
-      } finally {
-        clearTimeout(timeoutId)
-        setLoadingState(false)
-      }
-    }, "Failed to save your sign off. Please try again.")
-  }
-
-  const fetchBrandSummary = async () => {
-    await handleAsyncOperation(async () => {
-      setLoadingState(true, brandSummaryMessages)
-      
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
-      
-      try {
-        const res = await fetch(`${api}/get-brand-summary`, {
-          credentials: 'include',
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!res.ok) {
-          if (res.status === 401) throw new Error('401 Unauthorized')
-          if (res.status >= 500) throw new Error('500 Server Error')
-          throw new Error(`Failed to generate summary (${res.status})`)
-        }
-        
-        const data = await res.json()
-        setBrandSummary(data.summary || 'No summary found.')
-        transitionToStep('summary')
-      } finally {
-        clearTimeout(timeoutId)
-        setLoadingState(false)
-      }
-    }, "Failed to generate your brand summary. Please try again.")
-  }
-
-  const handleConfirmBrandSummary = async () => {
-    await handleAsyncOperation(async () => {
-      setLoadingState(true, brandSummaryMessages)
-      
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
-      
-      try {
-        const res = await fetch(`${api}/update-brand-summary`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ summary: brandSummary }),
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!res.ok) {
-          if (res.status === 401) throw new Error('401 Unauthorized')
-          if (res.status >= 500) throw new Error('500 Server Error')
-          throw new Error(`Failed to update summary (${res.status})`)
-        }
-
-        transitionToStep('tone')
-      } finally {
-        clearTimeout(timeoutId)
-        setLoadingState(false)
-      }
-    }, "Failed to save your brand summary. Please try again.")
-  }
-
-  const normalizeUrl = (url) => {
-    try {
-      if (!url || typeof url !== 'string') return null
-      
-      let normalizedUrl = url.trim()
-      if (!/^https?:\/\//i.test(normalizedUrl)) {
-        normalizedUrl = 'https://' + normalizedUrl
-      }
-      
-      const parsed = new URL(normalizedUrl)
-      const hostname = parsed.hostname
-
-      if (!hostname.includes('.') || hostname.endsWith('.') || !/[a-zA-Z]/.test(hostname)) {
-        return null
-      }
-
-      return parsed.href
-    } catch (err) {
-      return null
-    }
-  }
-
-  const handleWebsiteSubmit = async () => {
-    const normalized = normalizeUrl(websiteUrl)
-    if (!normalized) {
-      setErrors({ ...errors, websiteUrl: "Please enter a valid website address." })
-      return
-    }
-
-    setErrors({ ...errors, websiteUrl: null })
-    
-    try {
-      setLoadingState(true, websiteAnalysisMessages)
-      
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 45000)
-      
-      const res = await fetch(`${api}/website-scrape?url=${encodeURIComponent(normalized)}`, {
-        credentials: 'include',
-        signal: controller.signal
-      })
-      
-      clearTimeout(timeoutId)
-      
-      if (res.ok) {
-        await fetchBrandSummary()
-      } else {
-        console.log('Website scrape failed, switching to manual entry')
-        setHasWebsite(false)
-        setError("Couldn't analyze your website. Please fill out the information manually.")
-      }
-    } catch (err) {
-      console.log('Website scrape error, switching to manual entry:', err)
-      setHasWebsite(false)
-      setError("Failed to analyze website. Switching to manual entry.")
-    } finally {
-      setLoadingState(false)
-    }
-  }
-
-  const validateAndNextStep = async () => {
-    try {
-      const stepConfig = manualSteps[manualStep]
-      const value = brandInfo[stepConfig.key].trim()
-      const isOptional = stepConfig.optional
-      const newErrors = { ...errors }
-
-      if (!isOptional && (value.length < stepConfig.min || value.length > stepConfig.max)) {
-        newErrors[stepConfig.key] = `${stepConfig.label} must be between ${stepConfig.min} and ${stepConfig.max} characters.`
-        setErrors(newErrors)
-        return
-      }
-
-      if (isOptional && value.length > stepConfig.max) {
-        newErrors[stepConfig.key] = `${stepConfig.label} must be at most ${stepConfig.max} characters.`
-        setErrors(newErrors)
-        return
-      }
-
-      setErrors({})
-      const nextStep = manualStep + 1
-
-      if (nextStep < manualSteps.length) {
-        setManualStep(nextStep)
-      } else {
-        await handleManualSubmit()
-      }
-    } catch (err) {
-      setError("Validation failed. Please check your input and try again.")
-    }
-  }
-
-  const handleManualSubmit = async () => {
-    await handleAsyncOperation(async () => {
-      setLoadingState(true, processingMessages)
-      
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000)
-      
-      try {
-        const res = await fetch(`${api}/upload-brand-summary`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(brandInfo),
-          credentials: 'include',
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!res.ok) {
-          if (res.status === 401) throw new Error('401 Unauthorized')
-          if (res.status >= 500) throw new Error('500 Server Error')
-          throw new Error(`Failed to process information (${res.status})`)
-        }
-        
-        await fetchBrandSummary()
-      } finally {
-        clearTimeout(timeoutId)
-        setLoadingState(false)
-      }
-    }, "Failed to process your information. Please try again.")
-  }
-
-  const handleEmailCrawl = async () => {
-    await handleAsyncOperation(async () => {
-      setEmailCrawlMessages(crawlMessages)
-      setCurrentMessageIndex(0)
-      setLoadingState(true)
-      
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 120000)
-      
-      try {
-        const res = await fetch(`${api}/crawl-emails`, {
-          credentials: 'include',
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!res.ok) {
-          if (res.status === 401) throw new Error('401 Unauthorized')
-          if (res.status >= 500) throw new Error('500 Server Error')
-          throw new Error(`Email analysis failed (${res.status})`)
-        }
-        
-        setShowSuccessMessage(true)
-        setEmailCrawlMessages([])
-        setLoadingMessage('Successfully analyzed your emails!')
-        
-        setTimeout(async () => {
-          await fetchSignoff()
-        }, 2000)
-      } finally {
-        clearTimeout(timeoutId)
-      }
-    }, "Failed to analyze your emails. Please try again.")
-  }
-
-  const handleGenericTone = async () => {
-    await handleAsyncOperation(async () => {
-      setLoadingState(true, toneSetupMessages)
-      
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000)
-      
-      try {
-        const res = await fetch(`${api}/set-generic-tone`, {
-          method: 'POST',
-          credentials: 'include',
-          signal: controller.signal
-        })
-        
-        clearTimeout(timeoutId)
-        
-        if (!res.ok) {
-          if (res.status === 401) throw new Error('401 Unauthorized')
-          if (res.status >= 500) throw new Error('500 Server Error')
-          throw new Error(`Failed to set default tone (${res.status})`)
-        }
-        
-        await fetchSignoff()
-      } finally {
-        clearTimeout(timeoutId)
-        setLoadingState(false)
-      }
-    }, "Failed to set up default tone. Please try again.")
-  }
-
-  useEffect(() => {
-    if (step === 'finalizing') {
-      try {
-        const timer = setTimeout(() => {
-          try {
-            window.location.href = '/home'
-          } catch (err) {
-            navigate('/home')
-          }
-        }, 2000)
-        return () => clearTimeout(timer)
-      } catch (err) {
-        navigate('/home')
-      }
-    }
-  }, [step, navigate])
 
   const getStepIcon = () => {
     switch (step) {
-      case 'intro': return <Globe />
-      case 'summary': return <Edit />
-      case 'tone': return <Mail />
-      case 'signoff': return <Edit />
-      case 'inventory': return <Package />
-      case 'monitoringConsent': return <Shield />
-      default: return <Globe />
+      case 'intro': return <Globe className="w-8 h-8" />
+      case 'tone': return <Mail className="w-8 h-8" />
+      case 'signoff': return <Edit className="w-8 h-8" />
+      case 'inventory': return <Package className="w-8 h-8" />
+      case 'monitoringConsent': return <Shield className="w-8 h-8" />
+      case 'finalizing': return <CheckCircle className="w-8 h-8" />
+      default: return <Globe className="w-8 h-8" />
     }
   }
 
   const getStepTitle = () => {
     switch (step) {
-      case 'intro': return hasWebsite ? 'Tell us about your business' : 'Let\'s get to know you'
-      case 'summary': return 'Review your brand summary'
-      case 'tone': return 'Personalize your email tone'
-      case 'signoff': return 'Create your email sign off'
-      case 'inventory': return 'Add your offerings'
-      case 'monitoringConsent': return 'Enable email monitoring'
-      case 'finalizing': return 'Setting up your account'
-      default: return 'Welcome to Larynx AI'
+      case 'intro': return hasWebsite ? 'Website Analysis' : 'Business Information'
+      case 'tone': return 'Email Tone Analysis'
+      case 'signoff': return 'Email Sign Off'
+      case 'inventory': return 'Product Catalog'
+      case 'monitoringConsent': return 'Final Setup'
+      case 'finalizing': return 'Welcome to Larynx AI!'
+      default: return 'Setup'
     }
   }
 
-  return (
-    <div style={styles.container}>
-      <style>
-        {`
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          
-          body {
-            margin: 0;
-            padding: 0;
-          }
-          
-          @keyframes float {
-            0% { transform: translateY(100vh) translateX(0px) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-100vh) translateX(30px) rotate(360deg); opacity: 0; }
-          }
-          
-          @keyframes floatHorizontal {
-            0% { transform: translateX(-5px); }
-            50% { transform: translateX(5px); }
-            100% { transform: translateX(-5px); }
-          }
-          
-          @keyframes pulse {
-            0%, 100% { opacity: 0.2; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(1.05); }
-          }
-          
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          
-          @keyframes fadeOut {
-            from { opacity: 1; transform: translateY(0); }
-            to { opacity: 0; transform: translateY(-20px); }
-          }
-          
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          
-          @keyframes messageSlide {
-            0% { opacity: 0; transform: translateY(10px); }
-            20% { opacity: 1; transform: translateY(0); }
-            80% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-10px); }
-          }
-          
-          @keyframes slideDown {
-            from { transform: translateY(-100%); }
-            to { transform: translateY(0); }
-          }
-          
-          .step-content {
-            animation: fadeIn 0.5s ease-out;
-          }
-          
-          .step-content.transitioning {
-            animation: fadeOut 0.3s ease-in;
-          }
-          
-          .primary-button:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
-          }
-          
-          .secondary-button:hover {
-            background: rgba(107, 114, 128, 0.8);
-            transform: scale(1.02);
-          }
-          
-          .danger-button:hover {
-            background: rgba(220, 38, 38, 0.9);
-            transform: scale(1.02);
-          }
-          
-          .success-button:hover {
-            background: rgba(16, 185, 129, 0.9);
-            transform: scale(1.02);
-          }
-          
-          .toggle-link:hover {
-            color: #a855f7;
-          }
-          
-          .crawl-message {
-            animation: messageSlide 2s ease-in-out;
-          }
-          
-          .error-close-button:hover {
-            background: rgba(255, 255, 255, 0.2) !important;
-          }
-        `}
-      </style>
+  const getStepDescription = () => {
+    switch (step) {
+      case 'intro': return hasWebsite ? "We'll analyze your website to understand your business" : "Tell us about your business"
+      case 'tone': return "We'll analyze your email tone and writing style"
+      case 'signoff': return "Create a professional email sign off that matches your brand. Use the toolbar below to format your text."
+      case 'inventory': return "Add your products and services"
+      case 'monitoringConsent': return "Enable email monitoring to get started"
+      case 'finalizing': return "Your AI email assistant is ready!"
+      default: return "Let's set up your AI email assistant"
+    }
+  }
 
+  const getStepProgress = () => {
+    const steps = ['intro', 'tone', 'signoff', 'inventory', 'monitoringConsent', 'finalizing']
+    const currentIndex = steps.indexOf(step)
+    return ((currentIndex + 1) / steps.length) * 100
+  }
+
+  const transitionToStep = (newStep) => {
+      setIsTransitioning(true)
+      setTimeout(() => {
+        setStep(newStep)
+        setIsTransitioning(false)
+      }, 300)
+  }
+
+  const setLoadingState = (loading, messages = []) => {
+    setIsLoading(loading)
+    if (loading && messages.length > 0) {
+      setEmailCrawlMessages(messages)
+      setCurrentMessageIndex(0)
+    }
+  }
+
+  // Cycle through loading messages
+  useEffect(() => {
+    if (isLoading && emailCrawlMessages.length > 0) {
+      const interval = setInterval(() => {
+        setCurrentMessageIndex((prev) => (prev + 1) % emailCrawlMessages.length)
+      }, 2000)
+      return () => clearInterval(interval)
+    }
+  }, [isLoading, emailCrawlMessages.length])
+
+  const handleWebsiteSubmit = async () => {
+    if (!websiteUrl.trim()) {
+      setErrors({ ...errors, websiteUrl: 'Please enter a valid website URL' })
+      return
+    }
+
+    await handleAsyncOperation(async () => {
+      setLoadingState(true, [
+        'Analyzing your website...',
+        'Understanding your brand...',
+        'Learning your business model...',
+        'Processing content...'
+      ])
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+      
+      try {
+        const response = await fetch(`${api}/analyze-website`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ website_url: websiteUrl }),
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!response.ok) {
+          throw new Error(`Website analysis failed (${response.status})`)
+        }
+
+        const data = await response.json()
+        setBrandSummary(data.brand_summary || 'Analysis complete')
+        transitionToStep('tone')
+      } finally {
+        clearTimeout(timeoutId)
+        setLoadingState(false)
+      }
+    }, "Failed to analyze website. Please try again.")
+  }
+
+  const handleManualSubmit = () => {
+    const currentStepData = manualSteps[manualStep]
+    const value = brandInfo[currentStepData.key]
+
+    if (!currentStepData.optional && (!value || value.length < currentStepData.min)) {
+      setErrors({ ...errors, [currentStepData.key]: `Please enter at least ${currentStepData.min} characters` })
+      return
+    }
+
+    if (value && value.length > currentStepData.max) {
+      setErrors({ ...errors, [currentStepData.key]: `Please keep it under ${currentStepData.max} characters` })
+        return
+      }
+
+    if (manualStep < manualSteps.length - 1) {
+      setManualStep(manualStep + 1)
+      setErrors({})
+      } else {
+      setBrandSummary(Object.values(brandInfo).filter(Boolean).join(' '))
+      transitionToStep('tone')
+    }
+  }
+
+  const handleEmailCrawl = async () => {
+    await handleAsyncOperation(async () => {
+      setLoadingState(true, crawlMessages)
+      
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
+      
+      try {
+        const response = await fetch(`${api}/crawl-emails`, {
+          method: 'POST',
+          credentials: 'include',
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!response.ok) {
+          throw new Error(`Email crawl failed (${response.status})`)
+        }
+        
+        setShowSuccessMessage(true)
+        setTimeout(() => {
+          setShowSuccessMessage(false)
+          transitionToStep('signoff')
+        }, 2000)
+      } finally {
+        clearTimeout(timeoutId)
+        setLoadingState(false)
+      }
+    }, "Failed to analyze emails. Please try again.")
+  }
+
+  const handleGenericTone = () => {
+    transitionToStep('signoff')
+  }
+
+  const updateSignoff = () => {
+    transitionToStep('inventory')
+  }
+
+  return (
+    <div 
+      className="min-h-screen bg-white"
+      style={{ width: '100vw', maxWidth: '100%' }}
+    >
       {/* Error Banner */}
       {error && (
-        <div style={styles.errorBanner}>
-          <span>{error}</span>
+        <motion.div 
+          className="fixed top-0 left-0 right-0 bg-red-500 text-white px-6 py-3 text-center z-50"
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          exit={{ y: -100 }}
+        >
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <span className="text-sm font-medium">{error}</span>
           <button 
-            style={styles.errorCloseButton}
-            className="error-close-button"
             onClick={() => setError(null)}
+              className="text-white hover:text-gray-200 transition-colors"
           >
             ✕
           </button>
         </div>
+        </motion.div>
       )}
-
-      {/* Animated Background */}
-      <div style={styles.backgroundOrb1}></div>
-      <div style={styles.backgroundOrb2}></div>
-      
-      {/* Floating Particles */}
-      <div style={styles.particleContainer}>
-        {particles.map((particle) => (
-          <div
-            key={particle.id}
-            style={{
-              position: 'absolute',
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-              width: `${particle.size}px`,
-              height: `${particle.size}px`,
-              background: 'radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(59, 130, 246, 0.2) 50%, transparent 100%)',
-              borderRadius: '50%',
-              pointerEvents: 'none',
-              opacity: particle.opacity,
-              animation: `float ${particle.duration}s linear infinite ${particle.delay}s, floatHorizontal 4s ease-in-out infinite ${particle.delay * 0.2}s`
-            }}
-          />
-        ))}
-      </div>
 
       {/* Loading Overlay */}
       {isLoading && (
-        <div style={styles.loadingOverlay}>
-          <div style={styles.loadingContent}>
-            <div style={styles.spinner}></div>
+        <motion.div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div 
+            className="bg-white rounded-2xl p-8 max-w-md mx-auto text-center"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <Loader2 className="w-8 h-8 text-white animate-spin" />
+            </div>
             
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">Processing...</h3>
+            
+            <div className="h-8 flex items-center justify-center mb-4">
+              <AnimatePresence mode="wait">
             {emailCrawlMessages.length > 0 && (
-              <div style={styles.crawlMessageContainer}>
-                <p style={styles.crawlMessage} className="crawl-message" key={currentMessageIndex}>
+                  <motion.p 
+                    key={currentMessageIndex}
+                    className="text-gray-600"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                  >
                   {emailCrawlMessages[currentMessageIndex]}
-                </p>
-              </div>
+                  </motion.p>
             )}
+              </AnimatePresence>
+            </div>
             
             {showSuccessMessage && (
-              <div style={styles.successMessageContainer}>
-                <CheckCircle />
-                <p style={styles.successMessage}>Successfully analyzed your emails!</p>
-              </div>
+              <motion.div 
+                className="flex items-center justify-center space-x-2 text-green-600"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                <CheckCircle className="w-5 h-5" />
+                <span className="font-medium">Analysis complete!</span>
+              </motion.div>
             )}
-            
-            {!emailCrawlMessages.length && !showSuccessMessage && loadingMessage && (
-              <p style={styles.loadingText}>{loadingMessage}</p>
-            )}
-            
-            {!emailCrawlMessages.length && !showSuccessMessage && !loadingMessage && (
-              <div style={styles.crawlMessageContainer}>
-                <p style={styles.crawlMessage} className="crawl-message" key={currentMessageIndex}>
-                  {defaultProcessingMessages[currentMessageIndex % defaultProcessingMessages.length]}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
 
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div 
+          className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-purple-200/20 to-blue-200/20 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.2, 1],
+            x: [0, 30, 0],
+            y: [0, -20, 0]
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div 
+          className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-gradient-to-tr from-blue-200/20 to-purple-200/20 rounded-full blur-3xl"
+          animate={{
+            scale: [1, 1.3, 1],
+            x: [0, -40, 0],
+            y: [0, 30, 0]
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+              </div>
+
       {/* Main Content */}
-      <div style={styles.main}>
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-16">
         {/* Header */}
-        <div style={styles.header}>
-          <div style={styles.stepIcon}>
+        <motion.div 
+          className="text-center mb-12"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.div 
+            className="w-20 h-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6"
+            variants={itemVariants}
+          >
+            <div className="text-white">
             {getStepIcon()}
           </div>
-          <h1 style={styles.title}>{getStepTitle()}</h1>
-          <p style={styles.subtitle}>Let's set up your AI email assistant</p>
+          </motion.div>
+          
+          <motion.h1 
+            className="text-4xl md:text-5xl font-bold text-gray-900 mb-4"
+            variants={itemVariants}
+          >
+            {getStepTitle()}
+          </motion.h1>
+          
+          <motion.p 
+            className="text-lg text-gray-600 mb-8"
+            variants={itemVariants}
+          >
+            {getStepDescription()}
+          </motion.p>
+
+          {/* Progress Bar */}
+          <motion.div 
+            className="max-w-md mx-auto"
+            variants={itemVariants}
+          >
+            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+              <motion.div 
+                className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${getStepProgress()}%` }}
+                transition={{ duration: 0.5 }}
+              />
         </div>
+            <p className="text-sm text-gray-500">
+              Step {['intro', 'tone', 'signoff', 'inventory', 'monitoringConsent', 'finalizing'].indexOf(step) + 1} of 6
+            </p>
+          </motion.div>
+        </motion.div>
 
         {/* Step Content */}
-        <div style={styles.stepContainer} className={`step-content ${isTransitioning ? 'transitioning' : ''}`}>
+        <motion.div 
+          className="flex justify-center"
+          key={step}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="w-full max-w-4xl">
+            {/* Intro Step */}
           {step === 'intro' && hasWebsite && (
-            <div style={styles.card}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Website URL</label>
+              <motion.div 
+                className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm max-w-2xl mx-auto"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Website URL
+                    </label>
                 <input
                   type="text"
                   placeholder="https://yourwebsite.com"
@@ -835,59 +473,50 @@ const Onboarding = () => {
                     setWebsiteUrl(e.target.value)
                     setErrors({ ...errors, websiteUrl: null })
                   }}
-                  style={styles.input}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
                   disabled={isLoading}
                 />
-                {errors.websiteUrl && <p style={styles.error}>{errors.websiteUrl}</p>}
+                    {errors.websiteUrl && (
+                      <p className="text-red-500 text-sm mt-2">{errors.websiteUrl}</p>
+                    )}
               </div>
-              <button 
+
+                  <motion.button 
                 onClick={handleWebsiteSubmit} 
-                style={styles.primaryButton} 
-                className="primary-button"
                 disabled={isLoading}
+                    className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center justify-center space-x-2"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
               >
                 <span>Analyze Website</span>
-                <ArrowRight />
-              </button>
-              <p 
-                style={{...styles.toggleLink, opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto'}} 
-                className="toggle-link" 
-                onClick={() => !isLoading && setHasWebsite(false)}
+                    <ArrowRight size={20} />
+                  </motion.button>
+
+                  <button 
+                    onClick={() => setHasWebsite(false)}
+                    disabled={isLoading}
+                    className="w-full px-6 py-3 border border-purple-300 text-purple-700 bg-white rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all duration-200 font-medium text-sm"
               >
                 Don't have a website? Fill out manually instead
-              </p>
+                  </button>
             </div>
+              </motion.div>
           )}
 
+            {/* Manual Input Steps */}
           {step === 'intro' && !hasWebsite && (
-            <div style={styles.card}>
-              {manualStep < manualSteps.length && (
-                <>
-                  <div style={styles.progressBar}>
-                    <div 
-                      style={{
-                        ...styles.progressFill,
-                        width: `${((manualStep + 1) / manualSteps.length) * 100}%`
-                      }}
-                    ></div>
-                  </div>
-                  <div style={styles.stepInfo}>
-                    Step {manualStep + 1} of {manualSteps.length}
-                  </div>
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>{manualSteps[manualStep].label}</label>
-                    {manualSteps[manualStep].type === 'textarea' ? (
-                      <textarea
-                        value={brandInfo[manualSteps[manualStep].key]}
-                        onChange={(e) => {
-                          setBrandInfo({ ...brandInfo, [manualSteps[manualStep].key]: e.target.value })
-                          setErrors({ ...errors, [manualSteps[manualStep].key]: null })
-                        }}
-                        style={styles.textarea}
-                        placeholder="Tell us more..."
-                        disabled={isLoading}
-                      />
-                    ) : (
+              <motion.div 
+                className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm max-w-2xl mx-auto"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {manualSteps[manualStep].label}
+                    </h3>
+                    {manualSteps[manualStep].type === 'input' ? (
                       <input
                         type="text"
                         value={brandInfo[manualSteps[manualStep].key]}
@@ -895,138 +524,150 @@ const Onboarding = () => {
                           setBrandInfo({ ...brandInfo, [manualSteps[manualStep].key]: e.target.value })
                           setErrors({ ...errors, [manualSteps[manualStep].key]: null })
                         }}
-                        style={styles.input}
-                        placeholder="Enter here..."
-                        disabled={isLoading}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                      />
+                    ) : (
+                      <textarea
+                        value={brandInfo[manualSteps[manualStep].key]}
+                        onChange={(e) => {
+                          setBrandInfo({ ...brandInfo, [manualSteps[manualStep].key]: e.target.value })
+                          setErrors({ ...errors, [manualSteps[manualStep].key]: null })
+                        }}
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 resize-none"
                       />
                     )}
                     {errors[manualSteps[manualStep].key] && (
-                      <p style={styles.error}>{errors[manualSteps[manualStep].key]}</p>
+                      <p className="text-red-500 text-sm mt-2">{errors[manualSteps[manualStep].key]}</p>
                     )}
                   </div>
-                  <button 
-                    onClick={validateAndNextStep} 
-                    style={styles.primaryButton} 
-                    className="primary-button"
-                    disabled={isLoading}
-                  >
-                    <span>{manualStep === manualSteps.length - 1 ? 'Complete' : 'Next'}</span>
-                    <ArrowRight />
-                  </button>
-                  <p 
-                    style={{...styles.toggleLink, opacity: isLoading ? 0.5 : 1, pointerEvents: isLoading ? 'none' : 'auto'}} 
-                    className="toggle-link" 
-                    onClick={() => !isLoading && setHasWebsite(true)}
-                  >
-                    Actually, I do have a website
-                  </p>
-                </>
-              )}
+
+                  <div className="flex space-x-4">
+                    {manualStep > 0 && (
+                      <motion.button 
+                        onClick={() => setManualStep(manualStep - 1)}
+                        className="flex-1 px-6 py-3 border border-purple-300 text-purple-700 bg-white rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all duration-200 font-medium"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Back
+                      </motion.button>
+                    )}
+                    
+                    <motion.button 
+                      onClick={handleManualSubmit}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center justify-center space-x-2"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <span>{manualStep < manualSteps.length - 1 ? 'Next' : 'Continue'}</span>
+                      <ArrowRight size={20} />
+                    </motion.button>
             </div>
+                </div>
+              </motion.div>
           )}
 
-          {step === 'summary' && (
-            <div style={styles.card}>
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Your Brand Summary</label>
-                <p style={styles.description}>
-                  We've analyzed your information and created this summary. Feel free to edit it to better reflect your brand.
-                </p>
-                <textarea
-                  value={brandSummary}
-                  onChange={(e) => setBrandSummary(e.target.value)}
-                  style={styles.largeTextarea}
-                  disabled={isLoading}
-                />
-              </div>
-              <button 
-                onClick={handleConfirmBrandSummary} 
-                style={styles.primaryButton} 
-                className="primary-button"
-                disabled={isLoading}
-              >
-                <span>Save & Continue</span>
-                <ArrowRight />
-              </button>
-            </div>
-          )}
-
+            {/* Tone Analysis Step */}
           {step === 'tone' && (
-            <div style={styles.card}>
-              <div style={styles.toneInfo}>
-                <h3 style={styles.cardTitle}>Email Tone Analysis</h3>
-                <p style={styles.description}>
+              <motion.div 
+                className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm max-w-2xl mx-auto"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">Email Tone Analysis</h3>
+                    <p className="text-gray-600 leading-relaxed">
                   We can analyze your recent emails to understand your writing style, tone, and common phrases.
                   This helps us generate emails that sound authentically like you.
                 </p>
               </div>
-              <div style={styles.buttonGroup}>
-                <button
+
+                  <div className="space-y-4">
+                    <motion.button
                   onClick={handleEmailCrawl}
-                  style={styles.primaryButton}
-                  className="primary-button"
                   disabled={isLoading}
+                      className="w-full px-6 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center justify-center space-x-2"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                 >
                   <span>Analyze My Emails</span>
-                  <ArrowRight />
-                </button>
-                <button
+                      <ArrowRight size={20} />
+                    </motion.button>
+
+                    <motion.button
                   onClick={handleGenericTone}
-                  style={styles.secondaryButton}
-                  className="secondary-button"
                   disabled={isLoading}
+                      className="w-full px-6 py-3 border border-purple-300 text-purple-700 bg-white rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all duration-200 font-medium"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                 >
                   Skip - Use Default Tone
-                </button>
+                    </motion.button>
               </div>
             </div>
+              </motion.div>
           )}
 
+            {/* Signature Step */}
           {step === 'signoff' && (
-            <div style={styles.card}>
               <SigEditor
                 value={signoff}
                 setValue={setSignoff}
                 onBack={() => transitionToStep('tone')}
                 onSave={updateSignoff}
               />
-            </div>
           )}
 
+            {/* Inventory Step */}
           {step === 'inventory' && (
-            <div style={styles.inventoryWrapper}>
-              <InventoryPage
-                embedded={true}
+              <motion.div 
+                className="bg-white border border-gray-200 rounded-2xl shadow-sm"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+              <OnboardingInventory
                 onBack={() => transitionToStep('signoff')}
                 onNext={() => transitionToStep('monitoringConsent')}
               />
-            </div>
+              </motion.div>
           )}
 
+            {/* Monitoring Consent Step */}
           {step === 'monitoringConsent' && (
-            <div style={styles.card}>
-              <div style={styles.consentInfo}>
-                <h3 style={styles.cardTitle}>Enable Email Monitoring</h3>
-                <p style={styles.description}>
+              <motion.div 
+                className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm max-w-2xl mx-auto"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">Enable Email Monitoring</h3>
+                    <p className="text-gray-600 leading-relaxed mb-6">
                   To provide AI email assistance, we need permission to monitor your inbox for new emails 
                   and draft replies. This is essential for our service to work.
                 </p>
-                <div style={styles.warningBox}>
-                  <div style={styles.warningHeader}>
-                    <AlertTriangle />
-                    <span style={styles.warningTitle}>Important Notice</span>
-                  </div>
-                  <p style={styles.warningText}>
+
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                      <div className="flex items-start space-x-3">
+                        <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-semibold text-yellow-900 mb-1">Important Notice</h4>
+                          <p className="text-yellow-700 text-sm leading-relaxed">
                     Without email monitoring, we cannot detect new messages or help with responses. 
                     Declining will result in account termination.
                   </p>
                 </div>
               </div>
-              <div style={styles.finalButtons}>
-                <button
-                  style={styles.dangerButton}
-                  className="danger-button"
-                  disabled={isLoading}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <motion.button
                   onClick={async () => {
                     const confirmed = window.confirm(
                       '⚠️ WARNING: This action is IRREVERSIBLE.\n\nAre you absolutely sure you want to permanently delete your account and all associated data?\n\nThis cannot be undone.'
@@ -1060,10 +701,15 @@ const Onboarding = () => {
                       }
                     }, "Failed to delete account. Please try again.")
                   }}
+                      disabled={isLoading}
+                      className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 font-medium"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                 >
                   Delete Account
-                </button>
-                <button
+                    </motion.button>
+
+                    <motion.button
                   onClick={async () => {
                     await handleAsyncOperation(async () => {
                       setLoadingState(true, monitoringMessages)
@@ -1102,445 +748,41 @@ const Onboarding = () => {
                       }
                     }, "Failed to enable monitoring. Please try again.")
                   }}
-                  style={styles.successButton}
-                  className="success-button"
                   disabled={isLoading}
+                      className="flex-1 px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all duration-200 font-medium"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                 >
                   Start Monitoring
-                </button>
+                    </motion.button>
               </div>
             </div>
+              </motion.div>
           )}
 
+            {/* Finalizing Step */}
           {step === 'finalizing' && (
-            <div style={styles.finalizingCard}>
-              <div style={styles.finalizingContent}>
-                <div style={styles.successIcon}>🎉</div>
-                <h2 style={styles.finalizingTitle}>Welcome to Larynx AI!</h2>
-                <p style={styles.finalizingText}>
+              <motion.div 
+                className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm text-center max-w-2xl mx-auto"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="space-y-6">
+                  <div className="text-6xl mb-6">🎉</div>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Larynx AI!</h2>
+                  <p className="text-gray-600 leading-relaxed mb-8">
                   Your account is being set up. You'll be redirected to your dashboard shortly.
                 </p>
-                <div style={styles.spinner}></div>
+                  <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
               </div>
-            </div>
+              </motion.div>
           )}
         </div>
+        </motion.div>
       </div>
     </div>
   )
-}
-
-const styles = {
-  container: {
-    margin: 0,
-    padding: 0,
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #1a1a1a 0%, #000000 50%, #2d2d2d 100%)',
-    color: 'white',
-    fontFamily: 'Arial, sans-serif',
-    position: 'relative',
-    overflow: 'hidden'
-  },
-  errorBanner: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    background: 'linear-gradient(45deg, #dc2626, #ef4444)',
-    color: 'white',
-    padding: '12px 24px',
-    textAlign: 'center',
-    zIndex: 10000,
-    fontSize: '14px',
-    fontWeight: '500',
-    boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
-    animation: 'slideDown 0.3s ease-out'
-  },
-  errorCloseButton: {
-    background: 'none',
-    border: 'none',
-    color: 'white',
-    fontSize: '16px',
-    cursor: 'pointer',
-    position: 'absolute',
-    right: '16px',
-    top: '50%',
-    transform: 'translateY(-50%)',
-    padding: '4px 8px',
-    borderRadius: '4px',
-    transition: 'background 0.2s'
-  },
-  backgroundOrb1: {
-    position: 'absolute',
-    top: '20%',
-    left: '20%',
-    width: '300px',
-    height: '300px',
-    background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)',
-    borderRadius: '50%',
-    filter: 'blur(60px)',
-    animation: 'pulse 6s ease-in-out infinite'
-  },
-  backgroundOrb2: {
-    position: 'absolute',
-    bottom: '20%',
-    right: '20%',
-    width: '250px',
-    height: '250px',
-    background: 'radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%)',
-    borderRadius: '50%',
-    filter: 'blur(60px)',
-    animation: 'pulse 6s ease-in-out infinite 3s'
-  },
-  particleContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    pointerEvents: 'none',
-    overflow: 'hidden'
-  },
-  loadingOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: '100vw',
-    height: '100vh',
-    background: 'rgba(0, 0, 0, 0.8)',
-    backdropFilter: 'blur(10px)',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000
-  },
-  loadingContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    textAlign: 'center'
-  },
-  loadingText: {
-    color: 'white',
-    fontSize: '18px',
-    marginTop: '20px'
-  },
-  crawlMessageContainer: {
-    marginTop: '20px',
-    height: '30px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  crawlMessage: {
-    color: '#8b5cf6',
-    fontSize: '16px',
-    fontWeight: '500'
-  },
-  successMessageContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginTop: '20px',
-    padding: '16px 24px',
-    background: 'rgba(16, 185, 129, 0.2)',
-    border: '1px solid rgba(16, 185, 129, 0.3)',
-    borderRadius: '12px'
-  },
-  successMessage: {
-    color: '#10b981',
-    fontSize: '16px',
-    fontWeight: '600',
-    margin: 0
-  },
-  main: {
-    position: 'relative',
-    zIndex: 10,
-    maxWidth: '800px',
-    margin: '0 auto',
-    padding: '32px',
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column'
-  },
-  header: {
-    textAlign: 'center',
-    marginBottom: '24px',
-    padding: '24px 0'
-  },
-  stepIcon: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '64px',
-    height: '64px',
-    background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
-    borderRadius: '50%',
-    marginBottom: '24px',
-    color: 'white'
-  },
-  title: {
-    fontSize: '36px',
-    fontWeight: 'bold',
-    marginBottom: '12px',
-    background: 'linear-gradient(45deg, #ffffff, #a855f7, #8b5cf6)',
-    backgroundClip: 'text',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent'
-  },
-  subtitle: {
-    fontSize: '18px',
-    color: '#d1d5db'
-  },
-  stepContainer: {
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    paddingTop: '20px'
-  },
-  card: {
-    width: '100%',
-    maxWidth: '600px',
-    padding: '40px',
-    background: 'linear-gradient(145deg, rgba(55, 65, 81, 0.5), rgba(17, 24, 39, 0.5))',
-    backdropFilter: 'blur(20px)',
-    borderRadius: '20px',
-    border: '1px solid #374151',
-    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)'
-  },
-  inventoryWrapper: {
-    width: '100%',
-    maxWidth: '1000px'
-  },
-  finalizingCard: {
-    width: '100%',
-    maxWidth: '500px',
-    padding: '60px 40px',
-    background: 'linear-gradient(145deg, rgba(16, 185, 129, 0.2), rgba(139, 92, 246, 0.2))',
-    backdropFilter: 'blur(20px)',
-    borderRadius: '20px',
-    border: '1px solid rgba(16, 185, 129, 0.3)',
-    textAlign: 'center'
-  },
-  progressBar: {
-    width: '100%',
-    height: '8px',
-    background: 'rgba(55, 65, 81, 0.8)',
-    borderRadius: '4px',
-    marginBottom: '16px',
-    overflow: 'hidden'
-  },
-  progressFill: {
-    height: '100%',
-    background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
-    transition: 'width 0.3s ease',
-    borderRadius: '4px'
-  },
-  stepInfo: {
-    fontSize: '14px',
-    color: '#9ca3af',
-    marginBottom: '24px',
-    textAlign: 'center'
-  },
-  inputGroup: {
-    marginBottom: '32px'
-  },
-  label: {
-    display: 'block',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#e5e7eb',
-    marginBottom: '12px'
-  },
-  description: {
-    fontSize: '14px',
-    color: '#d1d5db',
-    lineHeight: '1.6',
-    marginBottom: '20px'
-  },
-  input: {
-    width: '100%',
-    padding: '16px',
-    background: 'rgba(17, 24, 39, 0.8)',
-    border: '1px solid #374151',
-    borderRadius: '12px',
-    color: 'white',
-    fontSize: '16px',
-    transition: 'border-color 0.3s ease',
-    boxSizing: 'border-box'
-  },
-  textarea: {
-    width: '100%',
-    minHeight: '120px',
-    padding: '16px',
-    background: 'rgba(17, 24, 39, 0.8)',
-    border: '1px solid #374151',
-    borderRadius: '12px',
-    color: 'white',
-    fontSize: '16px',
-    resize: 'vertical',
-    transition: 'border-color 0.3s ease',
-    boxSizing: 'border-box'
-  },
-  largeTextarea: {
-    width: '100%',
-    minHeight: '180px',
-    padding: '16px',
-    background: 'rgba(17, 24, 39, 0.8)',
-    border: '1px solid #374151',
-    borderRadius: '12px',
-    color: 'white',
-    fontSize: '16px',
-    resize: 'vertical',
-    transition: 'border-color 0.3s ease',
-    boxSizing: 'border-box'
-  },
-  primaryButton: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '12px',
-    width: '100%',
-    padding: '16px 24px',
-    background: 'linear-gradient(45deg, #8b5cf6, #3b82f6)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    marginBottom: '16px'
-  },
-  secondaryButton: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '12px',
-    width: '100%',
-    padding: '16px 24px',
-    background: 'rgba(107, 114, 128, 0.6)',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '16px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease'
-  },
-  dangerButton: {
-    padding: '16px 24px',
-    background: '#dc2626',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease'
-  },
-  successButton: {
-    padding: '16px 32px',
-    background: '#10b981',
-    color: 'white',
-    border: 'none',
-    borderRadius: '12px',
-    fontSize: '16px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease'
-  },
-  toggleLink: {
-    color: '#3b82f6',
-    cursor: 'pointer',
-    textDecoration: 'underline',
-    fontSize: '14px',
-    textAlign: 'center',
-    transition: 'color 0.3s ease'
-  },
-  error: {
-    color: '#f87171',
-    fontSize: '14px',
-    marginTop: '8px'
-  },
-  cardTitle: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: '16px'
-  },
-  toneInfo: {
-    marginBottom: '32px'
-  },
-  buttonGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '16px'
-  },
-  consentInfo: {
-    marginBottom: '32px'
-  },
-  warningBox: {
-    padding: '16px',
-    background: 'rgba(245, 158, 11, 0.2)',
-    border: '1px solid rgba(245, 158, 11, 0.3)',
-    borderRadius: '12px',
-    marginTop: '20px'
-  },
-  warningHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    marginBottom: '8px'
-  },
-  warningTitle: {
-    color: '#fbbf24',
-    fontSize: '16px',
-    fontWeight: '600'
-  },
-  warningText: {
-    color: '#fbbf24',
-    fontSize: '14px',
-    lineHeight: '1.5'
-  },
-  finalButtons: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: '16px',
-    flexWrap: 'wrap'
-  },
-  finalizingContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center'
-  },
-  successIcon: {
-    fontSize: '64px',
-    marginBottom: '24px'
-  },
-  finalizingTitle: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    marginBottom: '16px',
-    background: 'linear-gradient(45deg, #10b981, #8b5cf6)',
-    backgroundClip: 'text',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent'
-  },
-  finalizingText: {
-    fontSize: '16px',
-    color: '#d1d5db',
-    marginBottom: '32px',
-    lineHeight: '1.6'
-  },
-  spinner: {
-    width: '40px',
-    height: '40px',
-    border: '4px solid rgba(139, 92, 246, 0.3)',
-    borderTopColor: '#8b5cf6',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite'
-  }
 }
 
 export default Onboarding
