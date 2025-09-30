@@ -261,7 +261,7 @@ const Onboarding = () => {
       
       try {
         const response = await fetch(`${api}/crawl-emails`, {
-          method: 'POST',
+          method: 'GET',
           credentials: 'include',
           signal: controller.signal
         })
