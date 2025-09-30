@@ -291,6 +291,7 @@ const AnalyticsModern = () => {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 overflow-x-hidden" style={{ width: '100vw', maxWidth: '100%' }}>
       <style>
         {`
@@ -781,6 +782,7 @@ const AnalyticsModern = () => {
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   )
 }
 
