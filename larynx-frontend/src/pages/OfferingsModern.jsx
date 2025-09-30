@@ -233,7 +233,7 @@ const OfferingsModern = () => {
 
     try {
       const normalizedPrice = normalizePrice(editingOffering.price)
-      await fetchWithErrorHandling(`${api}/inventory/${editingId}`, {
+      await fetchWithErrorHandling(`${api}/inventory/edit/${editingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -256,7 +256,7 @@ const OfferingsModern = () => {
 
   const handleDeleteOffering = async (id) => {
     try {
-      await fetchWithErrorHandling(`${api}/inventory/${id}`, {
+      await fetchWithErrorHandling(`${api}/inventory/delete/${id}`, {
         method: 'DELETE'
       })
       
