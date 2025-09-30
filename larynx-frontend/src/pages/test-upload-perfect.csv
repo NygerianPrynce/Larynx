@@ -3,8 +3,8 @@ Wedding Catering,150,Catering,per_event
 Table Rental,25,Event Rentals,per_day
 Photography Package,800,Photography,per_project
 DJ Services,300,Entertainment,per_hour
-Floral Arrangements,75,Decor,per_piece
-Cake Design,200,Bakery,per_cake
+Floral Arrangements,75,Decor,per_unit
+Cake Design,200,Bakery,per_unit
 Bartending Service,50,Bar Service,per_hour
 Venue Setup,100,Event Setup,flat_rate
 Cleanup Service,75,Event Cleanup,per_event
