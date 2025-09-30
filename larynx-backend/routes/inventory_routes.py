@@ -63,6 +63,8 @@ async def add_inventory_item(request: Request, item: InventoryItem):
 class BulkInventoryItem(BaseModel):
     name: str
     price: float
+    category: Optional[str] = None
+    pricing_type: Optional[str] = "per_unit"
 
     @validator('name')
     def clean_name(cls, v):
@@ -92,6 +94,24 @@ class BulkInventoryItem(BaseModel):
         
         # Round to 2 decimal places
         return round(float(v), 2)
+    
+    @validator('category')
+    def clean_category(cls, v):
+        if v is None or v == '':
+            return None
+        cleaned = v.strip()
+        return cleaned if cleaned else None
+    
+    @validator('pricing_type')
+    def clean_pricing_type(cls, v):
+        if v is None or v == '':
+            return "per_unit"
+        cleaned = v.strip().lower()
+        valid_types = ['per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'flat_rate']
+        if cleaned in valid_types:
+            return cleaned
+        else:
+            return "per_unit"  # Default fallback
 
 class DuplicateDetector:
     def __init__(self):
@@ -210,7 +230,10 @@ class FileProcessor:
     def __init__(self):
         self.name_variations = ['name', 'product_name', 'item_name', 'product', 'item', 'title']
         self.price_variations = ['price', 'cost', 'amount', 'value', 'unit_price']
+        self.category_variations = ['category', 'type', 'classification', 'group', 'class']
+        self.pricing_type_variations = ['pricing_type', 'price_type', 'unit_type', 'billing_type', 'charge_type']
         self.supported_extensions = ['.csv', '.xlsx', '.xls']
+        self.valid_pricing_types = ['per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'flat_rate']
     
     def read_file(self, file_content: bytes, filename: str) -> pd.DataFrame:
         """Read file content based on extension"""
@@ -283,7 +306,7 @@ class FileProcessor:
         return '\n'.join(cleaned_lines)
     
     def detect_headers(self, df: pd.DataFrame) -> Dict[str, str]:
-        """Detect which columns contain name and price"""
+        """Detect which columns contain name, price, and category"""
         headers = df.columns.str.lower().str.strip()
         mapping = {}
         
@@ -301,12 +324,32 @@ class FileProcessor:
                 price_col = df.columns[headers.get_loc(col)]
                 break
         
+        # Find category column (optional)
+        category_col = None
+        for col in headers:
+            if any(variation in col for variation in self.category_variations):
+                category_col = df.columns[headers.get_loc(col)]
+                break
+        
+        # Find pricing_type column (optional)
+        pricing_type_col = None
+        for col in headers:
+            if any(variation in col for variation in self.pricing_type_variations):
+                pricing_type_col = df.columns[headers.get_loc(col)]
+                break
+        
         if not name_col:
             raise ValueError("Could not find name/product column. Expected columns like: name, product_name, item_name")
         if not price_col:
             raise ValueError("Could not find price column. Expected columns like: price, cost, amount")
         
-        return {"name": name_col, "price": price_col}
+        result = {"name": name_col, "price": price_col}
+        if category_col:
+            result["category"] = category_col
+        if pricing_type_col:
+            result["pricing_type"] = pricing_type_col
+        
+        return result
     
     def extract_price(self, price_str: Any) -> float:
         """Extract numeric price from string"""
@@ -358,9 +401,29 @@ class FileProcessor:
                     
                     price = self.extract_price(row[header_mapping["price"]])
                     
+                    # Extract category if available
+                    category = None
+                    if "category" in header_mapping:
+                        category_val = row[header_mapping["category"]]
+                        if pd.notna(category_val):
+                            category = str(category_val).strip()
+                            if category.lower() in ['nan', 'null', '', 'none']:
+                                category = None
+                    
+                    # Extract pricing_type if available
+                    pricing_type = "per_unit"  # Default
+                    if "pricing_type" in header_mapping:
+                        pricing_type_val = row[header_mapping["pricing_type"]]
+                        if pd.notna(pricing_type_val):
+                            pricing_type = str(pricing_type_val).strip().lower()
+                            if pricing_type in ['nan', 'null', '', 'none']:
+                                pricing_type = "per_unit"
+                    
                     cleaned_items.append({
                         "name": name,
                         "price": price,
+                        "category": category,
+                        "pricing_type": pricing_type,
                         "row": idx + 2
                     })
                     
@@ -415,11 +478,15 @@ async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
             try:
                 validated_item = BulkInventoryItem(
                     name=item["name"],
-                    price=item["price"]
+                    price=item["price"],
+                    category=item.get("category"),
+                    pricing_type=item.get("pricing_type", "per_unit")
                 )
                 validated_items.append({
                     "name": validated_item.name,
                     "price": validated_item.price,
+                    "category": validated_item.category,
+                    "pricing_type": validated_item.pricing_type,
                     "row": item["row"]
                 })
             except Exception as e:
@@ -445,8 +512,13 @@ async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
         skipped_count = 0
 
         if analysis['new_items']:
-            new_records = [{"user_id": user_id, "name": item["name"], "price": item["price"], "pricing_type": "per_unit"} 
-                          for item in analysis['new_items']]
+            new_records = [{
+                "user_id": user_id, 
+                "name": item["name"], 
+                "price": item["price"], 
+                "pricing_type": item.get("pricing_type", "per_unit"),
+                "category": item.get("category")
+            } for item in analysis['new_items']]
             insert_result = supabase.table("inventory").insert(new_records).execute()
             inserted_count = len(insert_result.data) if insert_result.data else 0
 

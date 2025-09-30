@@ -1,0 +1,7 @@
+name,price,category,pricing_type
+Wedding Catering,150,Catering,per_event
+Table Rental,25,Event Rentals,per_day
+,50,Photography,invalid_type
+Photography Package,invalid_price,Photography,per_project
+Wedding Catering,200,Catering,per_event
+DJ Services,,Entertainment,per_hour

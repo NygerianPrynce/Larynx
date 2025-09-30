@@ -41,6 +41,12 @@ const Package = ({ className = "w-6 h-6" }) => (
   </svg>
 )
 
+const X = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
+
 const OfferingsModern = () => {
   const navigate = useNavigate()
   const api = import.meta.env.VITE_API_URL
@@ -55,7 +61,16 @@ const OfferingsModern = () => {
   const [showAddForm, setShowAddForm] = useState(false)
   const [showUploadForm, setShowUploadForm] = useState(false)
   const [uploadFile, setUploadFile] = useState(null)
+  const [showPreview, setShowPreview] = useState(false)
+  const [previewData, setPreviewData] = useState(null)
+  const [uploading, setUploading] = useState(false)
   const [specialInstructions, setSpecialInstructions] = useState('All services include free initial consultation. Custom packages available upon request. Rush orders require 48-hour notice with additional fees. Delivery available within 20-mile radius. 30-day satisfaction guarantee on all services.')
+  
+  // Error resolution states
+  const [uploadErrors, setUploadErrors] = useState(null)
+  const [errorFixes, setErrorFixes] = useState({})
+  const [showErrorResolution, setShowErrorResolution] = useState(false)
+  const [originalUploadData, setOriginalUploadData] = useState(null)
 
   const defaultCategories = ['Consulting', 'Design', 'Marketing', 'Writing', 'Development', 'Catering', 'Events']
   const [customCategories, setCustomCategories] = useState(['Drinks', 'Party Size', 'Custom Package'])
@@ -244,15 +259,141 @@ const OfferingsModern = () => {
     }
   }
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const file = event.target.files[0]
-    if (file) {
-      setUploadFile(file)
-      // Simulate processing
-      setTimeout(() => {
+    if (!file) return
+    
+    setUploadFile(file)
+    
+    // Preview the file contents
+    try {
+      const text = await file.text()
+      const lines = text.split('\n').filter(line => line.trim())
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      
+      // Parse first few rows for preview
+      const previewItems = []
+      for (let i = 1; i < Math.min(6, lines.length); i++) {
+        const values = lines[i].split(',')
+        if (values.length >= 2) {
+          previewItems.push({
+            row: i + 1,
+            name: values[0]?.trim() || '',
+            price: values[1]?.trim() || '',
+            category: values[2]?.trim() || 'None',
+            pricing_type: values[3]?.trim() || 'per_unit'
+          })
+        }
+      }
+      
+      setPreviewData({
+        fileName: file.name,
+        totalRows: lines.length - 1,
+        previewItems,
+        headers
+      })
+      setShowPreview(true)
+    } catch (error) {
+      console.error('Error previewing file:', error)
+      alert('Error reading file. Please check the format.')
+    }
+  }
+
+  const handleConfirmUpload = async () => {
+    if (!uploadFile) return
+    
+    setUploading(true)
+    const formData = new FormData()
+    formData.append('file', uploadFile)
+    
+    try {
+      const response = await fetchWithErrorHandling(`${api}/inventory/bulk-upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+      
+      if (response) {
+        // Check if there are errors to resolve
+        if (response.errors && (response.errors.length > 0 || response.warnings?.length > 0)) {
+          setUploadErrors(response)
+          setOriginalUploadData(response.allItems || [])
+          setShowErrorResolution(true)
+          setShowPreview(false)
+        } else {
+          // No errors, proceed with success
+          alert(`Upload successful! ${response.message}`)
+          await fetchInventory()
+          setShowPreview(false)
+          setShowUploadForm(false)
+          setUploadFile(null)
+          setPreviewData(null)
+        }
+      }
+    } catch (error) {
+      // Check if it's an error response with details
+      if (error.response) {
+        try {
+          const errorData = await error.response.json()
+          if (errorData.errors || errorData.warnings) {
+            setUploadErrors(errorData)
+            setOriginalUploadData(errorData.allItems || [])
+            setShowErrorResolution(true)
+            setShowPreview(false)
+            return
+          }
+        } catch (parseError) {
+          // If we can't parse the error, fall back to normal error handling
+        }
+      }
+      handleError(error, 'bulk upload')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleResolvedUpload = async () => {
+    if (!originalUploadData) return
+    
+    setUploading(true)
+    
+    try {
+      // Apply fixes to the data
+      const fixedData = applyErrorFixes()
+      
+      // Create a new file with the fixed data
+      const csvContent = [
+        'name,price,category,pricing_type',
+        ...fixedData.map(item => 
+          `${item.name || ''},${item.price || ''},${item.category || ''},${item.pricing_type || 'per_unit'}`
+        )
+      ].join('\n')
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const formData = new FormData()
+      formData.append('file', blob, 'fixed-upload.csv')
+      
+      const response = await fetchWithErrorHandling(`${api}/inventory/bulk-upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+      
+      if (response) {
+        alert(`Upload successful! ${response.message}`)
+        await fetchInventory()
+        setShowErrorResolution(false)
         setShowUploadForm(false)
         setUploadFile(null)
-      }, 2000)
+        setPreviewData(null)
+        setUploadErrors(null)
+        setErrorFixes({})
+        setOriginalUploadData(null)
+      }
+    } catch (error) {
+      handleError(error, 'resolved upload')
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -289,6 +430,65 @@ const OfferingsModern = () => {
     if (!price) return ''
     // Remove dollar signs, commas, and spaces, keep only numbers and decimal points
     return price.toString().replace(/[$,\s]/g, '').replace(/[^\d.]/g, '')
+  }
+
+  // Error resolution functions
+  const handleFixError = (rowIndex, field, newValue) => {
+    setErrorFixes(prev => ({
+      ...prev,
+      [rowIndex]: {
+        ...prev[rowIndex],
+        [field]: newValue
+      }
+    }))
+  }
+
+  const applyErrorFixes = () => {
+    if (!originalUploadData) return originalUploadData
+
+    const fixedData = originalUploadData.map((item, index) => ({
+      ...item,
+      ...errorFixes[index]
+    }))
+
+    return fixedData
+  }
+
+  const handleDuplicateAction = (rowIndex, action) => {
+    setErrorFixes(prev => ({
+      ...prev,
+      [rowIndex]: {
+        ...prev[rowIndex],
+        duplicateAction: action
+      }
+    }))
+  }
+
+  const downloadErrorReport = () => {
+    if (!uploadErrors) return
+
+    const errorReport = {
+      fileName: uploadFile?.name || 'upload-file',
+      timestamp: new Date().toISOString(),
+      errors: uploadErrors.errors || [],
+      warnings: uploadErrors.warnings || [],
+      summary: {
+        totalItems: uploadErrors.totalItems || 0,
+        errorCount: uploadErrors.errors?.length || 0,
+        warningCount: uploadErrors.warnings?.length || 0,
+        readyCount: uploadErrors.readyItems?.length || 0
+      }
+    }
+
+    const blob = new Blob([JSON.stringify(errorReport, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `upload-errors-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const containerVariants = {
@@ -542,11 +742,36 @@ const OfferingsModern = () => {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Bulk Upload Your Offerings</h3>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">Upload a CSV file with your offerings</p>
+              <p className="text-gray-600 mb-4">Upload a CSV or Excel file with your offerings</p>
+              
+              {/* File Format Instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left max-w-2xl mx-auto">
+                <h4 className="font-semibold text-blue-900 mb-2">📋 File Requirements</h4>
+                <div className="text-sm text-blue-800 space-y-2">
+                  <p><strong>Supported formats:</strong> CSV (.csv), Excel (.xlsx, .xls)</p>
+                  <p><strong>File size limit:</strong> 5MB for CSV, 10MB for Excel</p>
+                  <p><strong>Required columns:</strong> Your file must include columns for:</p>
+                  <ul className="list-disc list-inside ml-4 space-y-1">
+                    <li><strong>Name/Product</strong> - Use any of: name, product_name, item_name, product, item, title</li>
+                    <li><strong>Price</strong> - Use any of: price, cost, amount, value, unit_price</li>
+                    <li><strong>Category (Optional)</strong> - Use any of: category, type, classification, group, class</li>
+                    <li><strong>Pricing Type (Optional)</strong> - Use any of: pricing_type, price_type, unit_type, billing_type</li>
+                  </ul>
+                  <p><strong>Valid pricing types:</strong> per_unit, per_hour, per_day, per_week, per_month, per_project, per_event, flat_rate</p>
+                  <p><strong>Example CSV format:</strong></p>
+                  <div className="bg-white border rounded p-2 font-mono text-xs">
+                    name,price,category,pricing_type<br/>
+                    Wedding Catering,150,Catering,per_event<br/>
+                    Table Rental,25,Event Rentals,per_day<br/>
+                    Photography Package,800,Photography,per_project
+                  </div>
+                </div>
+              </div>
+              
               <div className="flex items-center justify-center gap-4">
                 <input
                   type="file"
-                  accept=".csv"
+                  accept=".csv,.xlsx,.xls"
                   onChange={handleFileUpload}
                   className="hidden"
                   id="file-upload"
@@ -566,6 +791,349 @@ const OfferingsModern = () => {
                 </button>
               </div>
             </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Preview Modal */}
+        <AnimatePresence>
+          {showPreview && previewData && (
+            <motion.div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="bg-white rounded-xl max-w-4xl w-full max-h-[80vh] overflow-y-auto"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900">📋 Bulk Upload Preview</h3>
+                    <button
+                      onClick={() => {
+                        setShowPreview(false)
+                        setPreviewData(null)
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="text-blue-900">
+                        <p className="font-medium">File: {previewData.fileName}</p>
+                        <p className="text-sm">Total items: {previewData.totalRows}</p>
+                      </div>
+                      <div className="text-blue-700">
+                        <p className="text-sm">Headers detected: {previewData.headers.join(', ')}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <h4 className="font-medium text-gray-900 mb-3">Preview (first 5 items):</h4>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border border-gray-200 rounded-lg">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Row</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pricing Type</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {previewData.previewItems.map((item, index) => (
+                            <tr key={index}>
+                              <td className="px-4 py-3 text-sm text-gray-900">{item.row}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{item.name}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">${item.price}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{item.category}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900">{item.pricing_type}</td>
+                              <td className="px-4 py-3 text-sm">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  ✅ Ready
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-4">
+                    <button
+                      onClick={() => {
+                        setShowPreview(false)
+                        setPreviewData(null)
+                      }}
+                      className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmUpload}
+                      disabled={uploading}
+                      className="flex items-center gap-2 bg-amethyst-500 text-white px-6 py-2 rounded-lg hover:bg-amethyst-600 transition-colors disabled:opacity-50"
+                    >
+                      {uploading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload />
+                          Upload {previewData.totalRows} Items
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error Resolution Modal */}
+        <AnimatePresence>
+          {showErrorResolution && uploadErrors && (
+            <motion.div
+              className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div
+                className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold text-gray-900">❌ Upload Issues Found</h3>
+                    <button
+                      onClick={() => {
+                        setShowErrorResolution(false)
+                        setUploadErrors(null)
+                        setErrorFixes({})
+                        setOriginalUploadData(null)
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="text-red-900">
+                        <p className="font-medium">File: {uploadFile?.name || 'upload-file'}</p>
+                        <p className="text-sm">
+                          Total items: {uploadErrors.totalItems || 0} | 
+                          Errors: {uploadErrors.errors?.length || 0} | 
+                          Warnings: {uploadErrors.warnings?.length || 0} | 
+                          Ready: {uploadErrors.readyItems?.length || 0}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Critical Errors */}
+                  {uploadErrors.errors && uploadErrors.errors.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="font-medium text-red-900 mb-3 flex items-center gap-2">
+                        🚨 Critical Errors ({uploadErrors.errors.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {uploadErrors.errors.map((error, index) => (
+                          <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium text-red-900">Row {error.row}: {error.message}</p>
+                                <div className="mt-2 flex items-center gap-4">
+                                  <div className="text-sm text-red-700">
+                                    <span className="font-medium">Name:</span> {error.item?.name || 'Missing'}
+                                  </div>
+                                  <div className="text-sm text-red-700">
+                                    <span className="font-medium">Price:</span> {error.item?.price || 'Missing'}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 ml-4">
+                                {error.type === 'missing_name' && (
+                                  <input
+                                    type="text"
+                                    placeholder="Enter product name"
+                                    value={errorFixes[error.rowIndex]?.name || ''}
+                                    onChange={(e) => handleFixError(error.rowIndex, 'name', e.target.value)}
+                                    className="px-3 py-1 border border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
+                                  />
+                                )}
+                                {error.type === 'invalid_price' && (
+                                  <input
+                                    type="text"
+                                    placeholder="Enter valid price"
+                                    value={errorFixes[error.rowIndex]?.price || ''}
+                                    onChange={(e) => handleFixError(error.rowIndex, 'price', e.target.value)}
+                                    className="px-3 py-1 border border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
+                                  />
+                                )}
+                                {error.type === 'invalid_pricing_type' && (
+                                  <select
+                                    value={errorFixes[error.rowIndex]?.pricing_type || 'per_unit'}
+                                    onChange={(e) => handleFixError(error.rowIndex, 'pricing_type', e.target.value)}
+                                    className="px-3 py-1 border border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
+                                  >
+                                    <option value="per_unit">Per Unit</option>
+                                    <option value="per_hour">Per Hour</option>
+                                    <option value="per_day">Per Day</option>
+                                    <option value="per_week">Per Week</option>
+                                    <option value="per_month">Per Month</option>
+                                    <option value="per_project">Per Project</option>
+                                    <option value="per_event">Per Event</option>
+                                    <option value="flat_rate">Flat Rate</option>
+                                  </select>
+                                )}
+                                <button
+                                  onClick={() => handleFixError(error.rowIndex, 'fixed', true)}
+                                  className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+                                >
+                                  Fix
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Warnings */}
+                  {uploadErrors.warnings && uploadErrors.warnings.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="font-medium text-yellow-900 mb-3 flex items-center gap-2">
+                        ⚠️ Warnings ({uploadErrors.warnings.length})
+                      </h4>
+                      <div className="space-y-3">
+                        {uploadErrors.warnings.map((warning, index) => (
+                          <div key={index} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium text-yellow-900">Row {warning.row}: {warning.message}</p>
+                                <div className="mt-2 text-sm text-yellow-700">
+                                  Found: "{warning.duplicate?.name}" | Existing: "{warning.existing?.name}"
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 ml-4">
+                                <button
+                                  onClick={() => handleDuplicateAction(warning.rowIndex, 'keep_new')}
+                                  className={`px-3 py-1 rounded text-sm ${
+                                    errorFixes[warning.rowIndex]?.duplicateAction === 'keep_new'
+                                      ? 'bg-blue-500 text-white'
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  Keep New
+                                </button>
+                                <button
+                                  onClick={() => handleDuplicateAction(warning.rowIndex, 'skip')}
+                                  className={`px-3 py-1 rounded text-sm ${
+                                    errorFixes[warning.rowIndex]?.duplicateAction === 'skip'
+                                      ? 'bg-yellow-500 text-white'
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  Skip
+                                </button>
+                                <button
+                                  onClick={() => handleDuplicateAction(warning.rowIndex, 'update_existing')}
+                                  className={`px-3 py-1 rounded text-sm ${
+                                    errorFixes[warning.rowIndex]?.duplicateAction === 'update_existing'
+                                      ? 'bg-green-500 text-white'
+                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  Update Existing
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Ready Items */}
+                  {uploadErrors.readyItems && uploadErrors.readyItems.length > 0 && (
+                    <div className="mb-6">
+                      <h4 className="font-medium text-green-900 mb-3 flex items-center gap-2">
+                        ✅ Ready to Upload ({uploadErrors.readyItems.length})
+                      </h4>
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <p className="text-green-700 text-sm">
+                          {uploadErrors.readyItems.length} items are ready to be uploaded without any issues.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                    <button
+                      onClick={downloadErrorReport}
+                      className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Download Error Report
+                    </button>
+                    
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => {
+                          setShowErrorResolution(false)
+                          setUploadErrors(null)
+                          setErrorFixes({})
+                          setOriginalUploadData(null)
+                        }}
+                        className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleResolvedUpload}
+                        disabled={uploading}
+                        className="flex items-center gap-2 bg-amethyst-500 text-white px-6 py-2 rounded-lg hover:bg-amethyst-600 transition-colors disabled:opacity-50"
+                      >
+                        {uploading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Uploading Fixed Data...
+                          </>
+                        ) : (
+                          <>
+                            <Upload />
+                            Upload Fixed Data
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

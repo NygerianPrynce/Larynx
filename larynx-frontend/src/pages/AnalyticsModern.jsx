@@ -55,6 +55,66 @@ const AnalyticsModern = () => {
     }
   }
 
+  const handleExportData = async () => {
+    try {
+      // Import XLSX library dynamically
+      const XLSX = await import('xlsx')
+      
+      // Prepare data for export
+      const exportData = {
+        summary: {
+          draftsThisWeek: analyticsData.draftsThisWeek,
+          totalDrafts: analyticsData.totalDrafts,
+          hoursSaved: analyticsData.hoursSaved,
+          exportDate: new Date().toLocaleDateString()
+        },
+        categories: analyticsData.topCategories,
+        recentActivity: analyticsData.recentActivity
+      }
+      
+      // Create workbook
+      const workbook = XLSX.utils.book_new()
+      
+      // Summary sheet
+      const summaryData = [
+        ['Metric', 'Value'],
+        ['Drafts This Week', exportData.summary.draftsThisWeek],
+        ['Total Drafts', exportData.summary.totalDrafts],
+        ['Hours Saved', exportData.summary.hoursSaved],
+        ['Export Date', exportData.summary.exportDate]
+      ]
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData)
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
+      
+      // Categories sheet
+      if (exportData.categories.length > 0) {
+        const categoriesData = [
+          ['Category', 'Inquiry Count'],
+          ...exportData.categories.map(cat => [cat.name, cat.count])
+        ]
+        const categoriesSheet = XLSX.utils.aoa_to_sheet(categoriesData)
+        XLSX.utils.book_append_sheet(workbook, categoriesSheet, 'Top Categories')
+      }
+      
+      // Recent activity sheet
+      if (exportData.recentActivity.length > 0) {
+        const activityData = [
+          ['Type', 'Message', 'Time'],
+          ...exportData.recentActivity.map(activity => [activity.type, activity.message, activity.time])
+        ]
+        const activitySheet = XLSX.utils.aoa_to_sheet(activityData)
+        XLSX.utils.book_append_sheet(workbook, activitySheet, 'Recent Activity')
+      }
+      
+      // Generate and download file
+      XLSX.writeFile(workbook, `larynx-analytics-${new Date().toISOString().split('T')[0]}.xlsx`)
+      
+    } catch (error) {
+      console.error('Error exporting data:', error)
+      alert('Failed to export data. Please try again.')
+    }
+  }
+
   // Fetch real analytics data
   const fetchAnalytics = async () => {
     setLoading(true)
@@ -338,7 +398,10 @@ const AnalyticsModern = () => {
               </select>
             </div>
 
-            <button className="flex items-center gap-2 bg-amethyst-500 text-white px-4 py-2 rounded-lg hover:bg-amethyst-600 transition-colors">
+            <button 
+              onClick={handleExportData}
+              className="flex items-center gap-2 bg-amethyst-500 text-white px-4 py-2 rounded-lg hover:bg-amethyst-600 transition-colors"
+            >
               <Download className="w-4 h-4" />
               Export Data
             </button>
