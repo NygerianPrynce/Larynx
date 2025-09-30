@@ -41,66 +41,79 @@ const AnalyticsModern = () => {
   const [activityTypeFilter, setActivityTypeFilter] = useState('All')
   const [activityTimeFilter, setActivityTimeFilter] = useState('All Time')
 
+  // Enhanced API call with error handling
+  const fetchWithErrorHandling = async (url, options = {}) => {
+    try {
+      const response = await fetch(url, {
+        credentials: 'include',
+        ...options
+      })
+      
+      if (!response.ok) {
+        throw {
+          status: response.status,
+          message: `HTTP ${response.status}: ${response.statusText}`
+        }
+      }
+      
+      return await response.json()
+    } catch (error) {
+      throw {
+        ...error,
+        status: error.status || 500,
+        name: error.name || 'FetchError'
+      }
+    }
+  }
+
   // Fetch real analytics data
   const fetchAnalytics = async () => {
     setLoading(true)
     try {
       console.log('Fetching analytics from:', `${import.meta.env.VITE_API_URL}/analytics`)
-      const [analyticsResponse, categoriesResponse] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/analytics`),
-        fetch(`${import.meta.env.VITE_API_URL}/analytics/categories`)
+      const [analyticsData, categoriesResult] = await Promise.all([
+        fetchWithErrorHandling(`${import.meta.env.VITE_API_URL}/analytics`),
+        fetchWithErrorHandling(`${import.meta.env.VITE_API_URL}/analytics/categories`)
       ])
       
-      console.log('Analytics response status:', analyticsResponse.status)
-      console.log('Categories response status:', categoriesResponse.status)
+      console.log('Analytics data received:', analyticsData)
+      const categoriesData = categoriesResult.categories || []
+      console.log('Categories data received:', categoriesData)
       
-      if (analyticsResponse.ok) {
-        const analyticsData = await analyticsResponse.json()
-        console.log('Analytics data received:', analyticsData)
-        let categoriesData = []
-        
-        if (categoriesResponse.ok) {
-          const categoriesResult = await categoriesResponse.json()
-          categoriesData = categoriesResult.categories || []
-          console.log('Categories data received:', categoriesData)
-        }
-        
-        setAnalyticsData(prev => ({
-          ...prev,
-          draftsThisWeek: analyticsData.drafts_this_week || 0,
-          totalDrafts: analyticsData.total_drafts || 0,
-          hoursSaved: analyticsData.estimated_hours_saved || 0,
-          topCategories: (() => {
-            const sortedCategories = categoriesData
-              .map(cat => ({
-                name: cat.category,
-                count: cat.inquiry_count
-              }))
-              .sort((a, b) => b.count - a.count);
-            
-            const top8 = sortedCategories.slice(0, 8);
-            const others = sortedCategories.slice(8);
-            
-            // If there are categories beyond top 8, group them as "Other"
-            if (others.length > 0) {
-              const otherCount = others.reduce((sum, cat) => sum + cat.count, 0);
-              if (otherCount > 0) {
-                top8.push({
-                  name: 'Other',
-                  count: otherCount
-                });
-              }
+      setAnalyticsData(prev => ({
+        ...prev,
+        draftsThisWeek: analyticsData.drafts_this_week || 0,
+        totalDrafts: analyticsData.total_drafts || 0,
+        hoursSaved: analyticsData.estimated_hours_saved || 0,
+        topCategories: (() => {
+          const sortedCategories = categoriesData
+            .map(cat => ({
+              name: cat.category,
+              count: cat.inquiry_count
+            }))
+            .sort((a, b) => b.count - a.count);
+          
+          const top8 = sortedCategories.slice(0, 8);
+          const others = sortedCategories.slice(8);
+          
+          // If there are categories beyond top 8, group them as "Other"
+          if (others.length > 0) {
+            const otherCount = others.reduce((sum, cat) => sum + cat.count, 0);
+            if (otherCount > 0) {
+              top8.push({
+                name: 'Other',
+                count: otherCount
+              });
             }
-            
-            return top8;
-          })(),
-          recentActivity: analyticsData.formatted_recent_activity || prev.recentActivity
-        }))
-      } else {
-        console.error('Analytics API error:', analyticsResponse.status, analyticsResponse.statusText)
-      }
+          }
+          
+          return top8;
+        })(),
+        recentActivity: analyticsData.formatted_recent_activity || prev.recentActivity
+      }))
     } catch (error) {
       console.error('Error fetching analytics:', error)
+      // Keep the mock data if API fails
     } finally {
       setLoading(false)
     }
