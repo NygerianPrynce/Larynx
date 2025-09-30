@@ -325,7 +325,7 @@ const AnalyticsModern = () => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Total Drafts</p>
+                <p className="text-sm font-medium text-gray-600">Total Emails Drafted</p>
                 <p className="text-2xl font-bold text-gray-900">{analyticsData.totalDrafts.toLocaleString()}</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
