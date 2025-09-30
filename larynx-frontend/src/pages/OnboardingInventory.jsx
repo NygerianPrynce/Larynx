@@ -3,13 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Trash2, Edit3, Check, X, Upload, Package, Save } from 'lucide-react';
 
 const OnboardingInventory = ({ onBack, onNext }) => {
-  // Placeholder data for testing - matching the actual offerings page structure
-  const [offerings, setOfferings] = useState([
-    { id: 1, name: '6ft Round Tables', price: '$25', pricingType: 'per_unit', category: 'Furniture' },
-    { id: 2, name: 'White Garden Chairs', price: '$5', pricingType: 'per_unit', category: 'Furniture' },
-    { id: 3, name: 'Party Platter Package', price: '$150', pricingType: 'fixed', category: 'Food & Beverages' },
-    { id: 4, name: 'Full Event Catering', price: '$45', pricingType: 'per_person', category: 'Catering' }
-  ]);
+  const [offerings, setOfferings] = useState([]);
   
   const [newOffering, setNewOffering] = useState({ name: '', price: '', pricingType: '', category: '' });
   const [customCategoryInput, setCustomCategoryInput] = useState('');
@@ -19,7 +13,7 @@ const OnboardingInventory = ({ onBack, onNext }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showUploadForm, setShowUploadForm] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
-  const [specialInstructions, setSpecialInstructions] = useState('All services include free initial consultation. Custom packages available upon request. Rush orders require 48-hour notice with additional fees. Delivery available within 20-mile radius. 30-day satisfaction guarantee on all services.');
+  const [specialInstructions, setSpecialInstructions] = useState('');
 
   const defaultCategories = ['Catering', 'Event Rentals', 'Food & Beverages', 'Furniture', 'Decorations', 'Party Supplies', 'Venue Services'];
   const [customCategories, setCustomCategories] = useState(['Chairs', 'Tables', 'Party Platters', 'Drinks', 'Linens', 'Lighting']);
