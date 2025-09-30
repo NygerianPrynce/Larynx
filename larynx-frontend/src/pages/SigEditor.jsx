@@ -31,6 +31,11 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
     if (editorRef.current && !isInitialized) {
       if (value) {
         editorRef.current.innerHTML = value
+        // Hide placeholder if there's content
+        const placeholder = editorRef.current.querySelector('.placeholder-text');
+        if (placeholder) {
+          placeholder.style.display = 'none';
+        }
       }
       setIsInitialized(true)
     }
@@ -412,16 +417,21 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                 contentEditable={true}
                 onKeyDown={handleKeyDown}
                 onSelect={handleSelectionChange}
+                onInput={(e) => {
+                  // Hide placeholder when user types
+                  const placeholder = e.target.querySelector('.placeholder-text');
+                  if (placeholder) {
+                    placeholder.style.display = e.target.textContent.trim() ? 'none' : 'block';
+                  }
+                }}
                 suppressContentEditableWarning={true}
                 style={{ minHeight: compact ? '150px' : '300px' }}
               >
-                {!value && (
-                  <div className="text-gray-400 pointer-events-none">
-                    Best Regards,
-                    <br />
-                    Your Name
-                  </div>
-                )}
+                <div className="placeholder-text text-gray-400 pointer-events-none">
+                  Best Regards,
+                  <br />
+                  Your Name
+                </div>
               </div>
             </motion.div>
 
