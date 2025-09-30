@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import logoImage from '../assets/logo.png'
+import fadhilImage from '../assets/fadhil.jpg'
+import bloomsLogo from '../assets/bloomslogo.jpg'
 
 // Professional SVG Icons
 const Mail = ({ className = "w-6 h-6" }) => (
@@ -599,7 +601,7 @@ const LandingPage = () => {
                   <div className="p-4 border-b border-gray-100">
                     <div className="flex items-start space-x-3 mb-3">
                       <img 
-                        src="/src/assets/fadhil.jpg" 
+                        src={fadhilImage} 
                         alt="Fadhil Lawal"
                         className="w-10 h-10 rounded-full object-cover flex-shrink-0"
                         onError={(e) => {
@@ -634,7 +636,7 @@ const LandingPage = () => {
                           <div className="flex items-center space-x-2">
                             <div className="flex items-center space-x-2 ml-2">
                               <img 
-                                src="/src/assets/bloomslogo.jpg" 
+                                src={bloomsLogo} 
                                 alt="Blooms Event Rentals"
                                 className="w-6 h-6 rounded-full object-cover"
                                 onError={(e) => {
@@ -950,12 +952,12 @@ const LandingPage = () => {
                 className="relative"
                 variants={cardVariants}
               >
-                <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 h-full">
+                <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center hover:shadow-xl transition-all duration-300 h-full relative">
+                  <div className="absolute top-4 right-4 w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                    {step.step}
+                  </div>
                   <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <step.icon className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="absolute -top-4 -right-4 w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold">
-                    {step.step}
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 mb-4">{step.title}</h3>
                   <p className="text-gray-600 leading-relaxed">{step.description}</p>

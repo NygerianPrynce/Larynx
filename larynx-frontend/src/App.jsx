@@ -32,7 +32,7 @@ function App() {
     <AuthGuard>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login" element={<LandingPage />} />
         <Route path="/onboarding/*" element={<Onboarding />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
