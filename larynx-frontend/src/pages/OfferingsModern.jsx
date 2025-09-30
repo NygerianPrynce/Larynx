@@ -321,7 +321,7 @@ const OfferingsModern = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden" style={{ width: '100vw', maxWidth: '100%' }}>
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <Navbar />
       
       {/* Header */}
@@ -410,7 +410,7 @@ const OfferingsModern = () => {
               transition={{ duration: 0.2, ease: "easeInOut" }}
             >
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Offering</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 min-w-0">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Offering Name</label>
                 <input
@@ -418,7 +418,7 @@ const OfferingsModern = () => {
                   value={newOffering.name}
                   onChange={(e) => setNewOffering({...newOffering, name: e.target.value})}
                   placeholder="Enter offering name"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amethyst-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amethyst-500 focus:border-transparent min-w-0"
                 />
               </div>
               <div>
@@ -590,9 +590,9 @@ const OfferingsModern = () => {
               {selectedCategory === 'All' ? 'Your Offerings' : `${selectedCategory} Offerings`} ({filteredOfferings.length} total)
             </h2>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-w-full">
             {filteredOfferings.length > 0 ? (
-              <table className="w-full">
+              <table className="w-full min-w-max">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Offering Name</th>
