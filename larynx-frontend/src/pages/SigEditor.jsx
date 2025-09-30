@@ -415,9 +415,11 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
               >
                 {!value && (
                   <div className="text-gray-400 pointer-events-none">
-                    Start typing your email sign off here...
+                    Best Regards,
                     <br />
-                    <span className="text-sm">Use the toolbar above to format your text with bold, italic, colors, and more.</span>
+                    Your Name
+                    <br />
+                    <span className="text-sm">Company Name | Phone | Email</span>
                   </div>
                 )}
               </div>
