@@ -198,11 +198,9 @@ const Onboarding = () => {
       const timeoutId = setTimeout(() => controller.abort(), 30000)
       
       try {
-        const response = await fetch(`${api}/analyze-website`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch(`${api}/website-scrape?url=${encodeURIComponent(websiteUrl)}`, {
+          method: 'GET',
           credentials: 'include',
-          body: JSON.stringify({ website_url: websiteUrl }),
           signal: controller.signal
         })
         

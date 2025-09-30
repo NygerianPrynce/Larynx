@@ -406,12 +406,12 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
               {/* Editor - Uncontrolled */}
               <div
                 ref={editorRef}
-                className={`editor-content ${compact ? 'p-3' : 'p-6'} ${compact ? 'min-h-[100px]' : 'min-h-[300px]'} text-gray-800 text-base leading-relaxed focus:outline-none bg-white`}
+                className={`editor-content ${compact ? 'p-3' : 'p-6'} ${compact ? 'min-h-[150px]' : 'min-h-[300px]'} text-gray-800 text-base leading-relaxed focus:outline-none bg-white`}
                 contentEditable={true}
                 onKeyDown={handleKeyDown}
                 onSelect={handleSelectionChange}
                 suppressContentEditableWarning={true}
-                style={{ minHeight: compact ? '100px' : '300px' }}
+                style={{ minHeight: compact ? '150px' : '300px' }}
               >
                 {!value && (
                   <div className="text-gray-400 pointer-events-none">
