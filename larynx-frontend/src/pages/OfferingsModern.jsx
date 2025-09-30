@@ -331,7 +331,7 @@ const OfferingsModern = () => {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="w-full mx-auto text-center px-4 sm:px-6 lg:px-8" style={{ maxWidth: 'min(95vw, 1400px)' }}>
+        <div className="w-full mx-auto text-center px-4 sm:px-6 lg:px-8 max-w-7xl">
           <motion.div
             className="flex justify-center mb-6"
             initial={{ scale: 0.8, opacity: 0 }}
@@ -372,8 +372,7 @@ const OfferingsModern = () => {
 
       {/* Content */}
       <motion.div
-        className="w-full mx-auto p-4 sm:p-6 lg:p-8"
-        style={{ maxWidth: 'min(95vw, 1400px)' }}
+        className="w-full mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl"
         variants={containerVariants}
         initial="hidden"
         animate="visible"

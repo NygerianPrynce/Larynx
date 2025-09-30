@@ -209,8 +209,7 @@ const AnalyticsModern = () => {
       <Navbar />
       
       <motion.div
-        className="px-4 sm:px-6 lg:px-8 py-8 w-full"
-        style={{ maxWidth: 'min(95vw, 1400px)', margin: '0 auto' }}
+        className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-7xl mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -220,7 +219,7 @@ const AnalyticsModern = () => {
           className="bg-white rounded-xl border border-gray-200 px-4 sm:px-6 lg:px-8 py-6 mb-6"
           variants={itemVariants}
         >
-          <div className="w-full mx-auto text-center px-4 sm:px-6 lg:px-8" style={{ maxWidth: 'min(95vw, 1400px)' }}>
+          <div className="w-full mx-auto text-center px-4 sm:px-6 lg:px-8 max-w-7xl">
             <motion.div
               className="flex justify-center mb-4"
               initial={{ scale: 0.8, opacity: 0 }}

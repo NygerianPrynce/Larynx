@@ -294,7 +294,7 @@ const HomeModern = () => {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <div className="w-full mx-auto text-center px-4 sm:px-6 lg:px-8" style={{ maxWidth: 'min(95vw, 1400px)' }}>
+        <div className="w-full mx-auto text-center px-4 sm:px-6 lg:px-8 max-w-7xl">
           <motion.div
             className="flex justify-center mb-8"
             initial={{ scale: 0.8, opacity: 0 }}
@@ -337,8 +337,7 @@ const HomeModern = () => {
 
       {/* Content */}
       <motion.div
-        className="w-full mx-auto p-4 sm:p-6 lg:p-8"
-        style={{ maxWidth: 'min(95vw, 1400px)' }}
+        className="w-full mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.4 }}
