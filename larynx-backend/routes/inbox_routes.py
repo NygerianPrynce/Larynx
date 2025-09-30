@@ -874,7 +874,7 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
 
         BAD example: "Thank you for your message about the ear savers. We have the ear savers available for $8.00 each. Since you're interested in 5 ear savers, just let me know if this works for you. Your interest in our products is greatly appreciated."
 
-        GOOD example: "Hey {sender_name}!\n\nWe've got ear savers for $8 each, so $40 for all 5. Should I set those aside for you?"
+        GOOD example: "Hi {sender_name},\n\nWe've got ear savers for $8 each, so $40 for all 5. Should I set those aside for you?"
 
         —— Incoming email ——
         From: {sender_name}
