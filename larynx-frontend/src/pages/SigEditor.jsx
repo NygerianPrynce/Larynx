@@ -29,7 +29,9 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
   // Initialize editor content only once, then let it be uncontrolled
   useEffect(() => {
     if (editorRef.current && !isInitialized) {
-      editorRef.current.innerHTML = value || ''
+      if (value) {
+        editorRef.current.innerHTML = value
+      }
       setIsInitialized(true)
     }
   }, [value, isInitialized])
@@ -406,7 +408,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
               {/* Editor - Uncontrolled */}
               <div
                 ref={editorRef}
-                className={`editor-content ${compact ? 'p-3' : 'p-6'} ${compact ? 'min-h-[150px]' : 'min-h-[300px]'} text-gray-800 text-base leading-relaxed focus:outline-none bg-white`}
+                className={`editor-content ${compact ? 'p-3' : 'p-6'} ${compact ? 'min-h-[150px]' : 'min-h-[300px]'} text-gray-800 text-base leading-relaxed focus:outline-none bg-white relative`}
                 contentEditable={true}
                 onKeyDown={handleKeyDown}
                 onSelect={handleSelectionChange}
@@ -418,8 +420,6 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                     Best Regards,
                     <br />
                     Your Name
-                    <br />
-                    <span className="text-sm">Company Name | Phone | Email</span>
                   </div>
                 )}
               </div>
