@@ -51,6 +51,11 @@ const OfferingsModern = () => {
   const navigate = useNavigate()
   const api = import.meta.env.VITE_API_URL
   const [offerings, setOfferings] = useState([])
+
+  const showNotification = (message, type = 'info', duration = 4000) => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), duration)
+  }
   const [hasError, setHasError] = useState(false)
   
   const [newOffering, setNewOffering] = useState({ name: '', price: '', pricingType: '', category: '' })
@@ -73,6 +78,7 @@ const OfferingsModern = () => {
   const [originalUploadData, setOriginalUploadData] = useState(null)
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
   const [duplicateWarningData, setDuplicateWarningData] = useState(null)
+  const [notification, setNotification] = useState(null)
 
   const defaultCategories = ['Consulting', 'Design', 'Marketing', 'Writing', 'Development', 'Catering', 'Events']
   const [customCategories, setCustomCategories] = useState(['Drinks', 'Party Size', 'Custom Package'])
@@ -306,7 +312,7 @@ const OfferingsModern = () => {
       setShowPreview(true)
     } catch (error) {
       console.error('Error previewing file:', error)
-      alert('Error reading file. Please check the format.')
+      showNotification('Error reading file. Please check the format.', 'error')
     }
   }
 
@@ -345,7 +351,7 @@ const OfferingsModern = () => {
           setShowPreview(false)
         } else {
           // No errors, proceed with success
-          alert(`Upload successful! ${response.message}`)
+          showNotification(`Upload successful! ${response.message}`, 'success')
           await fetchInventory()
           setShowPreview(false)
           setShowUploadForm(false)
@@ -479,7 +485,7 @@ const OfferingsModern = () => {
       })
       
       if (response) {
-        alert(`Upload successful! ${response.message || 'All items uploaded successfully.'}`)
+        showNotification(`Upload successful! ${response.message || 'All items uploaded successfully.'}`, 'success')
         await fetchInventory()
         
         // Close modal and reset all state
@@ -495,7 +501,7 @@ const OfferingsModern = () => {
       }
     } catch (error) {
       console.error('Error in resolved upload:', error)
-      alert(`Upload failed: ${error.message || 'Please try again.'}`)
+      showNotification(`Upload failed: ${error.message || 'Please try again.'}`, 'error')
     } finally {
       setUploading(false)
     }
@@ -552,7 +558,7 @@ const OfferingsModern = () => {
       })
       
       if (response) {
-        alert(`Upload successful! ${response.message || 'All items uploaded successfully.'}`)
+        showNotification(`Upload successful! ${response.message || 'All items uploaded successfully.'}`, 'success')
         await fetchInventory()
         
         // Close modal and reset all state
@@ -568,7 +574,7 @@ const OfferingsModern = () => {
       }
     } catch (error) {
       console.error('Error in resolved upload:', error)
-      alert(`Upload failed: ${error.message || 'Please try again.'}`)
+      showNotification(`Upload failed: ${error.message || 'Please try again.'}`, 'error')
     } finally {
       setUploading(false)
     }
@@ -722,7 +728,7 @@ const OfferingsModern = () => {
       
     } catch (error) {
       console.error('Error generating error report:', error)
-      alert('Failed to generate error report. Please try again.')
+      showNotification('Failed to generate error report. Please try again.', 'error')
     }
   }
 
@@ -765,6 +771,7 @@ const OfferingsModern = () => {
   }
 
   return (
+    <>
     <div className="min-h-screen bg-gray-50 overflow-x-hidden" style={{ width: '100vw', maxWidth: '100%' }}>
       <style>
         {`
@@ -1700,6 +1707,80 @@ const OfferingsModern = () => {
         </motion.div>
       )}
     </AnimatePresence>
+
+    {/* Notification Modal */}
+    <AnimatePresence>
+      {notification && (
+        <motion.div
+          className="fixed top-4 right-4 z-50"
+          initial={{ opacity: 0, y: -50, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -50, scale: 0.9 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className={`rounded-lg shadow-lg p-4 max-w-sm ${
+            notification.type === 'success' ? 'bg-green-50 border border-green-200' :
+            notification.type === 'error' ? 'bg-red-50 border border-red-200' :
+            notification.type === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
+            'bg-blue-50 border border-blue-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                notification.type === 'success' ? 'bg-green-100' :
+                notification.type === 'error' ? 'bg-red-100' :
+                notification.type === 'warning' ? 'bg-yellow-100' :
+                'bg-blue-100'
+              }`}>
+                {notification.type === 'success' && (
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {notification.type === 'error' && (
+                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+                {notification.type === 'warning' && (
+                  <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                )}
+                {notification.type === 'info' && (
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${
+                  notification.type === 'success' ? 'text-green-800' :
+                  notification.type === 'error' ? 'text-red-800' :
+                  notification.type === 'warning' ? 'text-yellow-800' :
+                  'text-blue-800'
+                }`}>
+                  {notification.message}
+                </p>
+              </div>
+              <button
+                onClick={() => setNotification(null)}
+                className={`flex-shrink-0 p-1 rounded-full hover:bg-opacity-80 ${
+                  notification.type === 'success' ? 'hover:bg-green-100' :
+                  notification.type === 'error' ? 'hover:bg-red-100' :
+                  notification.type === 'warning' ? 'hover:bg-yellow-100' :
+                  'hover:bg-blue-100'
+                }`}
+              >
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   )
 }
 

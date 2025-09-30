@@ -27,8 +27,14 @@ const AnalyticsModern = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('7d')
   const [selectedMetric, setSelectedMetric] = useState('all')
   const [loading, setLoading] = useState(false)
+  const [notification, setNotification] = useState(null)
   const [activityTypeFilter, setActivityTypeFilter] = useState('All')
   const [activityTimeFilter, setActivityTimeFilter] = useState('All Time')
+
+  const showNotification = (message, type = 'info', duration = 4000) => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), duration)
+  }
 
   // Enhanced API call with error handling
   const fetchWithErrorHandling = async (url, options = {}) => {
@@ -111,7 +117,7 @@ const AnalyticsModern = () => {
       
     } catch (error) {
       console.error('Error exporting data:', error)
-      alert('Failed to export data. Please try again.')
+      showNotification('Failed to export data. Please try again.', 'error')
     }
   }
 
@@ -702,6 +708,79 @@ const AnalyticsModern = () => {
         </motion.div>
       </motion.div>
     </div>
+
+    {/* Notification Modal */}
+    <AnimatePresence>
+      {notification && (
+        <motion.div
+          className="fixed top-4 right-4 z-50"
+          initial={{ opacity: 0, y: -50, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -50, scale: 0.9 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className={`rounded-lg shadow-lg p-4 max-w-sm ${
+            notification.type === 'success' ? 'bg-green-50 border border-green-200' :
+            notification.type === 'error' ? 'bg-red-50 border border-red-200' :
+            notification.type === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
+            'bg-blue-50 border border-blue-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                notification.type === 'success' ? 'bg-green-100' :
+                notification.type === 'error' ? 'bg-red-100' :
+                notification.type === 'warning' ? 'bg-yellow-100' :
+                'bg-blue-100'
+              }`}>
+                {notification.type === 'success' && (
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {notification.type === 'error' && (
+                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+                {notification.type === 'warning' && (
+                  <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                )}
+                {notification.type === 'info' && (
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${
+                  notification.type === 'success' ? 'text-green-800' :
+                  notification.type === 'error' ? 'text-red-800' :
+                  notification.type === 'warning' ? 'text-yellow-800' :
+                  'text-blue-800'
+                }`}>
+                  {notification.message}
+                </p>
+              </div>
+              <button
+                onClick={() => setNotification(null)}
+                className={`flex-shrink-0 p-1 rounded-full hover:bg-opacity-80 ${
+                  notification.type === 'success' ? 'hover:bg-green-100' :
+                  notification.type === 'error' ? 'hover:bg-red-100' :
+                  notification.type === 'warning' ? 'hover:bg-yellow-100' :
+                  'hover:bg-blue-100'
+                }`}
+              >
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 

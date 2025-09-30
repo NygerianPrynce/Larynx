@@ -7,12 +7,40 @@ import SigEditor from './SigEditor'
 
 const Onboarding = () => {
   const navigate = useNavigate()
+
+  const showNotification = (message, type = 'info', duration = 4000) => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), duration)
+  }
+
+  const handleDeleteAccount = async () => {
+    setShowDeleteConfirm(false)
+    
+    try {
+      const res = await fetch(`${api}/user/delete`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      
+      if (res.ok) {
+        showNotification('Your account has been deleted. Goodbye 🫡', 'success')
+        setTimeout(() => window.location.href = '/', 2000)
+      } else {
+        throw new Error('Failed to delete account')
+      }
+    } catch (error) {
+      showNotification('Failed to delete account. Please try again.', 'error')
+    }
+  }
+
   const [hasWebsite, setHasWebsite] = useState(true)
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [manualStep, setManualStep] = useState(0)
   const [errors, setErrors] = useState({})
   const [step, setStep] = useState('intro')
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [notification, setNotification] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [brandSummary, setBrandSummary] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
@@ -755,45 +783,12 @@ const Onboarding = () => {
 
                   <div className="flex flex-col sm:flex-row gap-4">
                     <motion.button
-                  onClick={async () => {
-                    const confirmed = window.confirm(
-                      '⚠️ WARNING: This action is IRREVERSIBLE.\n\nAre you absolutely sure you want to permanently delete your account and all associated data?\n\nThis cannot be undone.'
-                    )
-                    if (!confirmed) return
-
-                    await handleAsyncOperation(async () => {
-                      setLoadingState(true, deleteAccountMessages)
-                      
-                      const controller = new AbortController()
-                      const timeoutId = setTimeout(() => controller.abort(), 10000)
-                      
-                      try {
-                        const res = await fetch(`${api}/user/delete`, {
-                          method: 'DELETE',
-                          credentials: 'include',
-                          signal: controller.signal
-                        })
-                        
-                        clearTimeout(timeoutId)
-                        
-                        if (res.ok) {
-                          alert('Your account has been deleted. Goodbye 🫡')
-                          window.location.href = '/'
-                        } else {
-                          throw new Error('Failed to delete account')
-                        }
-                      } finally {
-                        clearTimeout(timeoutId)
-                        setLoadingState(false)
-                      }
-                    }, "Failed to delete account. Please try again.")
-                  }}
-                      disabled={isLoading}
+                      onClick={() => setShowDeleteConfirm(true)}
                       className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200 font-medium"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                >
-                  Delete Account
+                    >
+                      Delete Account
                     </motion.button>
 
                     <motion.button
@@ -869,6 +864,136 @@ const Onboarding = () => {
         </motion.div>
       </div>
     </div>
+
+    {/* Delete Confirmation Modal */}
+    <AnimatePresence>
+      {showDeleteConfirm && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-white rounded-xl max-w-md w-full"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-red-600">⚠️ Delete Account</h3>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-700 mb-4">
+                  <strong>This action is IRREVERSIBLE.</strong> Are you absolutely sure you want to permanently delete your account and all associated data?
+                </p>
+                <p className="text-sm text-gray-600">
+                  This cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-4">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  Delete Account
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* Notification Modal */}
+    <AnimatePresence>
+      {notification && (
+        <motion.div
+          className="fixed top-4 right-4 z-50"
+          initial={{ opacity: 0, y: -50, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -50, scale: 0.9 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className={`rounded-lg shadow-lg p-4 max-w-sm ${
+            notification.type === 'success' ? 'bg-green-50 border border-green-200' :
+            notification.type === 'error' ? 'bg-red-50 border border-red-200' :
+            notification.type === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
+            'bg-blue-50 border border-blue-200'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center ${
+                notification.type === 'success' ? 'bg-green-100' :
+                notification.type === 'error' ? 'bg-red-100' :
+                notification.type === 'warning' ? 'bg-yellow-100' :
+                'bg-blue-100'
+              }`}>
+                {notification.type === 'success' && (
+                  <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {notification.type === 'error' && (
+                  <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                )}
+                {notification.type === 'warning' && (
+                  <svg className="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                )}
+                {notification.type === 'info' && (
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${
+                  notification.type === 'success' ? 'text-green-800' :
+                  notification.type === 'error' ? 'text-red-800' :
+                  notification.type === 'warning' ? 'text-yellow-800' :
+                  'text-blue-800'
+                }`}>
+                  {notification.message}
+                </p>
+              </div>
+              <button
+                onClick={() => setNotification(null)}
+                className={`flex-shrink-0 p-1 rounded-full hover:bg-opacity-80 ${
+                  notification.type === 'success' ? 'hover:bg-green-100' :
+                  notification.type === 'error' ? 'hover:bg-red-100' :
+                  notification.type === 'warning' ? 'hover:bg-yellow-100' :
+                  'hover:bg-blue-100'
+                }`}
+              >
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
