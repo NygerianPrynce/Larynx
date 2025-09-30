@@ -309,6 +309,10 @@ const Navbar = () => {
                 <span style={{...styles.dropdownIcon, color: '#3b82f6'}}><Home /></span>
                 <span>Dashboard</span>
               </div>
+              <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/manage-inventory')}>
+                <span style={{...styles.dropdownIcon, color: '#8b5cf6'}}><Package /></span>
+                <span>Offerings</span>
+              </div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/analytics')}>
                 <span style={{...styles.dropdownIcon, color: '#10b981'}}><TrendingUp /></span>
                 <span>Analytics</span>
@@ -316,10 +320,6 @@ const Navbar = () => {
               <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/settings')}>
                 <span style={{...styles.dropdownIcon, color: '#f59e0b'}}><Settings /></span>
                 <span>Settings</span>
-              </div>
-              <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/manage-inventory')}>
-                <span style={{...styles.dropdownIcon, color: '#8b5cf6'}}><Package /></span>
-                <span>Offerings</span>
               </div>
               <div style={styles.dropdownSeparator}></div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={handleLogout}>

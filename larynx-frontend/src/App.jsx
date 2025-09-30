@@ -37,7 +37,7 @@ function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/manage-inventory" element={<InventoryStandalone />} />
-        <Route path="/home" element={<Home />} />
+        <Route path="/home" element={<HomeModern />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/tailwind-test" element={<TailwindTest />} />
         <Route path="/shadcn-test" element={<ShadcnTest />} />
