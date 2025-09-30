@@ -346,8 +346,8 @@ const OfferingsModern = () => {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <div className="w-16 h-16 bg-amethyst-500/10 rounded-xl flex items-center justify-center">
-              <Package className="text-amethyst-500" />
+            <div className="w-12 h-12 bg-gradient-to-br from-amethyst-500 to-blue_violet-500 rounded-xl flex items-center justify-center">
+              <Package className="w-6 h-6 text-white" />
             </div>
           </motion.div>
           

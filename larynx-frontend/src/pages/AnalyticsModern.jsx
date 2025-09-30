@@ -45,18 +45,24 @@ const AnalyticsModern = () => {
   const fetchAnalytics = async () => {
     setLoading(true)
     try {
+      console.log('Fetching analytics from:', `${import.meta.env.VITE_API_URL}/analytics`)
       const [analyticsResponse, categoriesResponse] = await Promise.all([
         fetch(`${import.meta.env.VITE_API_URL}/analytics`),
         fetch(`${import.meta.env.VITE_API_URL}/analytics/categories`)
       ])
       
+      console.log('Analytics response status:', analyticsResponse.status)
+      console.log('Categories response status:', categoriesResponse.status)
+      
       if (analyticsResponse.ok) {
         const analyticsData = await analyticsResponse.json()
+        console.log('Analytics data received:', analyticsData)
         let categoriesData = []
         
         if (categoriesResponse.ok) {
           const categoriesResult = await categoriesResponse.json()
           categoriesData = categoriesResult.categories || []
+          console.log('Categories data received:', categoriesData)
         }
         
         setAnalyticsData(prev => ({
@@ -90,6 +96,8 @@ const AnalyticsModern = () => {
           })(),
           recentActivity: analyticsData.formatted_recent_activity || prev.recentActivity
         }))
+      } else {
+        console.error('Analytics API error:', analyticsResponse.status, analyticsResponse.statusText)
       }
     } catch (error) {
       console.error('Error fetching analytics:', error)
@@ -215,6 +223,15 @@ const AnalyticsModern = () => {
         `}
       </style>
       <Navbar />
+      
+      {loading && (
+        <div className="fixed inset-0 bg-gray-50 flex items-center justify-center z-40">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading analytics...</p>
+          </div>
+        </div>
+      )}
       
       <motion.div
         className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-7xl mx-auto"
