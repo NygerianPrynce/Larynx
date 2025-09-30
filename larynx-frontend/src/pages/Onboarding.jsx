@@ -348,6 +348,7 @@ const Onboarding = () => {
   }
 
   return (
+    <>
     <div 
       className="min-h-screen bg-white"
       style={{ width: '100vw', maxWidth: '100%' }}
@@ -994,6 +995,7 @@ const Onboarding = () => {
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   )
 }
 
