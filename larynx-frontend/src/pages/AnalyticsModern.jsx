@@ -196,7 +196,15 @@ const AnalyticsModern = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden" style={{ width: '100vw', maxWidth: '100%' }}>
+      <style>
+        {`
+          /* Hide scrollbars */
+          body {
+            overflow-x: hidden !important;
+          }
+        `}
+      </style>
       <style>
         {`
           @media (min-width: 1024px) and (max-width: 1400px) {
