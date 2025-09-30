@@ -115,6 +115,7 @@ const Onboarding = () => {
   const getStepIcon = () => {
     switch (step) {
       case 'intro': return <Globe className="w-8 h-8" />
+      case 'brandSummary': return <Edit className="w-8 h-8" />
       case 'tone': return <Mail className="w-8 h-8" />
       case 'signoff': return <Edit className="w-8 h-8" />
       case 'inventory': return <Package className="w-8 h-8" />
@@ -127,6 +128,7 @@ const Onboarding = () => {
   const getStepTitle = () => {
     switch (step) {
       case 'intro': return hasWebsite ? 'Website Analysis' : 'Business Information'
+      case 'brandSummary': return 'Review Brand Summary'
       case 'tone': return 'Email Tone Analysis'
       case 'signoff': return 'Email Sign Off'
       case 'inventory': return 'Product Catalog'
@@ -139,6 +141,7 @@ const Onboarding = () => {
   const getStepDescription = () => {
     switch (step) {
       case 'intro': return hasWebsite ? "We'll analyze your website to understand your business" : "Tell us about your business"
+      case 'brandSummary': return "Review and edit the brand summary we generated from your website"
       case 'tone': return "We'll analyze your email tone and writing style"
       case 'signoff': return "Create a professional email sign off that matches your brand. Use the toolbar below to format your text."
       case 'inventory': return "Add your products and services"
@@ -149,7 +152,7 @@ const Onboarding = () => {
   }
 
   const getStepProgress = () => {
-    const steps = ['intro', 'tone', 'signoff', 'inventory', 'monitoringConsent', 'finalizing']
+    const steps = ['intro', 'brandSummary', 'tone', 'signoff', 'inventory', 'monitoringConsent', 'finalizing']
     const currentIndex = steps.indexOf(step)
     return ((currentIndex + 1) / steps.length) * 100
   }
@@ -217,8 +220,8 @@ const Onboarding = () => {
         }
 
         const data = await response.json()
-        setBrandSummary(data.brand_summary || 'Analysis complete')
-        transitionToStep('tone')
+        setBrandSummary(data.summary || 'Analysis complete')
+        setStep('brandSummary')
       } finally {
         clearTimeout(timeoutId)
         setLoadingState(false)
@@ -441,7 +444,7 @@ const Onboarding = () => {
               />
         </div>
             <p className="text-sm text-gray-500">
-              Step {['intro', 'tone', 'signoff', 'inventory', 'monitoringConsent', 'finalizing'].indexOf(step) + 1} of 6
+              Step {['intro', 'brandSummary', 'tone', 'signoff', 'inventory', 'monitoringConsent', 'finalizing'].indexOf(step) + 1} of 7
             </p>
           </motion.div>
         </motion.div>
@@ -566,6 +569,58 @@ const Onboarding = () => {
                     >
                       <span>{manualStep < manualSteps.length - 1 ? 'Next' : 'Continue'}</span>
                       <ArrowRight size={20} />
+                    </motion.button>
+            </div>
+                </div>
+              </motion.div>
+          )}
+
+            {/* Brand Summary Step */}
+          {step === 'brandSummary' && (
+              <motion.div 
+                className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm max-w-2xl mx-auto"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">Brand Summary Generated</h3>
+                    <p className="text-gray-600 leading-relaxed mb-4">
+                      We've analyzed your website and generated a brand summary. Please review and edit it to ensure it accurately represents your business.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                      Brand Summary
+                    </label>
+                <textarea
+                  value={brandSummary}
+                  onChange={(e) => setBrandSummary(e.target.value)}
+                      rows={8}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 resize-none"
+                      placeholder="Your brand summary will appear here..."
+                />
+              </div>
+
+                  <div className="flex space-x-4">
+                    <motion.button 
+                      onClick={() => transitionToStep('intro')}
+                      className="flex-1 px-6 py-3 border border-purple-300 text-purple-700 bg-white rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all duration-200 font-medium"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      Back
+                    </motion.button>
+                    
+                    <motion.button 
+                      onClick={() => transitionToStep('tone')}
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      Continue
                     </motion.button>
             </div>
                 </div>
