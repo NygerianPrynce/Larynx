@@ -71,6 +71,8 @@ const OfferingsModern = () => {
   const [errorFixes, setErrorFixes] = useState({})
   const [showErrorResolution, setShowErrorResolution] = useState(false)
   const [originalUploadData, setOriginalUploadData] = useState(null)
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
+  const [duplicateWarningData, setDuplicateWarningData] = useState(null)
 
   const defaultCategories = ['Consulting', 'Design', 'Marketing', 'Writing', 'Development', 'Catering', 'Events']
   const [customCategories, setCustomCategories] = useState(['Drinks', 'Party Size', 'Custom Package'])
@@ -271,17 +273,26 @@ const OfferingsModern = () => {
       const lines = text.split('\n').filter(line => line.trim())
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
       
-      // Parse first few rows for preview
+      // Parse first few rows for preview with validation
       const previewItems = []
       for (let i = 1; i < Math.min(6, lines.length); i++) {
         const values = lines[i].split(',')
         if (values.length >= 2) {
+          const name = values[0]?.trim() || ''
+          const price = values[1]?.trim() || ''
+          const category = values[2]?.trim() || 'None'
+          const pricing_type = values[3]?.trim() || 'per_unit'
+          
+          // Validate the item
+          const isValid = validatePreviewItem(name, price, pricing_type)
+          
           previewItems.push({
             row: i + 1,
-            name: values[0]?.trim() || '',
-            price: values[1]?.trim() || '',
-            category: values[2]?.trim() || 'None',
-            pricing_type: values[3]?.trim() || 'per_unit'
+            name,
+            price,
+            category,
+            pricing_type,
+            isValid
           })
         }
       }
@@ -297,6 +308,18 @@ const OfferingsModern = () => {
       console.error('Error previewing file:', error)
       alert('Error reading file. Please check the format.')
     }
+  }
+
+  const validatePreviewItem = (name, price, pricing_type) => {
+    const validPricingTypes = ['per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'flat_rate']
+    
+    // Check for errors
+    if (!name || name.trim() === '') return { status: 'error', message: 'Missing name' }
+    if (!price || price.trim() === '') return { status: 'error', message: 'Missing price' }
+    if (isNaN(parseFloat(price))) return { status: 'error', message: 'Invalid price' }
+    if (pricing_type && !validPricingTypes.includes(pricing_type.toLowerCase())) return { status: 'error', message: 'Invalid pricing type' }
+    
+    return { status: 'ready', message: 'Ready to upload' }
   }
 
   const handleConfirmUpload = async () => {
@@ -420,6 +443,90 @@ const OfferingsModern = () => {
   const handleResolvedUpload = async () => {
     if (!originalUploadData) return
     
+    setUploading(true)
+    
+    try {
+      // Apply fixes to the data
+      const fixedData = applyErrorFixes()
+      
+      // Final validation: Check for new duplicates created by fixes
+      const newDuplicates = checkForNewDuplicates(fixedData)
+      
+      if (newDuplicates.length > 0) {
+        // Show warning modal about new duplicates
+        setDuplicateWarningData(newDuplicates)
+        setShowDuplicateWarning(true)
+        setUploading(false)
+        return
+      }
+      
+      // Create a new file with the fixed data
+      const csvContent = [
+        'name,price,category,pricing_type',
+        ...fixedData.map(item => 
+          `${item.name || ''},${item.price || ''},${item.category || ''},${item.pricing_type || 'per_unit'}`
+        )
+      ].join('\n')
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const formData = new FormData()
+      formData.append('file', blob, 'fixed-upload.csv')
+      
+      const response = await fetchWithErrorHandling(`${api}/inventory/bulk-upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      })
+      
+      if (response) {
+        alert(`Upload successful! ${response.message || 'All items uploaded successfully.'}`)
+        await fetchInventory()
+        
+        // Close modal and reset all state
+        setShowErrorResolution(false)
+        setShowUploadForm(false)
+        setUploadFile(null)
+        setPreviewData(null)
+        setUploadErrors(null)
+        setErrorFixes({})
+        setOriginalUploadData(null)
+      } else {
+        throw new Error('Upload failed - no response received')
+      }
+    } catch (error) {
+      console.error('Error in resolved upload:', error)
+      alert(`Upload failed: ${error.message || 'Please try again.'}`)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const checkForNewDuplicates = (fixedData) => {
+    const newDuplicates = []
+    
+    // Check each fixed item against existing offerings
+    fixedData.forEach((item, index) => {
+      if (item.name && item.price) {
+        const duplicate = offerings.find(existing => 
+          existing.name.toLowerCase() === item.name.toLowerCase() && 
+          parseFloat(existing.price) === parseFloat(item.price)
+        )
+        
+        if (duplicate) {
+          newDuplicates.push({
+            ...item,
+            rowIndex: index,
+            existingItem: duplicate
+          })
+        }
+      }
+    })
+    
+    return newDuplicates
+  }
+
+  const handleProceedWithDuplicates = async () => {
+    setShowDuplicateWarning(false)
     setUploading(true)
     
     try {
@@ -954,17 +1061,25 @@ const OfferingsModern = () => {
                     </button>
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-center gap-4">
-                      <div className="text-blue-900">
-                        <p className="font-medium">File: {previewData.fileName}</p>
-                        <p className="text-sm">Total items: {previewData.totalRows}</p>
-                      </div>
-                      <div className="text-blue-700">
-                        <p className="text-sm">Headers detected: {previewData.headers.join(', ')}</p>
-                      </div>
-                    </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="text-blue-900">
+                    <p className="font-medium">File: {previewData.fileName}</p>
+                    <p className="text-sm">Total items: {previewData.totalRows}</p>
                   </div>
+                  <div className="text-blue-700">
+                    <p className="text-sm">Headers detected: {previewData.headers.join(', ')}</p>
+                  </div>
+                </div>
+                {previewData.previewItems.some(item => item.isValid.status === 'error') && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ <strong>Validation Issues Detected:</strong> Some items in your file have errors that need to be fixed before upload. 
+                      You'll be able to resolve these issues after clicking "Upload".
+                    </p>
+                  </div>
+                )}
+              </div>
 
                   <div className="mb-6">
                     <h4 className="font-medium text-gray-900 mb-3">Preview (first 5 items):</h4>
@@ -987,12 +1102,18 @@ const OfferingsModern = () => {
                               <td className="px-4 py-3 text-sm text-gray-900">{item.name}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">${item.price}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">{item.category}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900">{item.pricing_type}</td>
-                              <td className="px-4 py-3 text-sm">
-                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                  ✅ Ready
-                                </span>
-                              </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">{item.pricing_type}</td>
+                          <td className="px-4 py-3 text-sm">
+                            {item.isValid.status === 'ready' ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                ✅ Ready
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                ❌ {item.isValid.message}
+                              </span>
+                            )}
+                          </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1105,7 +1226,7 @@ const OfferingsModern = () => {
                                 {error.type === 'missing_name' && (
                                   <input
                                     type="text"
-                                    placeholder="Enter product name"
+                                    placeholder="Enter name"
                                     value={errorFixes[error.rowIndex]?.name || ''}
                                     onChange={(e) => handleFixError(error.rowIndex, 'name', e.target.value)}
                                     className="px-3 py-1 border border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
@@ -1114,7 +1235,7 @@ const OfferingsModern = () => {
                                 {error.type === 'invalid_price' && (
                                   <input
                                     type="text"
-                                    placeholder="Enter valid price"
+                                    placeholder="Enter price"
                                     value={errorFixes[error.rowIndex]?.price || ''}
                                     onChange={(e) => handleFixError(error.rowIndex, 'price', e.target.value)}
                                     className="px-3 py-1 border border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
@@ -1507,6 +1628,78 @@ const OfferingsModern = () => {
         </motion.div>
       </motion.div>
     </div>
+
+    {/* Duplicate Warning Modal */}
+    <AnimatePresence>
+      {showDuplicateWarning && duplicateWarningData && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-white rounded-xl max-w-2xl w-full"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">⚠️ Duplicate Warning</h3>
+                <button
+                  onClick={() => setShowDuplicateWarning(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <p className="text-yellow-800">
+                    <strong>Your fixes have created new duplicates with existing items.</strong> 
+                    These will be treated as duplicates during upload.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  {duplicateWarningData.map((duplicate, index) => (
+                    <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="text-sm text-red-700">
+                            <span className="font-medium">New Item:</span> {duplicate.name} - ${duplicate.price}
+                          </div>
+                          <div className="text-sm text-red-600 mt-1">
+                            <span className="font-medium">Matches existing:</span> {duplicate.existingItem.name} - ${duplicate.existingItem.price}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-4">
+                <button
+                  onClick={() => setShowDuplicateWarning(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Go Back & Fix
+                </button>
+                <button
+                  onClick={handleProceedWithDuplicates}
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                >
+                  Proceed Anyway
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
