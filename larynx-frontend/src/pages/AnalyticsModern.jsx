@@ -196,7 +196,7 @@ const AnalyticsModern = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden" style={{ width: '100vw', maxWidth: '100%' }}>
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <style>
         {`
           @media (min-width: 1024px) and (max-width: 1400px) {

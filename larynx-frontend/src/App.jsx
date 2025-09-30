@@ -38,7 +38,7 @@ function App() {
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/manage-inventory" element={<OfferingsModern />} />
         <Route path="/home" element={<HomeModern />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/analytics" element={<AnalyticsModern />} />
         <Route path="/tailwind-test" element={<TailwindTest />} />
         <Route path="/shadcn-test" element={<ShadcnTest />} />
         <Route path="/framer-test" element={<FramerTest />} />

@@ -284,7 +284,7 @@ const HomeModern = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 overflow-x-hidden" style={{ width: '100vw', maxWidth: '100%' }}>
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
       <Navbar />
       
       {/* Header */}
