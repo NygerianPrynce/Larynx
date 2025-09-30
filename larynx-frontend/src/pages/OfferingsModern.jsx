@@ -176,7 +176,8 @@ const OfferingsModern = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newOffering.name,
-          price: parseFloat(normalizedPrice)
+          price: parseFloat(normalizedPrice),
+          pricing_type: newOffering.pricingType || 'per_unit'  // ADD THIS
         })
       })
       
@@ -208,7 +209,8 @@ const OfferingsModern = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: editingOffering.name,
-          price: parseFloat(normalizedPrice)
+          price: parseFloat(normalizedPrice),
+          pricing_type: editingOffering.pricingType || 'per_unit'  // ADD THIS
         })
       })
       

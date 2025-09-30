@@ -123,11 +123,52 @@ const OnboardingInventory = ({ onBack, onNext }) => {
     }
   };
 
-  const handleNext = () => {
-    // Save offerings data (you can add API call here later)
-    console.log('Offerings saved:', offerings);
-    console.log('Special instructions:', specialInstructions);
-    if (onNext) onNext();
+  const handleNext = async () => {
+    try {
+      const api = import.meta.env.VITE_API_URL;
+      
+      // Save each offering to the backend - categories are handled by AI during email processing
+      for (const offering of offerings) {
+        const response = await fetch(`${api}/inventory/add`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: offering.name,
+            price: parseFloat(offering.price),
+            pricing_type: offering.pricingType,  // ADD THIS
+            category: offering.category || null
+          })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to save offering: ${offering.name}`);
+        }
+      }
+      
+      // Save special instructions if they exist (using original pattern)
+      if (specialInstructions.trim()) {
+        const instructionsResponse = await fetch(`${api}/inventory/special-instructions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ special_instructions: specialInstructions })
+        });
+        
+        if (!instructionsResponse.ok) {
+          throw new Error('Failed to save special instructions');
+        }
+      }
+      
+      console.log('All onboarding data saved successfully');
+      if (onNext) onNext();
+    } catch (error) {
+      console.error('Error saving onboarding data:', error);
+      alert('Failed to save your data. Please try again.');
+    }
   };
 
   // Animation variants

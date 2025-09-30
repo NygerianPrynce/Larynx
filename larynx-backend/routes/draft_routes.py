@@ -287,7 +287,7 @@ class InventoryMatcher:
             
             for match in unique_matches:
                 item = match['inventory_item']
-                context += f"  • {item['name']}: ${item['price']:.2f}\n"
+                context += f"  • {item['name']}: ${item['price']:.2f} ({item.get('pricing_type', 'per_unit')})\n"
         
         context += "\nIMPORTANT: When customer asks generically or uses different spellings, show them the available options. Be helpful and ask what they prefer if multiple options exist."
         

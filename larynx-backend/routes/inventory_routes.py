@@ -17,6 +17,8 @@ router = APIRouter()
 class InventoryItem(BaseModel):
     name: str
     price: float
+    pricing_type: str  # ADD THIS FIELD
+    category: Optional[str] = None
 
 @router.post("/inventory/add")
 async def add_inventory_item(request: Request, item: InventoryItem):
@@ -28,7 +30,8 @@ async def add_inventory_item(request: Request, item: InventoryItem):
     result = supabase.table("inventory").insert({
         "user_id": user_id,
         "name": item.name,
-        "price": item.price
+        "price": item.price,
+        "pricing_type": item.pricing_type  # ADD THIS
     }).execute()
 
     if not result.data:
@@ -50,6 +53,11 @@ async def add_inventory_item(request: Request, item: InventoryItem):
         "recent_activity": recent,
         "updated_at": datetime.utcnow().isoformat()
     }).execute()
+
+    # Add category to category_analytics if provided
+    if item.category and item.category.strip():
+        from routes.analytics_routes import update_category_analytics
+        await update_category_analytics(user_id, item.category.strip())
 
     return {"message": "Item added successfully", "item": result.data[0]}
 
@@ -438,7 +446,7 @@ async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
         skipped_count = 0
 
         if analysis['new_items']:
-            new_records = [{"user_id": user_id, "name": item["name"], "price": item["price"]} 
+            new_records = [{"user_id": user_id, "name": item["name"], "price": item["price"], "pricing_type": "per_unit"} 
                           for item in analysis['new_items']]
             insert_result = supabase.table("inventory").insert(new_records).execute()
             inserted_count = len(insert_result.data) if insert_result.data else 0
@@ -527,6 +535,7 @@ async def get_inventory(request: Request):
 class InventoryUpdate(BaseModel):
     name: Optional[str]
     price: Optional[float]
+    pricing_type: Optional[str]  # ADD THIS
     
 @router.put("/inventory/edit/{item_id}")
 async def update_inventory_item(item_id: str, request: Request, update: InventoryUpdate):

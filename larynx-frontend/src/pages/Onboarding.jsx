@@ -294,8 +294,29 @@ const Onboarding = () => {
     transitionToStep('signoff')
   }
 
-  const updateSignoff = () => {
-    transitionToStep('inventory')
+  const updateSignoff = async (content) => {
+    await handleAsyncOperation(async () => {
+      const api = import.meta.env.VITE_API_URL
+      
+      try {
+        const response = await fetch(`${api}/signature`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ signature: content })
+        })
+        
+        if (!response.ok) {
+          throw new Error(`Failed to save signoff (${response.status})`)
+        }
+        
+        setSignoff(content)
+        transitionToStep('inventory')
+      } catch (error) {
+        console.error('Error saving signoff:', error)
+        throw error
+      }
+    }, "Failed to save signoff. Please try again.")
   }
 
   return (
