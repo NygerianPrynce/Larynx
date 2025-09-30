@@ -178,7 +178,7 @@ const Onboarding = () => {
     if (isLoading && emailCrawlMessages.length > 0) {
       const interval = setInterval(() => {
         setCurrentMessageIndex((prev) => (prev + 1) % emailCrawlMessages.length)
-      }, 2000)
+      }, 4000)
       return () => clearInterval(interval)
     }
   }, [isLoading, emailCrawlMessages.length])
@@ -272,11 +272,7 @@ const Onboarding = () => {
           throw new Error(`Email crawl failed (${response.status})`)
         }
         
-        setShowSuccessMessage(true)
-        setTimeout(() => {
-          setShowSuccessMessage(false)
-          transitionToStep('signoff')
-        }, 2000)
+        transitionToStep('signoff')
       } finally {
         clearTimeout(timeoutId)
         setLoadingState(false)
@@ -677,6 +673,7 @@ const Onboarding = () => {
                 setValue={setSignoff}
                 onBack={() => transitionToStep('tone')}
                 onSave={updateSignoff}
+                showHeader={false}
               />
           )}
 
