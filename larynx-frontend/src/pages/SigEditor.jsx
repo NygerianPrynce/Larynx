@@ -56,8 +56,23 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
   const handleSave = useCallback(() => {
     try {
       if (editorRef.current && onSave) {
-        const content = editorRef.current.innerHTML
-        onSave(content)
+        // Clone the editor content to avoid modifying the original
+        const editorClone = editorRef.current.cloneNode(true)
+        
+        // Remove placeholder elements from the clone
+        const placeholders = editorClone.querySelectorAll('.placeholder-text')
+        placeholders.forEach(placeholder => placeholder.remove())
+        
+        // Get the clean content without placeholders
+        const content = editorClone.innerHTML
+        
+        // Only save if there's meaningful content (not just empty divs)
+        const textContent = editorClone.textContent?.trim()
+        if (textContent && textContent !== '') {
+          onSave(content)
+        } else {
+          onSave('') // Save empty string if no meaningful content
+        }
       }
     } catch (error) {
       console.error('Error in handleSave:', error)

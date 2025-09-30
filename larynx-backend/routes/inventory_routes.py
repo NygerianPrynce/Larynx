@@ -31,7 +31,8 @@ async def add_inventory_item(request: Request, item: InventoryItem):
         "user_id": user_id,
         "name": item.name,
         "price": item.price,
-        "pricing_type": item.pricing_type  # ADD THIS
+        "pricing_type": item.pricing_type,
+        "category": item.category  # ADD THIS
     }).execute()
 
     if not result.data:
@@ -535,7 +536,8 @@ async def get_inventory(request: Request):
 class InventoryUpdate(BaseModel):
     name: Optional[str]
     price: Optional[float]
-    pricing_type: Optional[str]  # ADD THIS
+    pricing_type: Optional[str]
+    category: Optional[str]  # ADD THIS
     
 @router.put("/inventory/edit/{item_id}")
 async def update_inventory_item(item_id: str, request: Request, update: InventoryUpdate):
