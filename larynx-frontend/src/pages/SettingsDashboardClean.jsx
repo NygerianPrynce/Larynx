@@ -171,7 +171,7 @@ const SettingsDashboardClean = () => {
     setSummarySuccess('Brand summary updated!')
   }
 
-  const updateSignoff = async () => {
+  const updateSignoff = async (content) => {
     setSignoffSuccess('')
     setError('')
     
@@ -180,11 +180,12 @@ const SettingsDashboardClean = () => {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ signature: signoff })
+        body: JSON.stringify({ signature: content })
       })
       
       if (res.ok) {
         setSignoffSuccess('Sign off updated!')
+        setSignoff(content) // Update the state with the new content
       } else {
         setError('Failed to update sign off.')
       }

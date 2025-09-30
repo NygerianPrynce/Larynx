@@ -171,13 +171,14 @@ const OfferingsModern = () => {
 
     try {
       const normalizedPrice = normalizePrice(newOffering.price)
-      await fetchWithErrorHandling(`${api}/inventory`, {
+      await fetchWithErrorHandling(`${api}/inventory/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newOffering.name,
           price: parseFloat(normalizedPrice),
-          pricing_type: newOffering.pricingType || 'per_unit'  // ADD THIS
+          pricing_type: newOffering.pricingType || 'per_unit',
+          category: newOffering.category || null
         })
       })
       
@@ -210,7 +211,8 @@ const OfferingsModern = () => {
         body: JSON.stringify({
           name: editingOffering.name,
           price: parseFloat(normalizedPrice),
-          pricing_type: editingOffering.pricingType || 'per_unit'  // ADD THIS
+          pricing_type: editingOffering.pricingType || 'per_unit',
+          category: editingOffering.category || null
         })
       })
       
