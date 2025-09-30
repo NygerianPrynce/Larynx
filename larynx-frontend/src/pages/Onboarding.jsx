@@ -67,6 +67,16 @@ const Onboarding = () => {
     }
   }, [error])
 
+  // Auto-redirect after finalizing step
+  useEffect(() => {
+    if (step === 'finalizing') {
+      const timer = setTimeout(() => {
+        navigate('/home')
+      }, 3000) // Redirect after 3 seconds
+      return () => clearTimeout(timer)
+    }
+  }, [step, navigate])
+
   const manualSteps = [
     { key: 'brand_name', label: "What's your brand name?", type: 'input', min: 1, max: 200 },
     { key: 'business_description', label: 'What does your business do?', type: 'textarea', min: 10, max: 1000 },
