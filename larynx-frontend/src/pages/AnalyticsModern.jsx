@@ -10,29 +10,18 @@ import {
   Eye,
   MessageCircle,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Package
 } from 'lucide-react'
 
 const AnalyticsModern = () => {
-  // Mock data for demonstration
+  // Empty initial state - data will be fetched from API
   const [analyticsData, setAnalyticsData] = useState({
-    draftsThisWeek: 53,
-    totalDrafts: 892,
-    hoursSaved: 89.2,
-    topCategories: [
-      { name: 'Consulting', count: 234 },
-      { name: 'Design', count: 189 },
-      { name: 'Marketing', count: 156 },
-      { name: 'Writing', count: 98 },
-      { name: 'Development', count: 76 }
-    ],
-    recentActivity: [
-      { type: 'email_processed', message: 'New inquiry processed for Website Design', time: '2 min ago', status: 'success' },
-      { type: 'draft_created', message: 'Draft response created for Consulting inquiry', time: '5 min ago', status: 'success' },
-      { type: 'category_added', message: 'New category "Events" added', time: '12 min ago', status: 'info' },
-      { type: 'signoff_updated', message: 'Email sign off updated', time: '1 hour ago', status: 'success' },
-      { type: 'user_activity', message: 'New user signed up', time: '2 hours ago', status: 'info' }
-    ]
+    draftsThisWeek: 0,
+    totalDrafts: 0,
+    hoursSaved: 0,
+    topCategories: [],
+    recentActivity: []
   })
 
   const [selectedPeriod, setSelectedPeriod] = useState('7d')
@@ -86,12 +75,23 @@ const AnalyticsModern = () => {
         totalDrafts: analyticsData.total_drafts || 0,
         hoursSaved: analyticsData.estimated_hours_saved || 0,
         topCategories: (() => {
+          // Handle empty categories data
+          if (!categoriesData || categoriesData.length === 0) {
+            return [];
+          }
+          
           const sortedCategories = categoriesData
+            .filter(cat => cat.category && cat.inquiry_count > 0) // Filter out empty/null categories
             .map(cat => ({
               name: cat.category,
               count: cat.inquiry_count
             }))
             .sort((a, b) => b.count - a.count);
+          
+          // If no categories with inquiries, return empty array
+          if (sortedCategories.length === 0) {
+            return [];
+          }
           
           const top8 = sortedCategories.slice(0, 8);
           const others = sortedCategories.slice(8);
@@ -113,7 +113,15 @@ const AnalyticsModern = () => {
       }))
     } catch (error) {
       console.error('Error fetching analytics:', error)
-      // Keep the mock data if API fails
+      // Keep empty data if API fails - don't show mock data
+      setAnalyticsData(prev => ({
+        ...prev,
+        draftsThisWeek: 0,
+        totalDrafts: 0,
+        hoursSaved: 0,
+        topCategories: [],
+        recentActivity: []
+      }))
     } finally {
       setLoading(false)
     }
@@ -396,7 +404,8 @@ const AnalyticsModern = () => {
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-6">Top Categories</h3>
             
-            <div className="flex flex-col lg:flex-row items-center gap-8">
+            {analyticsData.topCategories.length > 0 ? (
+              <div className="flex flex-col lg:flex-row items-center gap-8">
               {/* Pie Chart */}
               <div className="relative w-64 h-64 flex-shrink-0">
                 <svg className="w-full h-full" viewBox="0 0 200 200">
@@ -521,6 +530,26 @@ const AnalyticsModern = () => {
                 })}
               </div>
             </div>
+            ) : (
+              /* Empty State */
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <BarChart3 className="w-8 h-8 text-gray-400" />
+                </div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No Categories Yet</h4>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  Categories will appear here once you start receiving inquiries. 
+                  Add some offerings to get started!
+                </p>
+                <button 
+                  onClick={() => window.location.href = '/manage-inventory'}
+                  className="inline-flex items-center gap-2 bg-amethyst-500 text-white px-4 py-2 rounded-lg hover:bg-amethyst-600 transition-colors"
+                >
+                  <Package className="w-4 h-4" />
+                  Manage Offerings
+                </button>
+              </div>
+            )}
           </motion.div>
         </div>
 
@@ -593,8 +622,26 @@ const AnalyticsModern = () => {
               </div>
             ))}
             {filterActivities(analyticsData.recentActivity).length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                <p className="text-sm">No activities found for the selected filters</p>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MessageCircle className="w-8 h-8 text-gray-400" />
+                </div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No Recent Activity</h4>
+                <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                  {analyticsData.recentActivity.length === 0 
+                    ? "Activity will appear here as you use Larynx AI to manage your emails and offerings."
+                    : "No activities found for the selected filters"
+                  }
+                </p>
+                {analyticsData.recentActivity.length === 0 && (
+                  <button 
+                    onClick={() => window.location.href = '/manage-inventory'}
+                    className="inline-flex items-center gap-2 bg-amethyst-500 text-white px-4 py-2 rounded-lg hover:bg-amethyst-600 transition-colors"
+                  >
+                    <Package className="w-4 h-4" />
+                    Get Started
+                  </button>
+                )}
               </div>
             )}
           </div>
