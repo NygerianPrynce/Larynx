@@ -706,9 +706,9 @@ const OfferingsModern = () => {
               </table>
             ) : (
               <div className="text-center py-12">
-                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 {offerings.length === 0 ? (
                   <>
+                    <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No offerings yet</h3>
                     <p className="text-gray-600 mb-6">Get started by adding your first offering</p>
                     <button
