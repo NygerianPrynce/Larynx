@@ -198,7 +198,13 @@ const Onboarding = () => {
       const timeoutId = setTimeout(() => controller.abort(), 30000)
       
       try {
-        const response = await fetch(`${api}/website-scrape?url=${encodeURIComponent(websiteUrl)}`, {
+        // Ensure URL has protocol
+        let urlToScrape = websiteUrl.trim()
+        if (!urlToScrape.startsWith('http://') && !urlToScrape.startsWith('https://')) {
+          urlToScrape = `https://${urlToScrape}`
+        }
+        
+        const response = await fetch(`${api}/website-scrape?url=${encodeURIComponent(urlToScrape)}`, {
           method: 'GET',
           credentials: 'include',
           signal: controller.signal
