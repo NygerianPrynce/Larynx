@@ -45,8 +45,8 @@ const HomeModern = () => {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [userName, setUserName] = useState('Alex')
   const [emailStats, setEmailStats] = useState({
-    today: 12,
     thisWeek: 47,
+    totalDrafts: 12,
     hoursSaved: '8.5 hours'
   })
   const [recentActivity, setRecentActivity] = useState([
@@ -184,8 +184,8 @@ const HomeModern = () => {
         if (isMounted) {
           // Update email stats
           setEmailStats({
-            today: data.total_drafts || 0,
             thisWeek: data.drafts_this_week || 0,
+            totalDrafts: data.total_drafts || 0,
             hoursSaved: data.estimated_hours_saved ? `${data.estimated_hours_saved} hours` : '0 hours'
           })
           
@@ -351,12 +351,12 @@ const HomeModern = () => {
           transition={{ duration: 0.5, delay: 0.5 }}
         >
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="text-2xl font-bold text-amethyst-500 mb-2">{emailStats.today}</div>
-            <div className="text-sm text-gray-600">Emails Today</div>
+            <div className="text-2xl font-bold text-blue-500 mb-2">{emailStats.thisWeek}</div>
+            <div className="text-sm text-gray-600">Drafts This Week</div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="text-2xl font-bold text-blue-500 mb-2">{emailStats.thisWeek}</div>
-            <div className="text-sm text-gray-600">This Week</div>
+            <div className="text-2xl font-bold text-amethyst-500 mb-2">{emailStats.totalDrafts}</div>
+            <div className="text-sm text-gray-600">Total Emails Drafted</div>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
             <div className="text-2xl font-bold text-green-500 mb-2">{emailStats.hoursSaved}</div>
