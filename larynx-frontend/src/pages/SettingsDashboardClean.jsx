@@ -82,26 +82,28 @@ const SettingsDashboardClean = () => {
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [summaryRes, nameRes, sigRes] = await Promise.all([
+        const [summaryRes, nameRes, sigRes, monitoringRes] = await Promise.all([
           fetch(`${api}/get-brand-summary`, { credentials: 'include' }),
           fetch(`${api}/user/name`, { credentials: 'include' }),
           fetch(`${api}/signature`, { credentials: 'include' }),
+          fetch(`${api}/monitoring-status`, { credentials: 'include' }),
         ])
 
         const summaryData = await summaryRes.json()
         const nameData = await nameRes.json()
         const sigData = await sigRes.json()
+        const monitoringData = await monitoringRes.json()
 
         setSummary(summaryData.summary || '')
         setName(nameData.name || '')
         setSignoff(sigData.signature || '')
-        // Keep monitoring state as local for testing
+        setIsMonitoringEnabled(monitoringData.is_monitoring || false)
       } catch (err) {
         console.error('Error fetching settings data:', err)
         setSummary('')
         setName('')
         setSignoff('')
-        // Keep monitoring state as local for testing
+        setIsMonitoringEnabled(false)
       }
     }
 
@@ -173,31 +175,65 @@ const SettingsDashboardClean = () => {
     setSignoffSuccess('')
     setError('')
     
-    // Test: Always show success message for testing placement
-    setSignoffSuccess('Sign off updated! (Test Message)')
-    
-    // Commented out for testing
-    // await fetch(`${api}/signature`, {
-    //   method: 'PUT',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   credentials: 'include',
-    //   body: JSON.stringify({ signature: signoff })
-    // })
-    // setSignoffSuccess('Sign off updated!')
+    try {
+      const res = await fetch(`${api}/signature`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ signature: signoff })
+      })
+      
+      if (res.ok) {
+        setSignoffSuccess('Sign off updated!')
+      } else {
+        setError('Failed to update sign off.')
+      }
+    } catch (err) {
+      console.error('Error updating sign off:', err)
+      setError('Failed to update sign off.')
+    }
   }
 
-  const toggleMonitoring = () => {
+  const toggleMonitoring = async () => {
     setMonitoringSuccess('')
     setError('')
     
-    // Simple local toggle for testing
-    setIsMonitoringEnabled(!isMonitoringEnabled)
-    
-    // Show success message
-    if (!isMonitoringEnabled) {
-      setMonitoringSuccess('Email monitoring enabled')
-    } else {
-      setMonitoringSuccess('Email monitoring disabled')
+    try {
+      if (isMonitoringEnabled) {
+        // Stop monitoring
+        const confirmStop = window.confirm(
+          '⚠️ WARNING: If you stop monitoring, you will no longer receive email drafts or alerts. Your AI assistant will be DISABLED.\n\nAre you absolutely sure you want to do this?'
+        )
+        if (!confirmStop) return
+
+        const res = await fetch(`${api}/stop-monitoring`, {
+          method: 'POST',
+          credentials: 'include'
+        })
+
+        if (res.ok) {
+          setIsMonitoringEnabled(false)
+          setMonitoringSuccess('Email monitoring disabled')
+        } else {
+          setError('Failed to stop monitoring.')
+        }
+      } else {
+        // Start monitoring
+        const res = await fetch(`${api}/start-monitoring`, {
+          method: 'POST',
+          credentials: 'include'
+        })
+
+        if (res.ok) {
+          setIsMonitoringEnabled(true)
+          setMonitoringSuccess('Email monitoring enabled')
+        } else {
+          setError('Failed to start monitoring.')
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling monitoring:', err)
+      setError('Failed to update monitoring status.')
     }
   }
 

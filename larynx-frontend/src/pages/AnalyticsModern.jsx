@@ -633,15 +633,6 @@ const AnalyticsModern = () => {
                     : "No activities found for the selected filters"
                   }
                 </p>
-                {analyticsData.recentActivity.length === 0 && (
-                  <button 
-                    onClick={() => window.location.href = '/manage-inventory'}
-                    className="inline-flex items-center gap-2 bg-amethyst-500 text-white px-4 py-2 rounded-lg hover:bg-amethyst-600 transition-colors"
-                  >
-                    <Package className="w-4 h-4" />
-                    Get Started
-                  </button>
-                )}
               </div>
             )}
           </div>

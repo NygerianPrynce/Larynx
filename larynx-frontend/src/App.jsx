@@ -34,7 +34,7 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LandingPage />} />
         <Route path="/onboarding/*" element={<Onboarding />} />
-        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings" element={<SettingsDashboardClean />} />
         <Route path="/inventory" element={<InventoryPage />} />
         <Route path="/manage-inventory" element={<OfferingsModern />} />
         <Route path="/home" element={<HomeModern />} />
