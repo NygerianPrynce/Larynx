@@ -424,6 +424,20 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                     placeholder.style.display = e.target.textContent.trim() ? 'none' : 'block';
                   }
                 }}
+                onFocus={(e) => {
+                  // Hide placeholder when user clicks/focuses on editor
+                  const placeholder = e.target.querySelector('.placeholder-text');
+                  if (placeholder) {
+                    placeholder.style.display = 'none';
+                  }
+                }}
+                onBlur={(e) => {
+                  // Show placeholder again if content is empty when user leaves
+                  const placeholder = e.target.querySelector('.placeholder-text');
+                  if (placeholder) {
+                    placeholder.style.display = e.target.textContent.trim() ? 'none' : 'block';
+                  }
+                }}
                 suppressContentEditableWarning={true}
                 style={{ minHeight: compact ? '150px' : '300px' }}
               >
