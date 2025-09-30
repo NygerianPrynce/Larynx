@@ -445,8 +445,10 @@ const OfferingsModern = () => {
       })
       
       if (response) {
-        alert(`Upload successful! ${response.message}`)
+        alert(`Upload successful! ${response.message || 'All items uploaded successfully.'}`)
         await fetchInventory()
+        
+        // Close modal and reset all state
         setShowErrorResolution(false)
         setShowUploadForm(false)
         setUploadFile(null)
@@ -454,9 +456,12 @@ const OfferingsModern = () => {
         setUploadErrors(null)
         setErrorFixes({})
         setOriginalUploadData(null)
+      } else {
+        throw new Error('Upload failed - no response received')
       }
     } catch (error) {
-      handleError(error, 'resolved upload')
+      console.error('Error in resolved upload:', error)
+      alert(`Upload failed: ${error.message || 'Please try again.'}`)
     } finally {
       setUploading(false)
     }
@@ -529,31 +534,89 @@ const OfferingsModern = () => {
     }))
   }
 
-  const downloadErrorReport = () => {
+  const downloadErrorReport = async () => {
     if (!uploadErrors) return
 
-    const errorReport = {
-      fileName: uploadFile?.name || 'upload-file',
-      timestamp: new Date().toISOString(),
-      errors: uploadErrors.errors || [],
-      warnings: uploadErrors.warnings || [],
-      summary: {
-        totalItems: uploadErrors.totalItems || 0,
-        errorCount: uploadErrors.errors?.length || 0,
-        warningCount: uploadErrors.warnings?.length || 0,
-        readyCount: uploadErrors.readyItems?.length || 0
+    try {
+      // Import XLSX library dynamically
+      const XLSX = await import('xlsx')
+      
+      // Create workbook
+      const workbook = XLSX.utils.book_new()
+      
+      // Summary sheet
+      const summaryData = [
+        ['Upload Error Report'],
+        ['File:', uploadFile?.name || 'upload-file'],
+        ['Date:', new Date().toLocaleDateString()],
+        [''],
+        ['Summary'],
+        ['Total Items:', uploadErrors.totalItems || 0],
+        ['Errors:', uploadErrors.errors?.length || 0],
+        ['Warnings:', uploadErrors.warnings?.length || 0],
+        ['Ready Items:', uploadErrors.readyItems?.length || 0]
+      ]
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData)
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
+      
+      // Errors sheet
+      if (uploadErrors.errors && uploadErrors.errors.length > 0) {
+        const errorsData = [
+          ['Row', 'Error Type', 'Message', 'Item Name', 'Item Price', 'Category', 'Pricing Type'],
+          ...uploadErrors.errors.map(error => [
+            error.row,
+            error.type,
+            error.message,
+            error.item?.name || '',
+            error.item?.price || '',
+            error.item?.category || '',
+            error.item?.pricing_type || ''
+          ])
+        ]
+        const errorsSheet = XLSX.utils.aoa_to_sheet(errorsData)
+        XLSX.utils.book_append_sheet(workbook, errorsSheet, 'Errors')
       }
+      
+      // Warnings sheet
+      if (uploadErrors.warnings && uploadErrors.warnings.length > 0) {
+        const warningsData = [
+          ['Row', 'Warning Type', 'Message', 'Duplicate Name', 'Duplicate Price', 'Existing Name', 'Existing Price'],
+          ...uploadErrors.warnings.map(warning => [
+            warning.row,
+            warning.type,
+            warning.message,
+            warning.duplicate?.name || '',
+            warning.duplicate?.price || '',
+            warning.existing?.name || '',
+            warning.existing?.price || ''
+          ])
+        ]
+        const warningsSheet = XLSX.utils.aoa_to_sheet(warningsData)
+        XLSX.utils.book_append_sheet(workbook, warningsSheet, 'Warnings')
+      }
+      
+      // Ready items sheet
+      if (uploadErrors.readyItems && uploadErrors.readyItems.length > 0) {
+        const readyData = [
+          ['Name', 'Price', 'Category', 'Pricing Type'],
+          ...uploadErrors.readyItems.map(item => [
+            item.name,
+            item.price,
+            item.category,
+            item.pricing_type
+          ])
+        ]
+        const readySheet = XLSX.utils.aoa_to_sheet(readyData)
+        XLSX.utils.book_append_sheet(workbook, readySheet, 'Ready Items')
+      }
+      
+      // Generate and download file
+      XLSX.writeFile(workbook, `upload-errors-${new Date().toISOString().split('T')[0]}.xlsx`)
+      
+    } catch (error) {
+      console.error('Error generating error report:', error)
+      alert('Failed to generate error report. Please try again.')
     }
-
-    const blob = new Blob([JSON.stringify(errorReport, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `upload-errors-${new Date().toISOString().split('T')[0]}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
   }
 
   const containerVariants = {
@@ -806,7 +869,9 @@ const OfferingsModern = () => {
             >
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Bulk Upload Your Offerings</h3>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <div className="flex justify-center mb-4">
+                <Upload className="w-12 h-12 text-gray-400" />
+              </div>
               <p className="text-gray-600 mb-4">Upload a CSV or Excel file with your offerings</p>
               
               {/* File Format Instructions */}
@@ -1055,6 +1120,15 @@ const OfferingsModern = () => {
                                     className="px-3 py-1 border border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
                                   />
                                 )}
+                                {error.type === 'missing_price' && (
+                                  <input
+                                    type="text"
+                                    placeholder="Enter price"
+                                    value={errorFixes[error.rowIndex]?.price || ''}
+                                    onChange={(e) => handleFixError(error.rowIndex, 'price', e.target.value)}
+                                    className="px-3 py-1 border border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
+                                  />
+                                )}
                                 {error.type === 'invalid_pricing_type' && (
                                   <select
                                     value={errorFixes[error.rowIndex]?.pricing_type || 'per_unit'}
@@ -1071,12 +1145,6 @@ const OfferingsModern = () => {
                                     <option value="flat_rate">Flat Rate</option>
                                   </select>
                                 )}
-                                <button
-                                  onClick={() => handleFixError(error.rowIndex, 'fixed', true)}
-                                  className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600"
-                                >
-                                  Fix
-                                </button>
                               </div>
                             </div>
                           </div>
@@ -1091,6 +1159,12 @@ const OfferingsModern = () => {
                       <h4 className="font-medium text-yellow-900 mb-3 flex items-center gap-2">
                         ⚠️ Warnings ({uploadErrors.warnings.length})
                       </h4>
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Duplicate Detection:</strong> We check for duplicates within your uploaded file AND against your existing offerings. 
+                          Choose how to handle each duplicate below.
+                        </p>
+                      </div>
                       <div className="space-y-3">
                         {uploadErrors.warnings.map((warning, index) => (
                           <div key={index} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
