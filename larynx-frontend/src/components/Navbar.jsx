@@ -444,7 +444,8 @@ const styles = {
   },
   profileContainer: {
     position: 'relative',
-    zIndex: 10000
+    zIndex: 10000,
+    marginLeft: '-8px'
   },
   profileButton: {
     display: 'flex',

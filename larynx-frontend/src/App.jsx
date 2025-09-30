@@ -36,7 +36,7 @@ function App() {
         <Route path="/onboarding/*" element={<Onboarding />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/inventory" element={<InventoryPage />} />
-        <Route path="/manage-inventory" element={<InventoryStandalone />} />
+        <Route path="/manage-inventory" element={<OfferingsModern />} />
         <Route path="/home" element={<HomeModern />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/tailwind-test" element={<TailwindTest />} />
