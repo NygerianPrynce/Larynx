@@ -421,7 +421,8 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                   // Hide placeholder when user types
                   const placeholder = e.target.querySelector('.placeholder-text');
                   if (placeholder) {
-                    placeholder.style.display = e.target.textContent.trim() ? 'none' : 'block';
+                    const hasContent = e.target.textContent.trim() && e.target.textContent.trim() !== '';
+                    placeholder.style.display = hasContent ? 'none' : 'block';
                   }
                 }}
                 onFocus={(e) => {
@@ -433,10 +434,24 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                 }}
                 onBlur={(e) => {
                   // Show placeholder again if content is empty when user leaves
-                  const placeholder = e.target.querySelector('.placeholder-text');
-                  if (placeholder) {
-                    placeholder.style.display = e.target.textContent.trim() ? 'none' : 'block';
-                  }
+                  setTimeout(() => {
+                    const editor = e.target;
+                    let placeholder = editor.querySelector('.placeholder-text');
+                    
+                    // If placeholder doesn't exist, recreate it
+                    if (!placeholder) {
+                      placeholder = document.createElement('div');
+                      placeholder.className = 'placeholder-text text-gray-400 pointer-events-none';
+                      placeholder.innerHTML = 'Best Regards,<br />Your Name';
+                      editor.appendChild(placeholder);
+                    }
+                    
+                    // Check if editor has meaningful content
+                    const textContent = editor.textContent.trim();
+                    const hasContent = textContent && textContent !== '' && textContent !== 'Best Regards,Your Name';
+                    
+                    placeholder.style.display = hasContent ? 'none' : 'block';
+                  }, 100);
                 }}
                 suppressContentEditableWarning={true}
                 style={{ minHeight: compact ? '150px' : '300px' }}
