@@ -752,24 +752,71 @@ const OfferingsModern = () => {
       const resolvedData = applyDuplicateResolutions(fixedData)
       
       // Send clean data directly to backend
-      const cleanData = resolvedData.map(item => ({
-        name: item.name,
-        price: parseFloat(item.price),
-        pricing_type: item.pricing_type || 'per_unit',
-        category: item.category || null
-      }))
+      const cleanData = resolvedData.map(item => {
+        if (!item.name || item.name.trim() === '') {
+          throw new Error(`Item has empty name: ${JSON.stringify(item)}`)
+        }
+        
+        const price = parseFloat(item.price)
+        if (isNaN(price) || price < 0) {
+          throw new Error(`Invalid price for item "${item.name}": ${item.price}`)
+        }
+        
+        // Ensure category is null if empty string or 'None'
+        const category = (item.category && item.category.trim() !== '' && item.category !== 'None') 
+          ? item.category.trim() 
+          : null
+        
+        return {
+          name: item.name.trim(),
+          price: price,
+          pricing_type: item.pricing_type || 'per_unit',
+          category: category
+        }
+      })
       
       console.log('Sending resolved data to backend:', cleanData)
       
-      const response = await fetchWithErrorHandling(`${api}/inventory/bulk-upload`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ items: cleanData })
-      })
+      // Add each item individually using the /inventory/add endpoint
+      const results = []
+      let successCount = 0
+      let errorCount = 0
       
-      if (response) {
-        showNotification('Upload successful!', 'success')
+      for (const item of cleanData) {
+        try {
+          const response = await fetchWithErrorHandling(`${api}/inventory/add`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(item)
+          })
+          
+          if (response) {
+            results.push({ success: true, item: item.name })
+            successCount++
+          } else {
+            results.push({ success: false, item: item.name, error: 'No response received' })
+            errorCount++
+          }
+        } catch (error) {
+          results.push({ success: false, item: item.name, error: error.message })
+          errorCount++
+        }
+      }
+      
+      // Create a mock response for consistency
+      const response = {
+        message: `Upload completed: ${successCount} successful, ${errorCount} failed`,
+        success_count: successCount,
+        error_count: errorCount,
+        results: results
+      }
+      
+      if (successCount > 0) {
+        const message = errorCount > 0 
+          ? `Upload completed: ${successCount} items added successfully, ${errorCount} failed`
+          : `Upload successful! ${successCount} items added.`
+        showNotification(message, successCount === cleanData.length ? 'success' : 'warning')
         await fetchInventory()
         
         // Close modal and reset all state
