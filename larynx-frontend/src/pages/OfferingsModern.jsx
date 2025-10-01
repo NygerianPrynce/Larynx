@@ -361,6 +361,7 @@ const OfferingsModern = () => {
       })))
       
       console.log('File duplicates detected during upload:', fileDuplicates)
+      console.log('Preview items:', previewItems)
       
       setPreviewData({
         fileName: file.name,
@@ -483,25 +484,7 @@ const OfferingsModern = () => {
               item: { name: 'DJ Services', price: '', category: 'Entertainment', pricing_type: 'per_hour' }
             }
           ],
-          warnings: [
-            // Use actual file duplicates if available
-            ...(previewData?.fileDuplicates?.map((duplicate, index) => ({
-              type: 'duplicate_in_file',
-              message: duplicate.message,
-              name: duplicate.name,
-              instances: duplicate.instances
-            })) || []),
-            // Fallback mock for Wedding Catering if no duplicates detected
-            ...(previewData?.fileDuplicates?.length === 0 ? [{
-              type: 'duplicate_in_file',
-              message: 'Item "Wedding Catering" appears 2 times in your file',
-              name: 'Wedding Catering',
-              instances: [
-                { name: 'Wedding Catering', price: '150', category: 'Catering', pricing_type: 'per_event', rowIndex: 1, row: 2 },
-                { name: 'Wedding Catering', price: '200', category: 'Catering', pricing_type: 'per_event', rowIndex: 5, row: 6 }
-              ]
-            }] : [])
-          ],
+          warnings: [], // No warnings in error resolution modal - duplicates handled separately
           readyItems: [
             { name: 'Wedding Catering', price: '150', category: 'Catering', pricing_type: 'per_event' },
             { name: 'Table Rental', price: '25', category: 'Event Rentals', pricing_type: 'per_day' }
@@ -551,6 +534,42 @@ const OfferingsModern = () => {
     try {
       // Apply fixes to the data
       const fixedData = applyErrorFixes()
+      
+      // Check for file duplicates first (these should be handled immediately)
+      const fileDuplicates = checkForDuplicatesInFile(fixedData)
+      if (fileDuplicates.length > 0) {
+        setDuplicateWarningData(fileDuplicates)
+        setShowDuplicateWarning(true)
+        setUploading(false)
+        return
+      }
+      
+      // Then check for inventory duplicates
+      const inventoryDuplicates = fixedData.filter((item, index) => {
+        if (item.name && item.price && offerings.length > 0) {
+          const existingItem = offerings.find(existing => 
+            existing.name.toLowerCase().trim() === item.name.toLowerCase().trim()
+          )
+          return existingItem
+        }
+        return false
+      }).map((item, index) => ({
+        type: 'duplicate_in_inventory',
+        name: item.name,
+        price: item.price,
+        uploadedItem: { ...item, rowIndex: index },
+        existingItem: offerings.find(existing => 
+          existing.name.toLowerCase().trim() === item.name.toLowerCase().trim()
+        ),
+        message: 'Item matches existing inventory'
+      }))
+      
+      if (inventoryDuplicates.length > 0) {
+        setDuplicateWarningData(inventoryDuplicates)
+        setShowDuplicateWarning(true)
+        setUploading(false)
+        return
+      }
       
       // Final validation: Check for new duplicates created by fixes
       const newDuplicates = checkForNewDuplicates(fixedData)
