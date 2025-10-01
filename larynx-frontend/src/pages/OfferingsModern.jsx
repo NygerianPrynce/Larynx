@@ -51,6 +51,7 @@ const OfferingsModern = () => {
   const navigate = useNavigate()
   const api = import.meta.env.VITE_API_URL
   const [offerings, setOfferings] = useState([])
+  const [isLoadingOfferings, setIsLoadingOfferings] = useState(true)
 
   const showNotification = (message, type = 'info', duration = 4000) => {
     setNotification({ message, type })
@@ -166,9 +167,17 @@ const OfferingsModern = () => {
       console.log('Fetching inventory from:', `${api}/inventory`)
       const data = await fetchWithErrorHandling(`${api}/inventory`)
       console.log('Inventory data received:', data)
-      setOfferings(data.inventory || [])
+      // Sort by creation date, newest first
+      const sortedOfferings = (data.inventory || []).sort((a, b) => {
+        const dateA = new Date(a.created_at || a.id) // Use created_at if available, fallback to id
+        const dateB = new Date(b.created_at || b.id)
+        return dateB - dateA // Newest first
+      })
+      setOfferings(sortedOfferings)
+      setIsLoadingOfferings(false)
     } catch (error) {
       handleError(error, 'fetchInventory')
+      setIsLoadingOfferings(false)
     }
   }
 
@@ -244,8 +253,20 @@ const OfferingsModern = () => {
         })
       })
       
-      // Refresh the inventory after successful update
-      await fetchInventory()
+      // Update local state directly instead of refetching
+      setOfferings(prevOfferings => 
+        prevOfferings.map(offering => 
+          offering.id === editingId 
+            ? { 
+                ...offering, 
+                name: editingOffering.name, 
+                price: parseFloat(normalizedPrice), 
+                pricing_type: editingOffering.pricingType || 'per_unit',
+                category: editingOffering.category || null
+              }
+            : offering
+        )
+      )
       
       setEditingId(null)
       setEditingOffering({ name: '', price: '', category: '' })
@@ -260,8 +281,10 @@ const OfferingsModern = () => {
         method: 'DELETE'
       })
       
-      // Refresh the inventory after successful deletion
-      await fetchInventory()
+      // Update local state directly instead of refetching
+      setOfferings(prevOfferings => 
+        prevOfferings.filter(offering => offering.id !== id)
+      )
     } catch (error) {
       handleError(error, 'handleDeleteOffering')
     }
@@ -1557,7 +1580,12 @@ const OfferingsModern = () => {
               </table>
             ) : (
               <div className="text-center py-12">
-                {offerings.length === 0 ? (
+                {isLoadingOfferings ? (
+                  <div className="text-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading offerings...</p>
+                  </div>
+                ) : offerings.length === 0 ? (
                   <>
                     <div className="flex justify-center mb-4">
                       <Package className="w-16 h-16 text-gray-300" />
