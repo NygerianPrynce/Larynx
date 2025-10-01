@@ -350,9 +350,9 @@ const OfferingsModern = () => {
         throw new Error('Unsupported file format. Please use CSV or Excel files.')
       }
       
-      // Parse first few rows for preview with validation
+      // Parse all rows for validation (but show only first 5 in preview)
       const previewItems = []
-      for (let i = 1; i < Math.min(6, lines.length); i++) {
+      for (let i = 1; i < lines.length; i++) {
         const values = file.name.toLowerCase().endsWith('.csv') ? parseCSVLine(lines[i]) : lines[i].split(',')
         if (values.length >= 2) {
           const name = values[0]?.trim() || ''
@@ -421,7 +421,7 @@ const OfferingsModern = () => {
   }
 
   const validatePreviewItem = (name, price, pricing_type) => {
-    const validPricingTypes = ['per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'flat_rate']
+    const validPricingTypes = ['fixed', 'per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'per_person', 'starting_at', 'custom', 'flat_rate']
     
     // Check for errors
     if (!name || name.trim() === '') return { status: 'error', message: 'Missing name' }
@@ -707,28 +707,30 @@ const OfferingsModern = () => {
     
     try {
       // Apply fixes to the data
-      const fixedData = applyErrorFixes()
+      let fixedData = applyErrorFixes()
       
-      // Create a new file with the fixed data
-      const csvContent = [
-        'name,price,category,pricing_type',
-        ...fixedData.map(item => 
-          `${item.name || ''},${item.price || ''},${item.category || ''},${item.pricing_type || 'per_unit'}`
-        )
-      ].join('\n')
+      // Apply duplicate resolution
+      const resolvedData = applyDuplicateResolutions(fixedData)
       
-      const blob = new Blob([csvContent], { type: 'text/csv' })
-      const formData = new FormData()
-      formData.append('file', blob, 'fixed-upload.csv')
+      // Send clean data directly to backend
+      const cleanData = resolvedData.map(item => ({
+        name: item.name,
+        price: parseFloat(item.price),
+        pricing_type: item.pricing_type || 'per_unit',
+        category: item.category || null
+      }))
+      
+      console.log('Sending resolved data to backend:', cleanData)
       
       const response = await fetchWithErrorHandling(`${api}/inventory/bulk-upload`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: formData
+        body: JSON.stringify({ items: cleanData })
       })
       
       if (response) {
-        showNotification(`Upload successful! ${response.message || 'All items uploaded successfully.'}`, 'success')
+        showNotification('Upload successful!', 'success')
         await fetchInventory()
         
         // Close modal and reset all state
@@ -818,6 +820,47 @@ const OfferingsModern = () => {
       .filter((item, index) => !errorFixes[index]?.deleted) // Filter out deleted items
 
     return fixedData
+  }
+
+  const applyDuplicateResolutions = (data) => {
+    if (!duplicateWarningData || duplicateWarningData.length === 0) {
+      return data
+    }
+
+    let resolvedData = [...data]
+
+    duplicateWarningData.forEach((duplicate) => {
+      if (duplicate.type === 'duplicate_in_file') {
+        // For file duplicates, check which instances the user chose to keep/delete
+        const duplicateInstances = duplicate.instances || []
+        const instancesToRemove = []
+
+        duplicateInstances.forEach((instance) => {
+          const resolution = duplicateResolutions[`${duplicate.name}_${instance.rowIndex}`]
+          if (resolution === 'delete') {
+            instancesToRemove.push(instance.rowIndex)
+          }
+        })
+
+        // Remove the instances marked for deletion
+        resolvedData = resolvedData.filter((item, index) => !instancesToRemove.includes(index))
+      } else if (duplicate.type === 'duplicate_in_inventory') {
+        // For inventory duplicates, check the resolution choice
+        const resolution = duplicateResolutions[`${duplicate.name}_inventory`]
+        if (resolution === 'skip') {
+          // Remove the uploaded item (keep existing)
+          resolvedData = resolvedData.filter((item, index) => 
+            !(item.name.toLowerCase().trim() === duplicate.name.toLowerCase().trim())
+          )
+        } else if (resolution === 'update_existing') {
+          // Keep the uploaded item (will update existing in backend)
+          // No filtering needed - just keep it
+        }
+        // If 'keep_new', also no filtering needed - keep the uploaded item
+      }
+    })
+
+    return resolvedData
   }
 
   const handleDuplicateAction = (rowIndex, action) => {
@@ -1184,7 +1227,7 @@ const OfferingsModern = () => {
                     <li><strong>Category (Optional)</strong> - Use any of: category, type, classification, group, class</li>
                     <li><strong>Pricing Type (Optional)</strong> - Use any of: pricing_type, price_type, unit_type, billing_type</li>
                   </ul>
-                  <p><strong>Valid pricing types:</strong> per_unit, per_hour, per_day, per_week, per_month, per_project, per_event, flat_rate</p>
+                  <p><strong>Valid pricing types:</strong> fixed, per_unit, per_hour, per_day, per_week, per_month, per_project, per_event, per_person, starting_at, custom, flat_rate</p>
                   <p><strong>Example CSV format:</strong></p>
                   <div className="bg-white border rounded overflow-hidden">
                     <table className="w-full text-xs">
@@ -1306,7 +1349,7 @@ const OfferingsModern = () => {
               </div>
 
                   <div className="mb-6">
-                    <h4 className="font-medium text-gray-900 mb-3">Preview (first 5 items):</h4>
+                    <h4 className="font-medium text-gray-900 mb-3">Preview (first 5 items - all {previewData.previewItems.length} items will be processed):</h4>
                     <div className="overflow-x-auto">
                       <table className="min-w-full border border-gray-200 rounded-lg">
                         <thead className="bg-gray-50">
@@ -1320,7 +1363,7 @@ const OfferingsModern = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {previewData.previewItems.map((item, index) => (
+                          {previewData.previewItems.slice(0, 5).map((item, index) => (
                             <tr key={index}>
                               <td className="px-4 py-3 text-sm text-gray-900">{item.row}</td>
                               <td className="px-4 py-3 text-sm text-gray-900">{item.name}</td>
@@ -1887,7 +1930,7 @@ const OfferingsModern = () => {
                       <div className="mb-3">
                         <h4 className="font-medium text-orange-900 mb-2">
                           {duplicate.type === 'duplicate_in_file' 
-                            ? `📄 File Duplicate: "${duplicate.name}" - $${duplicate.price}`
+                            ? `📄 File Duplicate: "${duplicate.name}"`
                             : `🏪 Inventory Duplicate: "${duplicate.name}" - $${duplicate.price}`
                           }
                         </h4>
