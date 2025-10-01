@@ -2053,6 +2053,10 @@ const OfferingsModern = () => {
                                       name={`duplicate_${index}_instance_${instIndex}`}
                                       value="keep"
                                       className="mr-2"
+                                      onChange={(e) => setDuplicateResolutions(prev => ({
+                                        ...prev,
+                                        [`${duplicate.name}_${instance.rowIndex}`]: e.target.value
+                                      }))}
                                     />
                                     Keep
                                   </label>
@@ -2062,6 +2066,10 @@ const OfferingsModern = () => {
                                       name={`duplicate_${index}_instance_${instIndex}`}
                                       value="delete"
                                       className="mr-2"
+                                      onChange={(e) => setDuplicateResolutions(prev => ({
+                                        ...prev,
+                                        [`${duplicate.name}_${instance.rowIndex}`]: e.target.value
+                                      }))}
                                     />
                                     Delete
                                   </label>
@@ -2105,6 +2113,10 @@ const OfferingsModern = () => {
                               name={`duplicate_${index}_resolution`}
                               value="keep_new"
                               className="mr-2"
+                              onChange={(e) => setDuplicateResolutions(prev => ({
+                                ...prev,
+                                [`${duplicate.name}_inventory`]: e.target.value
+                              }))}
                             />
                             <span className="text-sm">Keep New</span>
                           </label>
@@ -2114,6 +2126,10 @@ const OfferingsModern = () => {
                               name={`duplicate_${index}_resolution`}
                               value="skip"
                               className="mr-2"
+                              onChange={(e) => setDuplicateResolutions(prev => ({
+                                ...prev,
+                                [`${duplicate.name}_inventory`]: e.target.value
+                              }))}
                             />
                             <span className="text-sm">Skip</span>
                           </label>
@@ -2123,6 +2139,10 @@ const OfferingsModern = () => {
                               name={`duplicate_${index}_resolution`}
                               value="update_existing"
                               className="mr-2"
+                              onChange={(e) => setDuplicateResolutions(prev => ({
+                                ...prev,
+                                [`${duplicate.name}_inventory`]: e.target.value
+                              }))}
                             />
                             <span className="text-sm">Update Existing</span>
                           </label>
