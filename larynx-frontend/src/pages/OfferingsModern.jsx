@@ -170,8 +170,11 @@ const OfferingsModern = () => {
       console.log('Fetching inventory from:', `${api}/inventory`)
       const data = await fetchWithErrorHandling(`${api}/inventory`)
       console.log('Inventory data received:', data)
-      // Sort by creation date, newest first
-      const sortedOfferings = (data.inventory || []).sort((a, b) => {
+      // Sort by creation date, newest first and map backend fields to frontend fields
+      const sortedOfferings = (data.inventory || []).map(offering => ({
+        ...offering,
+        pricingType: offering.pricing_type // Map backend field to frontend field
+      })).sort((a, b) => {
         const dateA = new Date(a.created_at || a.id) // Use created_at if available, fallback to id
         const dateB = new Date(b.created_at || b.id)
         return dateB - dateA // Newest first
@@ -300,8 +303,8 @@ const OfferingsModern = () => {
                 ...offering, 
                 name: editingOffering.name, 
                 price: parseFloat(normalizedPrice), 
-                pricing_type: editingOffering.pricingType || 'fixed',
-                category: editingOffering.category || null
+                pricing_type: editingOffering.pricingType || 'fixed', // Backend field
+                pricingType: editingOffering.pricingType || 'fixed'   // Frontend field
               }
             : offering
         )
