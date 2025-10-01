@@ -329,6 +329,7 @@ const OfferingsModern = () => {
       let lines = []
       let headers = []
       let hasHeaders = false
+      let jsonData = []
       
       // Handle different file types
       if (file.name.toLowerCase().endsWith('.csv')) {
