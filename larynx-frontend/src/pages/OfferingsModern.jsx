@@ -1339,8 +1339,11 @@ const OfferingsModern = () => {
                       </h4>
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                         <p className="text-sm text-yellow-800">
-                          <strong>Duplicate Detection:</strong> We check for duplicates within your uploaded file AND against your existing offerings. 
+                          <strong>Duplicate Detection:</strong> We found items that match your existing offerings in your inventory. 
                           Choose how to handle each duplicate below.
+                        </p>
+                        <p className="text-xs text-yellow-700 mt-1">
+                          💡 <strong>Note:</strong> This means the uploaded item already exists in your current offerings.
                         </p>
                       </div>
                       <div className="space-y-3">
@@ -1350,7 +1353,8 @@ const OfferingsModern = () => {
                               <div className="flex-1">
                                 <p className="font-medium text-yellow-900">Row {warning.row}: {warning.message}</p>
                                 <div className="mt-2 text-sm text-yellow-700">
-                                  Found: "{warning.duplicate?.name}" | Existing: "{warning.existing?.name}"
+                                  <span className="font-medium">Uploaded item:</span> "{warning.duplicate?.name}" (${warning.duplicate?.price})<br/>
+                                  <span className="font-medium">Already exists:</span> "{warning.existing?.name}" (${warning.existing?.price})
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 ml-4">
@@ -1720,8 +1724,11 @@ const OfferingsModern = () => {
               <div className="mb-6">
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                   <p className="text-yellow-800">
-                    <strong>Your fixes have created new duplicates with existing items.</strong> 
-                    These will be treated as duplicates during upload.
+                    <strong>Your fixes have created duplicates with your existing offerings.</strong> 
+                    The fixed items now match items already in your inventory.
+                  </p>
+                  <p className="text-xs text-yellow-700 mt-1">
+                    💡 <strong>What this means:</strong> After fixing the errors, some items now have the same name and price as items you already have.
                   </p>
                 </div>
 
@@ -1731,10 +1738,10 @@ const OfferingsModern = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="text-sm text-red-700">
-                            <span className="font-medium">New Item:</span> {duplicate.name} - ${duplicate.price}
+                            <span className="font-medium">Fixed item:</span> {duplicate.name} - ${duplicate.price}
                           </div>
                           <div className="text-sm text-red-600 mt-1">
-                            <span className="font-medium">Matches existing:</span> {duplicate.existingItem.name} - ${duplicate.existingItem.price}
+                            <span className="font-medium">Already in your inventory:</span> {duplicate.existingItem.name} - ${duplicate.existingItem.price}
                           </div>
                         </div>
                       </div>
