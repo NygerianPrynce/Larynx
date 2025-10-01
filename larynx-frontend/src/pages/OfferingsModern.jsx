@@ -424,6 +424,9 @@ const OfferingsModern = () => {
     formData.append('file', uploadFile)
     
     try {
+      console.log('Sending file to backend:', uploadFile.name)
+      
+      
       const response = await fetchWithErrorHandling(`${api}/inventory/bulk-upload`, {
         method: 'POST',
         credentials: 'include',
@@ -448,62 +451,6 @@ const OfferingsModern = () => {
         }
       }
     } catch (error) {
-      // TEMPORARY: Mock error resolution for testing with error file
-      if (uploadFile.name.includes('error') || uploadFile.name.includes('test-upload-errors')) {
-        console.log('Mock error resolution for testing')
-        console.log('File duplicates detected:', previewData?.fileDuplicates)
-        const mockErrors = {
-          totalItems: 6,
-          errors: [
-            {
-              row: 3,
-              rowIndex: 2,
-              type: 'missing_name',
-              message: 'Missing product name',
-              item: { name: '', price: '50', category: 'Photography', pricing_type: 'invalid_type' }
-            },
-            {
-              row: 3,
-              rowIndex: 2,
-              type: 'invalid_pricing_type',
-              message: 'Invalid pricing type',
-              item: { name: '', price: '50', category: 'Photography', pricing_type: 'invalid_type' }
-            },
-            {
-              row: 4,
-              rowIndex: 3,
-              type: 'invalid_price',
-              message: 'Invalid price format',
-              item: { name: 'Photography Package', price: 'invalid_price', category: 'Photography', pricing_type: 'per_project' }
-            },
-            {
-              row: 6,
-              rowIndex: 5,
-              type: 'missing_price',
-              message: 'Missing price',
-              item: { name: 'DJ Services', price: '', category: 'Entertainment', pricing_type: 'per_hour' }
-            }
-          ],
-          warnings: [], // No warnings in error resolution modal - duplicates handled separately
-          readyItems: [
-            { name: 'Wedding Catering', price: '150', category: 'Catering', pricing_type: 'per_event' },
-            { name: 'Table Rental', price: '25', category: 'Event Rentals', pricing_type: 'per_day' }
-          ],
-          allItems: [
-            { name: 'Wedding Catering', price: '150', category: 'Catering', pricing_type: 'per_event' },
-            { name: 'Table Rental', price: '25', category: 'Event Rentals', pricing_type: 'per_day' },
-            { name: '', price: '50', category: 'Photography', pricing_type: 'invalid_type' },
-            { name: 'Photography Package', price: 'invalid_price', category: 'Photography', pricing_type: 'per_project' },
-            { name: 'Wedding Catering', price: '200', category: 'Catering', pricing_type: 'per_event' },
-            { name: 'DJ Services', price: '', category: 'Entertainment', pricing_type: 'per_hour' }
-          ]
-        }
-        setUploadErrors(mockErrors)
-        setOriginalUploadData(mockErrors.allItems)
-        setShowErrorResolution(true)
-        setShowPreview(false)
-        return
-      }
       
       // Check if it's an error response with details
       if (error.response) {
@@ -1538,85 +1485,6 @@ const OfferingsModern = () => {
                   )}
 
                   {/* Warnings */}
-                  {uploadErrors.warnings && uploadErrors.warnings.length > 0 && (
-                    <div className="mb-6">
-                      <h4 className="font-medium text-yellow-900 mb-3 flex items-center gap-2">
-                        ⚠️ Warnings ({uploadErrors.warnings.length})
-                      </h4>
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
-                        <p className="text-sm text-yellow-800">
-                          <strong>Duplicate Detection:</strong> 
-                          {uploadErrors.warnings && uploadErrors.warnings[0]?.type === 'duplicate_in_file'
-                            ? ' We found duplicate items within your uploaded file.'
-                            : ' We found items that match your existing offerings in your inventory.'
-                          }
-                          Choose how to handle each duplicate below.
-                        </p>
-                        <p className="text-xs text-yellow-700 mt-1">
-                          💡 <strong>Note:</strong> 
-                          {uploadErrors.warnings && uploadErrors.warnings[0]?.type === 'duplicate_in_file'
-                            ? ' This item appears multiple times in the file you uploaded. Each duplicate needs to be handled individually.'
-                            : ' This item already exists in your current inventory from previous uploads. Choose whether to update it or skip it.'
-                          }
-                        </p>
-                      </div>
-                      <div className="space-y-3">
-                        {uploadErrors.warnings.map((warning, index) => (
-                          <div key={index} className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <p className="font-medium text-yellow-900">Row {warning.row}: {warning.message}</p>
-                                <div className="mt-2 text-sm text-yellow-700">
-                                  <span className="font-medium">Duplicate item:</span> "{warning.duplicate?.name}" (${warning.duplicate?.price})<br/>
-                                  {warning.type === 'duplicate_in_file' ? (
-                                    <>
-                                      <span className="font-medium">First occurrence in file (Row {warning.existing?.row}):</span> "{warning.existing?.name}" (${warning.existing?.price})
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="font-medium">Already exists:</span> "{warning.existing?.name}" (${warning.existing?.price})
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 ml-4">
-                                <button
-                                  onClick={() => handleDuplicateAction(warning.rowIndex, 'keep_new')}
-                                  className={`px-3 py-1 rounded text-sm ${
-                                    errorFixes[warning.rowIndex]?.duplicateAction === 'keep_new'
-                                      ? 'bg-blue-500 text-white'
-                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                  }`}
-                                >
-                                  Keep New
-                                </button>
-                                <button
-                                  onClick={() => handleDuplicateAction(warning.rowIndex, 'skip')}
-                                  className={`px-3 py-1 rounded text-sm ${
-                                    errorFixes[warning.rowIndex]?.duplicateAction === 'skip'
-                                      ? 'bg-yellow-500 text-white'
-                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                  }`}
-                                >
-                                  Skip
-                                </button>
-                                <button
-                                  onClick={() => handleDuplicateAction(warning.rowIndex, 'update_existing')}
-                                  className={`px-3 py-1 rounded text-sm ${
-                                    errorFixes[warning.rowIndex]?.duplicateAction === 'update_existing'
-                                      ? 'bg-green-500 text-white'
-                                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                  }`}
-                                >
-                                  Update Existing
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Ready Items */}
                   {uploadErrors.readyItems && uploadErrors.readyItems.length > 0 && (
