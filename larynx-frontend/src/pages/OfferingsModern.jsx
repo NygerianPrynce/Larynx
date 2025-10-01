@@ -328,13 +328,26 @@ const OfferingsModern = () => {
     try {
       let lines = []
       let headers = []
+      let hasHeaders = false
       
       // Handle different file types
       if (file.name.toLowerCase().endsWith('.csv')) {
         // Handle CSV files
         const text = await file.text()
         lines = text.split('\n').filter(line => line.trim())
-        headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+        const firstRow = parseCSVLine(lines[0])
+        
+        // Auto-detect if first row contains headers (common header keywords)
+        const headerKeywords = ['name', 'product', 'item', 'title', 'price', 'cost', 'amount', 'value', 'category', 'type', 'classification', 'pricing_type', 'price_type', 'unit_type', 'billing_type']
+        const firstRowLower = firstRow.map(h => h.toLowerCase().trim())
+        hasHeaders = firstRowLower.some(cell => headerKeywords.some(keyword => cell.includes(keyword)))
+        
+        if (hasHeaders) {
+          headers = firstRowLower
+        } else {
+          // No headers detected, use default headers and treat first row as data
+          headers = ['name', 'price', 'category', 'pricing_type']
+        }
       } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
         // Handle Excel files
         const XLSX = await import('xlsx')
@@ -343,17 +356,29 @@ const OfferingsModern = () => {
         const sheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[sheetName]
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
-        
+
         lines = jsonData.map(row => row.join(','))
-        headers = lines[0] ? lines[0].split(',').map(h => h.trim().toLowerCase()) : []
+        const firstRow = jsonData[0] ? jsonData[0].map(h => String(h).trim().toLowerCase()) : []
+        
+        // Auto-detect if first row contains headers
+        const headerKeywords = ['name', 'product', 'item', 'title', 'price', 'cost', 'amount', 'value', 'category', 'type', 'classification', 'pricing_type', 'price_type', 'unit_type', 'billing_type']
+        hasHeaders = firstRow.some(cell => headerKeywords.some(keyword => cell.includes(keyword)))
+        
+        if (hasHeaders) {
+          headers = firstRow
+        } else {
+          // No headers detected, use default headers and treat first row as data
+          headers = ['name', 'price', 'category', 'pricing_type']
+        }
       } else {
         throw new Error('Unsupported file format. Please use CSV or Excel files.')
       }
       
       // Parse all rows for validation (but show only first 5 in preview)
       const previewItems = []
-      for (let i = 1; i < lines.length; i++) {
-        const values = file.name.toLowerCase().endsWith('.csv') ? parseCSVLine(lines[i]) : lines[i].split(',')
+      const startRow = hasHeaders ? 1 : 0 // Start from row 1 if headers detected, row 0 if no headers
+      for (let i = startRow; i < lines.length; i++) {
+        const values = file.name.toLowerCase().endsWith('.csv') ? parseCSVLine(lines[i]) : jsonData[i]
         if (values.length >= 2) {
           const name = values[0]?.trim() || ''
           const price = values[1]?.trim() || ''
