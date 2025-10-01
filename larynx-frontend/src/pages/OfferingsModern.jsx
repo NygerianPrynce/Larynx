@@ -785,34 +785,6 @@ const OfferingsModern = () => {
           setUploading(false)
           showNotification('Item skipped - existing item kept', 'info')
           return
-        } else if (resolution === 'update_existing') {
-          // User chose to update existing - update the existing item
-          try {
-            const response = await fetchWithErrorHandling(`${api}/inventory/edit/${duplicate.existingItem.id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                name: duplicate.uploadedItem.name,
-                price: parseFloat(duplicate.uploadedItem.price),
-                pricing_type: duplicate.uploadedItem.pricing_type || 'per_unit',
-                category: duplicate.uploadedItem.category || null
-              })
-            })
-            
-            if (response) {
-              showNotification('Item updated successfully!', 'success')
-              setNewOffering({ name: '', price: '', pricingType: '', category: '' })
-              setShowAddForm(false)
-              await fetchInventory()
-            }
-          } catch (error) {
-            console.error('Error updating item:', error)
-            showNotification('Failed to update item. Please try again.', 'error')
-          } finally {
-            setUploading(false)
-          }
-          return
         } else {
           // User chose "keep_new" - delete existing and add new
           try {
@@ -2184,7 +2156,7 @@ const OfferingsModern = () => {
                           <div className="bg-white border border-orange-200 rounded p-3">
                             <p className="font-medium text-blue-900 mb-2">📤 Uploaded Item</p>
                             <p className="text-sm text-gray-600">
-                              Row {duplicate.uploadedItem.rowIndex + 1}: {duplicate.uploadedItem.name} - ${duplicate.uploadedItem.price}
+                              {duplicate.uploadedItem.row}: {duplicate.uploadedItem.name} - ${duplicate.uploadedItem.price}
                               {duplicate.uploadedItem.category && ` (${duplicate.uploadedItem.category})`}
                               {duplicate.uploadedItem.pricing_type && ` - ${duplicate.uploadedItem.pricing_type}`}
                             </p>
@@ -2227,19 +2199,6 @@ const OfferingsModern = () => {
                               }))}
                             />
                             <span className="text-sm">Keep Old</span>
-                          </label>
-                          <label className="flex items-center">
-                            <input
-                              type="radio"
-                              name={`duplicate_${index}_resolution`}
-                              value="update_existing"
-                              className="mr-2"
-                              onChange={(e) => setDuplicateResolutions(prev => ({
-                                ...prev,
-                                [`${duplicate.name}_inventory`]: e.target.value
-                              }))}
-                            />
-                            <span className="text-sm">Update Existing</span>
                           </label>
                         </div>
                       )}
