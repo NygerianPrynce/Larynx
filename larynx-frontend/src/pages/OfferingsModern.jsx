@@ -336,6 +336,9 @@ const OfferingsModern = () => {
         // Handle CSV files
         const text = await file.text()
         lines = text.split('\n').filter(line => line.trim())
+        if (lines.length === 0) {
+          throw new Error('File appears to be empty or contains no valid data.')
+        }
         const firstRow = parseCSVLine(lines[0])
         
         // Auto-detect if first row contains headers (common header keywords)
@@ -356,7 +359,11 @@ const OfferingsModern = () => {
         const workbook = XLSX.read(arrayBuffer)
         const sheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[sheetName]
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        
+        if (jsonData.length === 0) {
+          throw new Error('File appears to be empty or contains no valid data.')
+        }
 
         lines = jsonData.map(row => row.join(','))
         const firstRow = jsonData[0] ? jsonData[0].map(h => String(h).trim().toLowerCase()) : []
@@ -378,9 +385,13 @@ const OfferingsModern = () => {
       // Parse all rows for validation (but show only first 5 in preview)
       const previewItems = []
       const startRow = hasHeaders ? 1 : 0 // Start from row 1 if headers detected, row 0 if no headers
-      for (let i = startRow; i < lines.length; i++) {
-        const values = file.name.toLowerCase().endsWith('.csv') ? parseCSVLine(lines[i]) : jsonData[i]
-        if (values.length >= 2) {
+      
+      // Use the appropriate data source based on file type
+      const dataSource = file.name.toLowerCase().endsWith('.csv') ? lines : jsonData
+      
+      for (let i = startRow; i < dataSource.length; i++) {
+        const values = file.name.toLowerCase().endsWith('.csv') ? parseCSVLine(dataSource[i]) : dataSource[i]
+        if (values && values.length >= 2) {
           const name = values[0]?.trim() || ''
           const price = values[1]?.trim() || ''
           const category = values[2]?.trim() || 'None'
