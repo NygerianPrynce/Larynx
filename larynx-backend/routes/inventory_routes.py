@@ -64,7 +64,7 @@ class BulkInventoryItem(BaseModel):
     name: str
     price: float
     category: Optional[str] = None
-    pricing_type: Optional[str] = "per_unit"
+    pricing_type: Optional[str] = "fixed"
 
     @validator('name')
     def clean_name(cls, v):
@@ -105,13 +105,13 @@ class BulkInventoryItem(BaseModel):
     @validator('pricing_type')
     def clean_pricing_type(cls, v):
         if v is None or v == '':
-            return "per_unit"
+            return "fixed"
         cleaned = v.strip().lower()
-        valid_types = ['per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'flat_rate']
+        valid_types = ['fixed', 'per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'per_person', 'starting_at', 'custom', 'flat_rate']
         if cleaned in valid_types:
             return cleaned
         else:
-            return "per_unit"  # Default fallback
+            return "fixed"  # Default fallback
 
 class DuplicateDetector:
     def __init__(self):
@@ -411,13 +411,17 @@ class FileProcessor:
                                 category = None
                     
                     # Extract pricing_type if available
-                    pricing_type = "per_unit"  # Default
+                    pricing_type = "fixed"  # Default
                     if "pricing_type" in header_mapping:
                         pricing_type_val = row[header_mapping["pricing_type"]]
                         if pd.notna(pricing_type_val):
-                            pricing_type = str(pricing_type_val).strip().lower()
-                            if pricing_type in ['nan', 'null', '', 'none']:
-                                pricing_type = "per_unit"
+                            pricing_type_raw = str(pricing_type_val).strip().lower()
+                            if pricing_type_raw in ['nan', 'null', '', 'none']:
+                                pricing_type = "fixed"
+                            else:
+                                # Validate and normalize pricing type
+                                valid_types = ['fixed', 'per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'per_person', 'starting_at', 'custom', 'flat_rate']
+                                pricing_type = pricing_type_raw if pricing_type_raw in valid_types else "fixed"
                     
                     cleaned_items.append({
                         "name": name,
