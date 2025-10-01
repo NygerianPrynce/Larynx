@@ -591,35 +591,55 @@ const OfferingsModern = () => {
   }
 
   const checkForNewDuplicates = (fixedData) => {
-    const newDuplicates = []
+    const allDuplicates = []
     
-    // First check for duplicates within the fixed data itself
+    // Check for duplicates within the fixed data itself (file duplicates)
     const fileDuplicates = checkForDuplicatesInFile(fixedData)
-    if (fileDuplicates.length > 0) {
-      return fileDuplicates
-    }
+    fileDuplicates.forEach(duplicate => {
+      // For each duplicate, find all instances in the fixed data
+      const duplicateInstances = fixedData
+        .map((item, index) => ({ ...item, rowIndex: index }))
+        .filter(item => 
+          item.name && item.price &&
+          item.name.toLowerCase() === duplicate.name.toLowerCase() &&
+          parseFloat(item.price) === parseFloat(duplicate.price)
+        )
+      
+      if (duplicateInstances.length > 1) {
+        allDuplicates.push({
+          type: 'duplicate_in_file',
+          name: duplicate.name,
+          price: duplicate.price,
+          instances: duplicateInstances,
+          message: 'Duplicate items found within uploaded file'
+        })
+      }
+    })
     
-    // Only check against existing offerings if user has offerings
+    // Check against existing offerings if user has offerings (inventory duplicates)
     if (offerings.length > 0) {
       fixedData.forEach((item, index) => {
         if (item.name && item.price) {
-          const duplicate = offerings.find(existing => 
+          const existingItem = offerings.find(existing => 
             existing.name.toLowerCase() === item.name.toLowerCase() && 
             parseFloat(existing.price) === parseFloat(item.price)
           )
           
-          if (duplicate) {
-            newDuplicates.push({
-              ...item,
-              rowIndex: index,
-              existingItem: duplicate
+          if (existingItem) {
+            allDuplicates.push({
+              type: 'duplicate_in_inventory',
+              name: item.name,
+              price: item.price,
+              uploadedItem: { ...item, rowIndex: index },
+              existingItem: existingItem,
+              message: 'Item matches existing inventory'
             })
           }
         }
       })
     }
     
-    return newDuplicates
+    return allDuplicates
   }
 
   const handleProceedWithDuplicates = async () => {
@@ -717,13 +737,26 @@ const OfferingsModern = () => {
     }))
   }
 
+  const handleDeleteErrorItem = (rowIndex) => {
+    // Add the item to a deleted items list
+    setErrorFixes(prev => ({
+      ...prev,
+      [rowIndex]: {
+        ...prev[rowIndex],
+        deleted: true
+      }
+    }))
+  }
+
   const applyErrorFixes = () => {
     if (!originalUploadData) return originalUploadData
 
-    const fixedData = originalUploadData.map((item, index) => ({
-      ...item,
-      ...errorFixes[index]
-    }))
+    const fixedData = originalUploadData
+      .map((item, index) => ({
+        ...item,
+        ...errorFixes[index]
+      }))
+      .filter((item, index) => !errorFixes[index]?.deleted) // Filter out deleted items
 
     return fixedData
   }
@@ -1341,10 +1374,22 @@ const OfferingsModern = () => {
                       </h4>
                       <div className="space-y-3">
                         {uploadErrors.errors.map((error, index) => (
-                          <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4">
+                          <div key={index} className={`rounded-lg p-4 ${
+                            errorFixes[error.rowIndex]?.deleted 
+                              ? 'bg-gray-100 border border-gray-300 opacity-60' 
+                              : 'bg-red-50 border border-red-200'
+                          }`}>
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
-                                <p className="font-medium text-red-900">Row {error.row}: {error.message}</p>
+                                <p className={`font-medium ${
+                                  errorFixes[error.rowIndex]?.deleted 
+                                    ? 'text-gray-500' 
+                                    : 'text-red-900'
+                                }`}>
+                                  {errorFixes[error.rowIndex]?.deleted && '🗑️ '}
+                                  Row {error.row}: {error.message}
+                                  {errorFixes[error.rowIndex]?.deleted && ' (Will be deleted)'}
+                                </p>
                                 <div className="mt-2 flex items-center gap-4">
                                   <div className="text-sm text-red-700">
                                     <span className="font-medium">Name:</span> {error.item?.name || 'Missing'}
@@ -1398,6 +1443,18 @@ const OfferingsModern = () => {
                                     <option value="flat_rate">Flat Rate</option>
                                   </select>
                                 )}
+                                <button
+                                  onClick={() => handleDeleteErrorItem(error.rowIndex)}
+                                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                                    errorFixes[error.rowIndex]?.deleted
+                                      ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                                      : 'bg-red-600 text-white hover:bg-red-700'
+                                  }`}
+                                  title={errorFixes[error.rowIndex]?.deleted ? "Item marked for deletion" : "Delete this item"}
+                                  disabled={errorFixes[error.rowIndex]?.deleted}
+                                >
+                                  {errorFixes[error.rowIndex]?.deleted ? '✅ Deleted' : '🗑️ Delete'}
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -1815,41 +1872,120 @@ const OfferingsModern = () => {
               <div className="mb-6">
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                   <p className="text-yellow-800">
-                    <strong>Your fixes have created duplicates.</strong> 
-                    {duplicateWarningData && duplicateWarningData[0]?.type === 'duplicate_in_file' 
-                      ? ' Some items now have the same name and price within your uploaded file.'
-                      : ' The fixed items now match items already in your inventory.'
-                    }
+                    <strong>Duplicates detected!</strong> Choose how to handle each duplicate below.
                   </p>
                   <p className="text-xs text-yellow-700 mt-1">
-                    💡 <strong>What this means:</strong> 
-                    {duplicateWarningData && duplicateWarningData[0]?.type === 'duplicate_in_file'
-                      ? ' After fixing the errors, some items in your uploaded file now have identical names and prices. Each duplicate needs to be handled individually.'
-                      : ' After fixing the errors, some items now match items already in your inventory from previous uploads. You can choose to update them or skip them.'
-                    }
+                    💡 <strong>Options:</strong> 
+                    • <strong>Keep Both:</strong> Add both items to your inventory
+                    • <strong>Choose One:</strong> Select which item to keep
+                    • <strong>Skip:</strong> Remove the duplicate item
                   </p>
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {duplicateWarningData.map((duplicate, index) => (
-                    <div key={index} className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="text-sm text-red-700">
-                            <span className="font-medium">Duplicate item:</span> {duplicate.name} - ${duplicate.price}
+                    <div key={index} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                      <div className="mb-3">
+                        <h4 className="font-medium text-orange-900 mb-2">
+                          {duplicate.type === 'duplicate_in_file' 
+                            ? `📄 File Duplicate: "${duplicate.name}" - $${duplicate.price}`
+                            : `🏪 Inventory Duplicate: "${duplicate.name}" - $${duplicate.price}`
+                          }
+                        </h4>
+                        <p className="text-sm text-orange-700">
+                          {duplicate.message}
+                        </p>
+                      </div>
+
+                      {duplicate.type === 'duplicate_in_file' ? (
+                        // File duplicates: show all instances from the file
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-orange-800">Found {duplicate.instances.length} instances in your file:</p>
+                          {duplicate.instances.map((instance, instIndex) => (
+                            <div key={instIndex} className="bg-white border border-orange-200 rounded p-3">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-gray-900">Row {instance.rowIndex + 1}</p>
+                                  <p className="text-sm text-gray-600">
+                                    {instance.name} - ${instance.price} 
+                                    {instance.category && ` (${instance.category})`}
+                                    {instance.pricing_type && ` - ${instance.pricing_type}`}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <label className="flex items-center">
+                                    <input
+                                      type="radio"
+                                      name={`duplicate_${index}_instance_${instIndex}`}
+                                      value="keep"
+                                      className="mr-2"
+                                    />
+                                    Keep
+                                  </label>
+                                  <label className="flex items-center">
+                                    <input
+                                      type="radio"
+                                      name={`duplicate_${index}_instance_${instIndex}`}
+                                      value="delete"
+                                      className="mr-2"
+                                    />
+                                    Delete
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        // Inventory duplicates: show uploaded vs existing
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-white border border-orange-200 rounded p-3">
+                            <p className="font-medium text-blue-900 mb-2">📤 Uploaded Item</p>
+                            <p className="text-sm text-gray-600">
+                              Row {duplicate.uploadedItem.rowIndex + 1}: {duplicate.uploadedItem.name} - ${duplicate.uploadedItem.price}
+                              {duplicate.uploadedItem.category && ` (${duplicate.uploadedItem.category})`}
+                              {duplicate.uploadedItem.pricing_type && ` - ${duplicate.uploadedItem.pricing_type}`}
+                            </p>
                           </div>
-                          <div className="text-sm text-red-600 mt-1">
-                            {duplicate.type === 'duplicate_in_file' ? (
-                              <>
-                                <span className="font-medium">First occurrence in file (Row {duplicate.existing.row}):</span> {duplicate.existing.name} - ${duplicate.existing.price}
-                              </>
-                            ) : (
-                              <>
-                                <span className="font-medium">Already in your inventory:</span> {duplicate.existingItem.name} - ${duplicate.existingItem.price}
-                              </>
-                            )}
+                          <div className="bg-white border border-orange-200 rounded p-3">
+                            <p className="font-medium text-green-900 mb-2">🏪 Existing Inventory</p>
+                            <p className="text-sm text-gray-600">
+                              {duplicate.existingItem.name} - ${duplicate.existingItem.price}
+                              {duplicate.existingItem.category && ` (${duplicate.existingItem.category})`}
+                              {duplicate.existingItem.pricing_type && ` - ${duplicate.existingItem.pricing_type}`}
+                            </p>
                           </div>
                         </div>
+                      )}
+
+                      <div className="mt-3 flex items-center gap-4">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name={`duplicate_${index}_resolution`}
+                            value="keep_both"
+                            className="mr-2"
+                          />
+                          <span className="text-sm">Keep Both</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name={`duplicate_${index}_resolution`}
+                            value="choose_one"
+                            className="mr-2"
+                          />
+                          <span className="text-sm">Choose One</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name={`duplicate_${index}_resolution`}
+                            value="skip"
+                            className="mr-2"
+                          />
+                          <span className="text-sm">Skip All</span>
+                        </label>
                       </div>
                     </div>
                   ))}
@@ -1861,13 +1997,13 @@ const OfferingsModern = () => {
                   onClick={() => setShowDuplicateWarning(false)}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  Go Back & Fix
+                  Cancel
                 </button>
                 <button
                   onClick={handleProceedWithDuplicates}
-                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Proceed Anyway
+                  Apply Resolution
                 </button>
               </div>
             </div>
