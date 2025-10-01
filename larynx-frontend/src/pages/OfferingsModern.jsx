@@ -260,7 +260,12 @@ const OfferingsModern = () => {
   const handleEditOffering = (id) => {
     const offering = offerings.find(o => o.id === id)
     setEditingId(id)
-    setEditingOffering({ ...offering })
+    setEditingOffering({ 
+      name: offering.name,
+      price: offering.price,
+      pricingType: offering.pricing_type, // Map backend field to frontend field
+      category: offering.category
+    })
   }
 
   const handleSaveEdit = async () => {
