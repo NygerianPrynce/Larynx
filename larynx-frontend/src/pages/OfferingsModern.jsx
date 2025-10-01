@@ -1411,8 +1411,8 @@ const OfferingsModern = () => {
                         <p className="text-xs text-yellow-700 mt-1">
                           💡 <strong>Note:</strong> 
                           {uploadErrors.warnings && uploadErrors.warnings[0]?.type === 'duplicate_in_file'
-                            ? ' This means the same item appears multiple times in your uploaded file.'
-                            : ' This means the uploaded item already exists in your current offerings.'
+                            ? ' This item appears multiple times in the file you uploaded. Each duplicate needs to be handled individually.'
+                            : ' This item already exists in your current inventory from previous uploads. Choose whether to update it or skip it.'
                           }
                         </p>
                       </div>
@@ -1811,8 +1811,8 @@ const OfferingsModern = () => {
                   <p className="text-xs text-yellow-700 mt-1">
                     💡 <strong>What this means:</strong> 
                     {duplicateWarningData && duplicateWarningData[0]?.type === 'duplicate_in_file'
-                      ? ' After fixing the errors, some items in your file now have identical names and prices.'
-                      : ' After fixing the errors, some items now have the same name and price as items you already have.'
+                      ? ' After fixing the errors, some items in your uploaded file now have identical names and prices. Each duplicate needs to be handled individually.'
+                      : ' After fixing the errors, some items now match items already in your inventory from previous uploads. You can choose to update them or skip them.'
                     }
                   </p>
                 </div>
