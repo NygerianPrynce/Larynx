@@ -326,14 +326,34 @@ const OfferingsModern = () => {
     
     // Preview the file contents
     try {
-      const text = await file.text()
-      const lines = text.split('\n').filter(line => line.trim())
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      let lines = []
+      let headers = []
+      
+      // Handle different file types
+      if (file.name.toLowerCase().endsWith('.csv')) {
+        // Handle CSV files
+        const text = await file.text()
+        lines = text.split('\n').filter(line => line.trim())
+        headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+      } else if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+        // Handle Excel files
+        const XLSX = await import('xlsx')
+        const arrayBuffer = await file.arrayBuffer()
+        const workbook = XLSX.read(arrayBuffer)
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        
+        lines = jsonData.map(row => row.join(','))
+        headers = lines[0] ? lines[0].split(',').map(h => h.trim().toLowerCase()) : []
+      } else {
+        throw new Error('Unsupported file format. Please use CSV or Excel files.')
+      }
       
       // Parse first few rows for preview with validation
       const previewItems = []
       for (let i = 1; i < Math.min(6, lines.length); i++) {
-        const values = parseCSVLine(lines[i])
+        const values = file.name.toLowerCase().endsWith('.csv') ? parseCSVLine(lines[i]) : lines[i].split(',')
         if (values.length >= 2) {
           const name = values[0]?.trim() || ''
           const price = values[1]?.trim() || ''
