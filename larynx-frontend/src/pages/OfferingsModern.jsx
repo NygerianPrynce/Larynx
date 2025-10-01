@@ -557,26 +557,62 @@ const OfferingsModern = () => {
     }
   }
 
-  const checkForNewDuplicates = (fixedData) => {
-    const newDuplicates = []
+  const checkForDuplicatesInFile = (uploadData) => {
+    const duplicates = []
+    const seen = new Map()
     
-    // Check each fixed item against existing offerings
-    fixedData.forEach((item, index) => {
+    uploadData.forEach((item, index) => {
       if (item.name && item.price) {
-        const duplicate = offerings.find(existing => 
-          existing.name.toLowerCase() === item.name.toLowerCase() && 
-          parseFloat(existing.price) === parseFloat(item.price)
-        )
+        const key = `${item.name.toLowerCase()}_${parseFloat(item.price)}`
         
-        if (duplicate) {
-          newDuplicates.push({
-            ...item,
+        if (seen.has(key)) {
+          // Found a duplicate within the file
+          const firstOccurrence = seen.get(key)
+          duplicates.push({
+            row: index + 1,
             rowIndex: index,
-            existingItem: duplicate
+            type: 'duplicate_in_file',
+            message: 'Duplicate item found within uploaded file',
+            duplicate: { name: item.name, price: item.price },
+            existing: { name: firstOccurrence.name, price: firstOccurrence.price, row: firstOccurrence.row }
           })
+        } else {
+          seen.set(key, { ...item, row: index + 1 })
         }
       }
     })
+    
+    return duplicates
+  }
+
+  const checkForNewDuplicates = (fixedData) => {
+    const newDuplicates = []
+    
+    // First check for duplicates within the fixed data itself
+    const fileDuplicates = checkForDuplicatesInFile(fixedData)
+    if (fileDuplicates.length > 0) {
+      return fileDuplicates
+    }
+    
+    // Only check against existing offerings if user has offerings
+    if (offerings.length > 0) {
+      fixedData.forEach((item, index) => {
+        if (item.name && item.price) {
+          const duplicate = offerings.find(existing => 
+            existing.name.toLowerCase() === item.name.toLowerCase() && 
+            parseFloat(existing.price) === parseFloat(item.price)
+          )
+          
+          if (duplicate) {
+            newDuplicates.push({
+              ...item,
+              rowIndex: index,
+              existingItem: duplicate
+            })
+          }
+        }
+      })
+    }
     
     return newDuplicates
   }
@@ -1365,11 +1401,19 @@ const OfferingsModern = () => {
                       </h4>
                       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
                         <p className="text-sm text-yellow-800">
-                          <strong>Duplicate Detection:</strong> We found items that match your existing offerings in your inventory. 
+                          <strong>Duplicate Detection:</strong> 
+                          {uploadErrors.warnings && uploadErrors.warnings[0]?.type === 'duplicate_in_file'
+                            ? ' We found duplicate items within your uploaded file.'
+                            : ' We found items that match your existing offerings in your inventory.'
+                          }
                           Choose how to handle each duplicate below.
                         </p>
                         <p className="text-xs text-yellow-700 mt-1">
-                          💡 <strong>Note:</strong> This means the uploaded item already exists in your current offerings.
+                          💡 <strong>Note:</strong> 
+                          {uploadErrors.warnings && uploadErrors.warnings[0]?.type === 'duplicate_in_file'
+                            ? ' This means the same item appears multiple times in your uploaded file.'
+                            : ' This means the uploaded item already exists in your current offerings.'
+                          }
                         </p>
                       </div>
                       <div className="space-y-3">
@@ -1379,8 +1423,16 @@ const OfferingsModern = () => {
                               <div className="flex-1">
                                 <p className="font-medium text-yellow-900">Row {warning.row}: {warning.message}</p>
                                 <div className="mt-2 text-sm text-yellow-700">
-                                  <span className="font-medium">Uploaded item:</span> "{warning.duplicate?.name}" (${warning.duplicate?.price})<br/>
-                                  <span className="font-medium">Already exists:</span> "{warning.existing?.name}" (${warning.existing?.price})
+                                  <span className="font-medium">Duplicate item:</span> "{warning.duplicate?.name}" (${warning.duplicate?.price})<br/>
+                                  {warning.type === 'duplicate_in_file' ? (
+                                    <>
+                                      <span className="font-medium">First occurrence in file (Row {warning.existing?.row}):</span> "{warning.existing?.name}" (${warning.existing?.price})
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="font-medium">Already exists:</span> "{warning.existing?.name}" (${warning.existing?.price})
+                                    </>
+                                  )}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 ml-4">
@@ -1750,11 +1802,18 @@ const OfferingsModern = () => {
               <div className="mb-6">
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                   <p className="text-yellow-800">
-                    <strong>Your fixes have created duplicates with your existing offerings.</strong> 
-                    The fixed items now match items already in your inventory.
+                    <strong>Your fixes have created duplicates.</strong> 
+                    {duplicateWarningData && duplicateWarningData[0]?.type === 'duplicate_in_file' 
+                      ? ' Some items now have the same name and price within your uploaded file.'
+                      : ' The fixed items now match items already in your inventory.'
+                    }
                   </p>
                   <p className="text-xs text-yellow-700 mt-1">
-                    💡 <strong>What this means:</strong> After fixing the errors, some items now have the same name and price as items you already have.
+                    💡 <strong>What this means:</strong> 
+                    {duplicateWarningData && duplicateWarningData[0]?.type === 'duplicate_in_file'
+                      ? ' After fixing the errors, some items in your file now have identical names and prices.'
+                      : ' After fixing the errors, some items now have the same name and price as items you already have.'
+                    }
                   </p>
                 </div>
 
@@ -1764,10 +1823,18 @@ const OfferingsModern = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="text-sm text-red-700">
-                            <span className="font-medium">Fixed item:</span> {duplicate.name} - ${duplicate.price}
+                            <span className="font-medium">Duplicate item:</span> {duplicate.name} - ${duplicate.price}
                           </div>
                           <div className="text-sm text-red-600 mt-1">
-                            <span className="font-medium">Already in your inventory:</span> {duplicate.existingItem.name} - ${duplicate.existingItem.price}
+                            {duplicate.type === 'duplicate_in_file' ? (
+                              <>
+                                <span className="font-medium">First occurrence in file (Row {duplicate.existing.row}):</span> {duplicate.existing.name} - ${duplicate.existing.price}
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-medium">Already in your inventory:</span> {duplicate.existingItem.name} - ${duplicate.existingItem.price}
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
