@@ -1053,11 +1053,37 @@ const OfferingsModern = () => {
                   </ul>
                   <p><strong>Valid pricing types:</strong> per_unit, per_hour, per_day, per_week, per_month, per_project, per_event, flat_rate</p>
                   <p><strong>Example CSV format:</strong></p>
-                  <div className="bg-white border rounded p-2 font-mono text-xs">
-                    name,price,category,pricing_type<br/>
-                    Wedding Catering,150,Catering,per_event<br/>
-                    Table Rental,25,Event Rentals,per_day<br/>
-                    Photography Package,800,Photography,per_project
+                  <div className="bg-white border rounded overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium text-gray-700 border-b">Name</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-700 border-b">Price</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-700 border-b">Category</th>
+                          <th className="px-3 py-2 text-left font-medium text-gray-700 border-b">Pricing Type</th>
+                        </tr>
+                      </thead>
+                      <tbody className="font-mono">
+                        <tr>
+                          <td className="px-3 py-2 border-b">Wedding Catering</td>
+                          <td className="px-3 py-2 border-b">150</td>
+                          <td className="px-3 py-2 border-b">Catering</td>
+                          <td className="px-3 py-2 border-b">per_event</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2 border-b">Table Rental</td>
+                          <td className="px-3 py-2 border-b">25</td>
+                          <td className="px-3 py-2 border-b">Event Rentals</td>
+                          <td className="px-3 py-2 border-b">per_day</td>
+                        </tr>
+                        <tr>
+                          <td className="px-3 py-2">Photography Package</td>
+                          <td className="px-3 py-2">800</td>
+                          <td className="px-3 py-2">Photography</td>
+                          <td className="px-3 py-2">per_project</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
