@@ -417,57 +417,75 @@ const OfferingsModern = () => {
   }
 
   const handleConfirmUpload = async () => {
-    if (!uploadFile) return
+    if (!uploadFile || !previewData) return
     
     setUploading(true)
-    const formData = new FormData()
-    formData.append('file', uploadFile)
     
     try {
-      console.log('Sending file to backend:', uploadFile.name)
+      // Frontend does all validation - check for errors first
+      const errors = []
+      const readyItems = []
       
+      previewData.previewItems.forEach((item, index) => {
+        if (item.isValid.status === 'error') {
+          errors.push({
+            row: index + 2, // +2 because index is 0-based and we skip header
+            rowIndex: index,
+            type: item.isValid.message.toLowerCase().replace(/\s+/g, '_'),
+            message: item.isValid.message,
+            item: item
+          })
+        } else {
+          readyItems.push(item)
+        }
+      })
+      
+      // Check for file duplicates
+      const fileDuplicates = previewData.fileDuplicates || []
+      
+      if (errors.length > 0 || fileDuplicates.length > 0) {
+        // Show error resolution modal
+        setUploadErrors({
+          totalItems: previewData.previewItems.length,
+          errors: errors,
+          warnings: [], // Duplicates handled separately
+          readyItems: readyItems,
+          allItems: previewData.previewItems
+        })
+        setOriginalUploadData(previewData.previewItems)
+        setShowErrorResolution(true)
+        setShowPreview(false)
+        setUploading(false)
+        return
+      }
+      
+      // No errors, send clean data directly to backend
+      const cleanData = readyItems.map(item => ({
+        name: item.name,
+        price: parseFloat(item.price),
+        pricing_type: item.pricing_type || 'per_unit',
+        category: item.category || null
+      }))
+      
+      console.log('Sending clean data to backend:', cleanData)
       
       const response = await fetchWithErrorHandling(`${api}/inventory/bulk-upload`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: formData
+        body: JSON.stringify({ items: cleanData })
       })
       
       if (response) {
-        // Check if there are errors to resolve
-        if (response.errors && (response.errors.length > 0 || response.warnings?.length > 0)) {
-          setUploadErrors(response)
-          setOriginalUploadData(response.allItems || [])
-          setShowErrorResolution(true)
-          setShowPreview(false)
-        } else {
-          // No errors, proceed with success
-          showNotification(`Upload successful! ${response.message}`, 'success')
-          await fetchInventory()
-          setShowPreview(false)
-          setShowUploadForm(false)
-          setUploadFile(null)
-          setPreviewData(null)
-        }
+        showNotification('Upload successful!', 'success')
+        await fetchInventory()
+        setShowPreview(false)
+        setUploadFile(null)
+        setPreviewData(null)
       }
     } catch (error) {
-      
-      // Check if it's an error response with details
-      if (error.response) {
-        try {
-          const errorData = await error.response.json()
-          if (errorData.errors || errorData.warnings) {
-            setUploadErrors(errorData)
-            setOriginalUploadData(errorData.allItems || [])
-            setShowErrorResolution(true)
-            setShowPreview(false)
-            return
-          }
-        } catch (parseError) {
-          // If we can't parse the error, fall back to normal error handling
-        }
-      }
-      handleError(error, 'bulk upload')
+      console.error('Error uploading file:', error)
+      showNotification('Error uploading file. Please try again.', 'error')
     } finally {
       setUploading(false)
     }
