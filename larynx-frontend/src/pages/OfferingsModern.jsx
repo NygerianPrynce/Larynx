@@ -219,7 +219,7 @@ const OfferingsModern = () => {
           name: newOffering.name,
           price: newOffering.price,
           category: newOffering.category,
-          pricing_type: newOffering.pricingType || 'per_unit',
+          pricing_type: newOffering.pricingType || 'fixed',
           row: 'New Item'
         },
         existingItem: existingDuplicate,
@@ -237,7 +237,7 @@ const OfferingsModern = () => {
         body: JSON.stringify({
           name: newOffering.name,
           price: parseFloat(normalizedPrice),
-          pricing_type: newOffering.pricingType || 'per_unit',
+          pricing_type: newOffering.pricingType || 'fixed',
           category: newOffering.category || null
         })
       })
@@ -282,7 +282,7 @@ const OfferingsModern = () => {
         body: JSON.stringify({
           name: editingOffering.name,
           price: parseFloat(normalizedPrice),
-          pricing_type: editingOffering.pricingType || 'per_unit',
+          pricing_type: editingOffering.pricingType || 'fixed',
           category: editingOffering.category || null
         })
       })
@@ -295,7 +295,7 @@ const OfferingsModern = () => {
                 ...offering, 
                 name: editingOffering.name, 
                 price: parseFloat(normalizedPrice), 
-                pricing_type: editingOffering.pricingType || 'per_unit',
+                pricing_type: editingOffering.pricingType || 'fixed',
                 category: editingOffering.category || null
               }
             : offering
@@ -421,7 +421,7 @@ const OfferingsModern = () => {
           const name = String(values[0] || '').trim()
           const price = String(values[1] || '').trim()
           const category = String(values[2] || 'None').trim()
-          const pricing_type = String(values[3] || 'per_unit').trim()
+          const pricing_type = String(values[3] || 'fixed').trim()
           
           // Validate the item
           const isValid = validatePreviewItem(name, price, pricing_type)
@@ -546,7 +546,7 @@ const OfferingsModern = () => {
       const cleanData = readyItems.map(item => ({
         name: item.name,
         price: parseFloat(item.price),
-        pricing_type: item.pricing_type || 'per_unit',
+        pricing_type: item.pricing_type || 'fixed',
         category: item.category || null
       }))
       
@@ -634,7 +634,7 @@ const OfferingsModern = () => {
       const csvContent = [
         'name,price,category,pricing_type',
         ...fixedData.map(item => 
-          `${item.name || ''},${item.price || ''},${item.category || ''},${item.pricing_type || 'per_unit'}`
+          `${item.name || ''},${item.price || ''},${item.category || ''},${item.pricing_type || 'fixed'}`
         )
       ].join('\n')
       
@@ -856,7 +856,7 @@ const OfferingsModern = () => {
         return {
           name: item.name.trim(),
           price: price,
-          pricing_type: item.pricing_type || 'per_unit',
+          pricing_type: item.pricing_type || 'fixed',
           category: category
         }
       })
@@ -1714,7 +1714,7 @@ const OfferingsModern = () => {
                                 )}
                                 {error.type === 'invalid_pricing_type' && (
                                   <select
-                                    value={errorFixes[error.rowIndex]?.pricing_type || 'per_unit'}
+                                    value={errorFixes[error.rowIndex]?.pricing_type || 'fixed'}
                                     onChange={(e) => handleFixError(error.rowIndex, 'pricing_type', e.target.value)}
                                     className="px-3 py-1 border border-red-300 rounded text-sm focus:ring-2 focus:ring-red-500"
                                   >
