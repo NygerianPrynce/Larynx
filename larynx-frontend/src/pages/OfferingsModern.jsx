@@ -52,6 +52,8 @@ const OfferingsModern = () => {
   const api = import.meta.env.VITE_API_URL
   const [offerings, setOfferings] = useState([])
   const [isLoadingOfferings, setIsLoadingOfferings] = useState(true)
+  const [deletingIds, setDeletingIds] = useState(new Set())
+  const [editingIds, setEditingIds] = useState(new Set())
 
   const showNotification = (message, type = 'info', duration = 4000) => {
     setNotification({ message, type })
@@ -240,6 +242,12 @@ const OfferingsModern = () => {
       return
     }
 
+    // Prevent double-clicks by checking if already saving
+    if (editingIds.has(editingId)) return
+    
+    // Add to editing set immediately
+    setEditingIds(prev => new Set(prev).add(editingId))
+
     try {
       const normalizedPrice = normalizePrice(editingOffering.price)
       await fetchWithErrorHandling(`${api}/inventory/edit/${editingId}`, {
@@ -272,10 +280,23 @@ const OfferingsModern = () => {
       setEditingOffering({ name: '', price: '', category: '' })
     } catch (error) {
       handleError(error, 'handleSaveEdit')
+    } finally {
+      // Remove from editing set
+      setEditingIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(editingId)
+        return newSet
+      })
     }
   }
 
   const handleDeleteOffering = async (id) => {
+    // Prevent double-clicks by checking if already deleting
+    if (deletingIds.has(id)) return
+    
+    // Add to deleting set immediately
+    setDeletingIds(prev => new Set(prev).add(id))
+    
     try {
       await fetchWithErrorHandling(`${api}/inventory/delete/${id}`, {
         method: 'DELETE'
@@ -287,6 +308,13 @@ const OfferingsModern = () => {
       )
     } catch (error) {
       handleError(error, 'handleDeleteOffering')
+    } finally {
+      // Remove from deleting set
+      setDeletingIds(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(id)
+        return newSet
+      })
     }
   }
 
@@ -1755,9 +1783,19 @@ const OfferingsModern = () => {
                           <div className="flex gap-2 justify-end">
                             <button
                               onClick={handleSaveEdit}
-                              className="text-green-600 hover:text-green-900 p-1 rounded bg-transparent hover:bg-green-100/30 transition-colors"
+                              disabled={editingIds.has(offering.id)}
+                              className={`p-1 rounded transition-colors ${
+                                editingIds.has(offering.id)
+                                  ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                                  : 'text-green-600 hover:text-green-900 bg-transparent hover:bg-green-100/30'
+                              }`}
+                              title={editingIds.has(offering.id) ? "Saving..." : "Save changes"}
                             >
-                              <Save />
+                              {editingIds.has(offering.id) ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                              ) : (
+                                <Save />
+                              )}
                             </button>
                             <button
                               onClick={() => setEditingId(null)}
@@ -1776,9 +1814,19 @@ const OfferingsModern = () => {
                             </button>
                             <button
                               onClick={() => handleDeleteOffering(offering.id)}
-                              className="text-red-600 hover:text-red-900 p-1 rounded bg-transparent hover:bg-red-100/30 transition-colors"
+                              disabled={deletingIds.has(offering.id)}
+                              className={`p-1 rounded transition-colors ${
+                                deletingIds.has(offering.id)
+                                  ? 'text-gray-400 cursor-not-allowed bg-gray-100'
+                                  : 'text-red-600 hover:text-red-900 bg-transparent hover:bg-red-100/30'
+                              }`}
+                              title={deletingIds.has(offering.id) ? "Deleting..." : "Delete offering"}
                             >
-                              <Trash />
+                              {deletingIds.has(offering.id) ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                              ) : (
+                                <Trash />
+                              )}
                             </button>
                           </div>
                         )}
