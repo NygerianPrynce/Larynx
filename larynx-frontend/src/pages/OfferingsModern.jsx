@@ -204,6 +204,30 @@ const OfferingsModern = () => {
       return
     }
 
+    // Check for duplicates against existing inventory
+    const existingDuplicate = offerings.find(existing =>
+      existing.name.toLowerCase().trim() === newOffering.name.toLowerCase().trim()
+    )
+
+    if (existingDuplicate) {
+      // Show duplicate warning modal
+      setDuplicateWarningData([{
+        type: 'duplicate_in_inventory',
+        name: newOffering.name,
+        price: newOffering.price,
+        uploadedItem: {
+          name: newOffering.name,
+          price: newOffering.price,
+          category: newOffering.category,
+          pricing_type: newOffering.pricingType || 'per_unit'
+        },
+        existingItem: existingDuplicate,
+        message: 'Item matches existing inventory'
+      }])
+      setShowDuplicateWarning(true)
+      return
+    }
+
     try {
       const normalizedPrice = normalizePrice(newOffering.price)
       const response = await fetchWithErrorHandling(`${api}/inventory/add`, {
@@ -745,11 +769,30 @@ const OfferingsModern = () => {
     setUploading(true)
     
     try {
-      // Apply fixes to the data
-      let fixedData = applyErrorFixes()
+      // Check if this is an individual item duplicate or bulk upload duplicate
+      const isIndividualDuplicate = duplicateWarningData && duplicateWarningData.length === 1 && duplicateWarningData[0].type === 'duplicate_in_inventory'
       
-      // Apply duplicate resolution
-      const resolvedData = applyDuplicateResolutions(fixedData)
+      let resolvedData
+      
+      if (isIndividualDuplicate) {
+        // For individual items, create data from the duplicate warning
+        const duplicate = duplicateWarningData[0]
+        const resolution = duplicateResolutions[`${duplicate.name}_inventory`]
+        
+        if (resolution === 'skip') {
+          // User chose to skip - don't add the item
+          setUploading(false)
+          showNotification('Item skipped - existing item kept', 'info')
+          return
+        } else {
+          // User chose "keep_new" or "update_existing" - add the new item
+          resolvedData = [duplicate.uploadedItem]
+        }
+      } else {
+        // For bulk uploads, apply fixes and duplicate resolution
+        let fixedData = applyErrorFixes()
+        resolvedData = applyDuplicateResolutions(fixedData)
+      }
       
       // Send clean data directly to backend
       const cleanData = resolvedData.map(item => {
@@ -813,10 +856,19 @@ const OfferingsModern = () => {
       }
       
       if (successCount > 0) {
-        const message = errorCount > 0 
-          ? `Upload completed: ${successCount} items added successfully, ${errorCount} failed`
-          : `Upload successful! ${successCount} items added.`
-        showNotification(message, successCount === cleanData.length ? 'success' : 'warning')
+        if (isIndividualDuplicate) {
+          // For individual items, show success and close add form
+          showNotification('Item added successfully!', 'success')
+          setNewOffering({ name: '', price: '', pricingType: '', category: '' })
+          setShowAddForm(false)
+        } else {
+          // For bulk uploads, show detailed message
+          const message = errorCount > 0 
+            ? `Upload completed: ${successCount} items added successfully, ${errorCount} failed`
+            : `Upload successful! ${successCount} items added.`
+          showNotification(message, successCount === cleanData.length ? 'success' : 'warning')
+        }
+        
         await fetchInventory()
         
         // Close modal and reset all state
