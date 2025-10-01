@@ -1953,10 +1953,9 @@ const OfferingsModern = () => {
                     <strong>Duplicates detected!</strong> Choose how to handle each duplicate below.
                   </p>
                   <p className="text-xs text-yellow-700 mt-1">
-                    💡 <strong>Options:</strong> 
-                    • <strong>Keep Both:</strong> Add both items to your inventory
-                    • <strong>Choose One:</strong> Select which item to keep
-                    • <strong>Skip:</strong> Remove the duplicate item
+                    💡 <strong>Two types of duplicates:</strong><br/>
+                    • <strong>File Duplicates:</strong> Same item appears multiple times in your uploaded file - choose which instances to keep/delete<br/>
+                    • <strong>Inventory Duplicates:</strong> Uploaded item matches existing inventory - choose Keep New, Skip, or Update Existing
                   </p>
                 </div>
 
@@ -2013,6 +2012,11 @@ const OfferingsModern = () => {
                               </div>
                             </div>
                           ))}
+                          <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                            <p className="text-sm text-blue-800">
+                              💡 <strong>For file duplicates:</strong> Choose which instances to keep or delete from your uploaded file.
+                            </p>
+                          </div>
                         </div>
                       ) : (
                         // Inventory duplicates: show uploaded vs existing
@@ -2036,35 +2040,37 @@ const OfferingsModern = () => {
                         </div>
                       )}
 
-                      <div className="mt-3 flex items-center gap-4">
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name={`duplicate_${index}_resolution`}
-                            value="keep_both"
-                            className="mr-2"
-                          />
-                          <span className="text-sm">Keep Both</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name={`duplicate_${index}_resolution`}
-                            value="choose_one"
-                            className="mr-2"
-                          />
-                          <span className="text-sm">Choose One</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name={`duplicate_${index}_resolution`}
-                            value="skip"
-                            className="mr-2"
-                          />
-                          <span className="text-sm">Skip All</span>
-                        </label>
-                      </div>
+                      {duplicate.type === 'duplicate_in_inventory' && (
+                        <div className="mt-3 flex items-center gap-4">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name={`duplicate_${index}_resolution`}
+                              value="keep_new"
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Keep New</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name={`duplicate_${index}_resolution`}
+                              value="skip"
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Skip</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name={`duplicate_${index}_resolution`}
+                              value="update_existing"
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Update Existing</span>
+                          </label>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
