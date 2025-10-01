@@ -81,6 +81,7 @@ const OfferingsModern = () => {
   const [originalUploadData, setOriginalUploadData] = useState(null)
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
   const [duplicateWarningData, setDuplicateWarningData] = useState(null)
+  const [duplicateResolutions, setDuplicateResolutions] = useState({})
   const [notification, setNotification] = useState(null)
 
   const defaultCategories = ['Consulting', 'Design', 'Marketing', 'Writing', 'Development', 'Catering', 'Events']
@@ -634,6 +635,7 @@ const OfferingsModern = () => {
         setUploadErrors(null)
         setErrorFixes({})
         setOriginalUploadData(null)
+        setDuplicateResolutions({})
       } else {
         throw new Error('Upload failed - no response received')
       }
@@ -778,6 +780,7 @@ const OfferingsModern = () => {
         setUploadErrors(null)
         setErrorFixes({})
         setOriginalUploadData(null)
+        setDuplicateResolutions({})
       } else {
         throw new Error('Upload failed - no response received')
       }
@@ -1483,6 +1486,7 @@ const OfferingsModern = () => {
                         setUploadErrors(null)
                         setErrorFixes({})
                         setOriginalUploadData(null)
+        setDuplicateResolutions({})
                       }}
                       className="text-gray-400 hover:text-gray-600"
                     >
@@ -1637,6 +1641,7 @@ const OfferingsModern = () => {
                           setUploadErrors(null)
                           setErrorFixes({})
                           setOriginalUploadData(null)
+        setDuplicateResolutions({})
                         }}
                         className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
                       >
@@ -1942,7 +1947,10 @@ const OfferingsModern = () => {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-semibold text-gray-900">⚠️ Duplicate Warning</h3>
                 <button
-                  onClick={() => setShowDuplicateWarning(false)}
+                  onClick={() => {
+                    setShowDuplicateWarning(false)
+                    setDuplicateResolutions({})
+                  }}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <X className="w-6 h-6" />
@@ -2080,7 +2088,10 @@ const OfferingsModern = () => {
 
               <div className="flex items-center justify-end gap-4">
                 <button
-                  onClick={() => setShowDuplicateWarning(false)}
+                  onClick={() => {
+                    setShowDuplicateWarning(false)
+                    setDuplicateResolutions({})
+                  }}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Cancel
