@@ -305,7 +305,7 @@ const OfferingsModern = () => {
       // Parse first few rows for preview with validation
       const previewItems = []
       for (let i = 1; i < Math.min(6, lines.length); i++) {
-        const values = lines[i].split(',')
+        const values = parseCSVLine(lines[i])
         if (values.length >= 2) {
           const name = values[0]?.trim() || ''
           const price = values[1]?.trim() || ''
@@ -339,13 +339,40 @@ const OfferingsModern = () => {
     }
   }
 
+  // Helper function to parse CSV line with proper quote handling
+  const parseCSVLine = (line) => {
+    const result = []
+    let current = ''
+    let inQuotes = false
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i]
+      
+      if (char === '"') {
+        inQuotes = !inQuotes
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim())
+        current = ''
+      } else {
+        current += char
+      }
+    }
+    
+    result.push(current.trim())
+    return result
+  }
+
   const validatePreviewItem = (name, price, pricing_type) => {
     const validPricingTypes = ['per_unit', 'per_hour', 'per_day', 'per_week', 'per_month', 'per_project', 'per_event', 'flat_rate']
     
     // Check for errors
     if (!name || name.trim() === '') return { status: 'error', message: 'Missing name' }
     if (!price || price.trim() === '') return { status: 'error', message: 'Missing price' }
-    if (isNaN(parseFloat(price))) return { status: 'error', message: 'Invalid price' }
+    
+    // Clean price by removing $ symbol and spaces, then validate
+    const cleanPrice = price.replace(/[$,\s]/g, '')
+    if (isNaN(parseFloat(cleanPrice)) || cleanPrice === '') return { status: 'error', message: 'Invalid price' }
+    
     if (pricing_type && !validPricingTypes.includes(pricing_type.toLowerCase())) return { status: 'error', message: 'Invalid pricing type' }
     
     return { status: 'ready', message: 'Ready to upload' }
