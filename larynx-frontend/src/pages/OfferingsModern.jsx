@@ -219,7 +219,8 @@ const OfferingsModern = () => {
           name: newOffering.name,
           price: newOffering.price,
           category: newOffering.category,
-          pricing_type: newOffering.pricingType || 'per_unit'
+          pricing_type: newOffering.pricingType || 'per_unit',
+          row: 'New Item'
         },
         existingItem: existingDuplicate,
         message: 'Item matches existing inventory'
@@ -780,13 +781,55 @@ const OfferingsModern = () => {
         const resolution = duplicateResolutions[`${duplicate.name}_inventory`]
         
         if (resolution === 'skip') {
-          // User chose to skip - don't add the item
+          // User chose to keep old - don't add the item
           setUploading(false)
           showNotification('Item skipped - existing item kept', 'info')
           return
+        } else if (resolution === 'update_existing') {
+          // User chose to update existing - update the existing item
+          try {
+            const response = await fetchWithErrorHandling(`${api}/inventory/edit/${duplicate.existingItem.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                name: duplicate.uploadedItem.name,
+                price: parseFloat(duplicate.uploadedItem.price),
+                pricing_type: duplicate.uploadedItem.pricing_type || 'per_unit',
+                category: duplicate.uploadedItem.category || null
+              })
+            })
+            
+            if (response) {
+              showNotification('Item updated successfully!', 'success')
+              setNewOffering({ name: '', price: '', pricingType: '', category: '' })
+              setShowAddForm(false)
+              await fetchInventory()
+            }
+          } catch (error) {
+            console.error('Error updating item:', error)
+            showNotification('Failed to update item. Please try again.', 'error')
+          } finally {
+            setUploading(false)
+          }
+          return
         } else {
-          // User chose "keep_new" or "update_existing" - add the new item
-          resolvedData = [duplicate.uploadedItem]
+          // User chose "keep_new" - delete existing and add new
+          try {
+            // First delete the existing item
+            await fetchWithErrorHandling(`${api}/inventory/delete/${duplicate.existingItem.id}`, {
+              method: 'DELETE',
+              credentials: 'include'
+            })
+            
+            // Then add the new item
+            resolvedData = [duplicate.uploadedItem]
+          } catch (error) {
+            console.error('Error replacing item:', error)
+            showNotification('Failed to replace item. Please try again.', 'error')
+            setUploading(false)
+            return
+          }
         }
       } else {
         // For bulk uploads, apply fixes and duplicate resolution
@@ -2183,7 +2226,7 @@ const OfferingsModern = () => {
                                 [`${duplicate.name}_inventory`]: e.target.value
                               }))}
                             />
-                            <span className="text-sm">Skip</span>
+                            <span className="text-sm">Keep Old</span>
                           </label>
                           <label className="flex items-center">
                             <input
