@@ -326,11 +326,18 @@ const OfferingsModern = () => {
         }
       }
       
+      // Check for duplicates within the uploaded file
+      const fileDuplicates = checkForDuplicatesInFile(previewItems.map(item => ({
+        name: item.name,
+        price: item.price
+      })))
+      
       setPreviewData({
         fileName: file.name,
         totalRows: lines.length - 1,
         previewItems,
-        headers
+        headers,
+        fileDuplicates: fileDuplicates
       })
       setShowPreview(true)
     } catch (error) {
@@ -445,16 +452,14 @@ const OfferingsModern = () => {
               item: { name: 'DJ Services', price: '', category: 'Entertainment', pricing_type: 'per_hour' }
             }
           ],
-          warnings: [
-            {
-              row: 5,
-              rowIndex: 4,
-              type: 'duplicate_item',
-              message: 'Duplicate item found',
-              duplicate: { name: 'Wedding Catering', price: '200' },
-              existing: { name: 'Wedding Catering', price: '150' }
-            }
-          ],
+          warnings: previewData?.fileDuplicates?.map((duplicate, index) => ({
+            row: duplicate.rows[1] || 0,
+            rowIndex: (duplicate.rows[1] || 0) - 1,
+            type: 'duplicate_in_file',
+            message: 'Duplicate item found within uploaded file',
+            duplicate: { name: duplicate.name, price: duplicate.price },
+            existing: { name: duplicate.name, price: duplicate.price, row: duplicate.rows[0] || 0 }
+          })) || [],
           readyItems: [
             { name: 'Wedding Catering', price: '150', category: 'Catering', pricing_type: 'per_event' },
             { name: 'Table Rental', price: '25', category: 'Event Rentals', pricing_type: 'per_day' }
@@ -1195,6 +1200,14 @@ const OfferingsModern = () => {
                     <p className="text-sm text-yellow-800">
                       ⚠️ <strong>Validation Issues Detected:</strong> Some items in your file have errors that need to be fixed before upload. 
                       You'll be able to resolve these issues after clicking "Upload".
+                    </p>
+                  </div>
+                )}
+                {previewData.fileDuplicates && previewData.fileDuplicates.length > 0 && (
+                  <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded">
+                    <p className="text-sm text-orange-800">
+                      🔄 <strong>Duplicates Detected:</strong> Your file contains {previewData.fileDuplicates.length} duplicate item(s). 
+                      Each duplicate will be handled individually during upload.
                     </p>
                   </div>
                 )}
