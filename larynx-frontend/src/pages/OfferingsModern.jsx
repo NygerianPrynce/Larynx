@@ -622,7 +622,7 @@ const OfferingsModern = () => {
             name: item.name,
             price: item.price,
             rows: [firstOccurrence.row, index + 1],
-            type: 'exact_duplicate',
+            type: 'duplicate_in_file',
             message: 'Exact duplicate item found within uploaded file'
           })
         } else {
@@ -636,7 +636,7 @@ const OfferingsModern = () => {
             name: item.name,
             price: item.price,
             rows: [firstOccurrence.row, index + 1],
-            type: 'name_duplicate',
+            type: 'duplicate_in_file',
             message: 'Item with same name but different price found'
           })
         } else if (!seenByName.has(nameKey)) {
