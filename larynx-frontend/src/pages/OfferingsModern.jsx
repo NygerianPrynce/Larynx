@@ -392,10 +392,10 @@ const OfferingsModern = () => {
       for (let i = startRow; i < dataSource.length; i++) {
         const values = file.name.toLowerCase().endsWith('.csv') ? parseCSVLine(dataSource[i]) : dataSource[i]
         if (values && values.length >= 2) {
-          const name = values[0]?.trim() || ''
-          const price = values[1]?.trim() || ''
-          const category = values[2]?.trim() || 'None'
-          const pricing_type = values[3]?.trim() || 'per_unit'
+          const name = String(values[0] || '').trim()
+          const price = String(values[1] || '').trim()
+          const category = String(values[2] || 'None').trim()
+          const pricing_type = String(values[3] || 'per_unit').trim()
           
           // Validate the item
           const isValid = validatePreviewItem(name, price, pricing_type)
