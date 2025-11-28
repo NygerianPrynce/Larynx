@@ -111,7 +111,7 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
         <div className="flex items-center space-x-1">
           <button
             type="button"
-            className="p-2 hover:bg-gray-200 rounded transition-colors"
+            className="p-2 bg-white hover:bg-gray-100 rounded transition-colors text-gray-700 border border-gray-200"
             onClick={() => execCommand('bold')}
             title="Bold (Ctrl+B)"
           >
@@ -119,7 +119,7 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
           </button>
           <button
             type="button"
-            className="p-2 hover:bg-gray-200 rounded transition-colors"
+            className="p-2 bg-white hover:bg-gray-100 rounded transition-colors text-gray-700 border border-gray-200"
             onClick={() => execCommand('italic')}
             title="Italic (Ctrl+I)"
           >
@@ -127,7 +127,7 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
           </button>
           <button
             type="button"
-            className="p-2 hover:bg-gray-200 rounded transition-colors"
+            className="p-2 bg-white hover:bg-gray-100 rounded transition-colors text-gray-700 border border-gray-200"
             onClick={() => execCommand('underline')}
             title="Underline (Ctrl+U)"
           >
@@ -141,19 +141,19 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
         <div className="flex items-center space-x-1">
           <button
             type="button"
-            className="p-2 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
+            className="p-2 bg-white hover:bg-gray-100 rounded transition-colors disabled:opacity-50 text-gray-700 border border-gray-200"
             onClick={decreaseFontSize}
             title="Decrease Font Size"
             disabled={currentFontSize <= 1}
           >
             <Minus size={16} />
           </button>
-          <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-200 rounded">
+          <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded">
             A
           </span>
           <button
             type="button"
-            className="p-2 hover:bg-gray-200 rounded transition-colors disabled:opacity-50"
+            className="p-2 bg-white hover:bg-gray-100 rounded transition-colors disabled:opacity-50 text-gray-700 border border-gray-200"
             onClick={increaseFontSize}
             title="Increase Font Size"
             disabled={currentFontSize >= 7}
@@ -168,7 +168,7 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
         <div className="relative">
           <button
             type="button"
-            className="p-2 hover:bg-gray-200 rounded transition-colors"
+            className="p-2 bg-white hover:bg-gray-100 rounded transition-colors text-gray-700 border border-gray-200"
             onClick={() => setIsColorPickerOpen(!isColorPickerOpen)}
             title="Text Color"
           >
@@ -205,7 +205,8 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
         contentEditable={true}
         onInput={handleInput}
         onBlur={handleInput}
-        style={{ minHeight }}
+        style={{ minHeight, direction: 'ltr' }}
+        dir="ltr"
         suppressContentEditableWarning={true}
         data-placeholder={placeholder}
       />

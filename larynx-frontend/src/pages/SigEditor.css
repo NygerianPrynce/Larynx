@@ -29,6 +29,8 @@
 .editor-content {
   outline: none !important;
   font-size: 16px !important; /* Default font size for normal text */
+  direction: ltr !important; /* Ensure left-to-right text direction */
+  text-align: left !important; /* Ensure left alignment */
 }
 
 .editor-content p {
