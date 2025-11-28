@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '../components/ui/button'
 import SigEditor from './SigEditor'
+import SimpleRichTextEditor from '../components/SimpleRichTextEditor'
 import Navbar from '../components/Navbar'
 
 // Custom SVG Icons with improved styling
@@ -524,13 +525,13 @@ const SettingsPageModern = () => {
                 Provide an example email to match the structure and style
               </label>
               <p className="text-sm text-seasalt-300 mb-4">
-                Paste an example email you've written. The AI will use this as a template to match your email structure, tone, and formatting style when generating responses.
+                Paste an example email you've written. The AI will use this as a template to match your email structure, tone, and formatting style when generating responses. You can format text with bold, italic, colors, and sizes.
               </p>
-              <textarea
+              <SimpleRichTextEditor
                 value={emailFormatTemplate || ''}
-                onChange={(e) => setEmailFormatTemplate(e.target.value)}
-                className="w-full min-h-[200px] px-4 py-3 bg-seasalt-500/5 border border-seasalt-200/60 rounded-lg text-seasalt-100 placeholder-seasalt-300 focus:outline-none focus:ring-2 focus:ring-amethyst-400 focus:border-amethyst-400 transition-all duration-200 resize-vertical font-mono text-sm"
+                onChange={(html) => setEmailFormatTemplate(html)}
                 placeholder="Example:&#10;&#10;Hi [Name],&#10;&#10;Thanks for reaching out! I'd be happy to help with [topic].&#10;&#10;Let me know if you have any questions.&#10;&#10;Best,&#10;[Your Name]"
+                minHeight="200px"
               />
             </div>
             <Button onClick={updateEmailFormatTemplate} className="w-full sm:w-auto">

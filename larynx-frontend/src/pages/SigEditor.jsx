@@ -13,14 +13,14 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
   const [isInitialized, setIsInitialized] = useState(false)
   const [selectedText, setSelectedText] = useState('')
   const [selectedRange, setSelectedRange] = useState(null)
-  const [currentFontSize, setCurrentFontSize] = useState(4) // Start at size 4 (16px) - normal size
+  const [currentFontSize, setCurrentFontSize] = useState(4) // Start at size 4 (20px) - normal size
 
-  // Font size mapping: 1=8px, 2=10px, 3=12px, 4=16px, 5=18px, 6=24px, 7=36px
+  // Font size mapping: 1=8px, 2=10px, 3=12px, 4=20px, 5=18px, 6=24px, 7=36px
   const fontSizeMap = {
     1: '8px',
     2: '10px', 
     3: '12px',
-    4: '16px', // Changed from 14px to 16px for normal text
+    4: '20px', // Normal text size
     5: '18px',
     6: '24px',
     7: '36px'
