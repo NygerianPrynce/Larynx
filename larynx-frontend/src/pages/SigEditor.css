@@ -28,10 +28,20 @@
 
 .editor-content {
   outline: none !important;
+  font-size: 16px !important; /* Default font size for normal text */
 }
 
 .editor-content p {
   margin: 0 0 12px 0 !important;
+  font-size: 16px !important; /* Ensure paragraphs have proper size */
+}
+
+.editor-content div {
+  font-size: 16px !important; /* Ensure divs have proper size */
+}
+
+.editor-content span {
+  font-size: inherit !important; /* Inherit from parent */
 }
 
 /* Fix bullet points visibility */
@@ -82,7 +92,7 @@
 }
 
 .editor-content font[size="4"] {
-  font-size: 14px !important;
+  font-size: 16px !important; /* Changed from 14px to 16px for normal text */
 }
 
 .editor-content font[size="5"] {
