@@ -800,11 +800,13 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         # Fetch user data
         logging.info(f"Generating draft for user {user_id}, subject: {subject[:50]}...")
         tone = fetch_tone_profile(user_id)
-        user_row = supabase.table("users").select("signature", "brand_summary").eq("id", user_id).execute()
+        user_row = supabase.table("users").select("signature", "brand_summary", "email_format_template", "email_instructions").eq("id", user_id).execute()
         row = user_row.data[0] if user_row.data else {}
         signature_block = row.get("signature", "")
         brand_summary = row.get("brand_summary", "")
         special_instructions = row.get("special_instructions", "")
+        email_format_template = row.get("email_format_template", "")
+        email_instructions = row.get("email_instructions", "")
         # Fetch and match inventory
         inventory_result = supabase.table("inventory").select("*").eq("user_id", user_id).execute()
         inventory = inventory_result.data or []
@@ -844,6 +846,24 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         - Don't make up products or prices - be honest about what you don't have"""
             inventory_context = "\n\n--- INVENTORY STATUS ---\nNo matching products found in current inventory for this request."
         
+        # Build email format template section
+        format_template_section = ""
+        if email_format_template:
+            format_template_section = f"""
+        
+        EMAIL FORMAT TEMPLATE - Match this structure and style:
+        {email_format_template}
+        
+        Use this example email as a template for the structure, tone, and formatting style. Match the greeting style, paragraph breaks, and overall flow."""
+        
+        # Build email instructions section
+        instructions_section = ""
+        if email_instructions:
+            instructions_section = f"""
+        
+        SPECIFIC EMAIL INSTRUCTIONS - Follow these rules:
+        {email_instructions}"""
+        
         prompt = f"""You are writing an email reply for a small business owner.
 
         Here's how they typically write - match this natural style:
@@ -854,6 +874,7 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
 
         Their brand identity:
         {brand_summary or "No brand information available."}
+        {format_template_section}{instructions_section}
 
         {inventory_context}
 

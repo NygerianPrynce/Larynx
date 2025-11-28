@@ -310,10 +310,12 @@ async def generate_draft(request: Request, email: DraftRequest):
 
     # Fetch user data
     tone = fetch_tone_profile(user_id)
-    user_row = supabase.table("users").select("signature", "brand_summary").eq("id", user_id).execute()
+    user_row = supabase.table("users").select("signature", "brand_summary", "email_format_template", "email_instructions").eq("id", user_id).execute()
     row = user_row.data[0] if user_row.data else {}
     signature_block = row.get("signature", "")
     brand_summary = row.get("brand_summary", "")
+    email_format_template = row.get("email_format_template", "")
+    email_instructions = row.get("email_instructions", "")
     
     # Fetch and match inventory
     inventory_result = supabase.table("inventory").select("*").eq("user_id", user_id).execute()
@@ -355,6 +357,24 @@ async def generate_draft(request: Request, email: DraftRequest):
     - Don't make up products or prices - be honest about what you don't have"""
         inventory_context = "\n\n--- INVENTORY STATUS ---\nNo matching products found in current inventory for this request."
     
+    # Build email format template section
+    format_template_section = ""
+    if email_format_template:
+        format_template_section = f"""
+    
+    EMAIL FORMAT TEMPLATE - Match this structure and style:
+    {email_format_template}
+    
+    Use this example email as a template for the structure, tone, and formatting style. Match the greeting style, paragraph breaks, and overall flow."""
+    
+    # Build email instructions section
+    instructions_section = ""
+    if email_instructions:
+        instructions_section = f"""
+    
+    SPECIFIC EMAIL INSTRUCTIONS - Follow these rules:
+    {email_instructions}"""
+    
     prompt = f"""You are writing an email reply for a small business owner.
 
     Here's how they typically write - match this natural style:
@@ -365,6 +385,7 @@ async def generate_draft(request: Request, email: DraftRequest):
     
     Their brand identity:
     {brand_summary or "No brand information available."}
+    {format_template_section}{instructions_section}
 
     {inventory_context}
 
@@ -443,4 +464,108 @@ async def test_inventory_matching(request: Request, test_request: TestInventoryR
         matched_inventory=matched_items,
         inventory_context=inventory_context,
         total_inventory_items=len(inventory)
+    )
+
+# ─── Test Prompt Preview Endpoint ──────────────────────────────────────
+class TestPromptRequest(BaseModel):
+    subject: str
+    body: str
+
+class TestPromptResponse(BaseModel):
+    prompt: str
+    email_format_template: str
+    email_instructions: str
+    brand_summary: str
+
+@router.post("/test-prompt-preview", response_model=TestPromptResponse)
+async def test_prompt_preview(request: Request, test_request: TestPromptRequest):
+    """Test endpoint to preview the full prompt that would be sent to GPT"""
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(401, "Not authenticated")
+    
+    # Fetch user data (same as in generate_draft)
+    tone = fetch_tone_profile(user_id)
+    user_row = supabase.table("users").select("signature", "brand_summary", "email_format_template", "email_instructions").eq("id", user_id).execute()
+    row = user_row.data[0] if user_row.data else {}
+    signature_block = row.get("signature", "")
+    brand_summary = row.get("brand_summary", "")
+    email_format_template = row.get("email_format_template", "")
+    email_instructions = row.get("email_instructions", "")
+    
+    # Fetch and match inventory (same as in generate_draft)
+    inventory_result = supabase.table("inventory").select("*").eq("user_id", user_id).execute()
+    inventory = inventory_result.data or []
+    
+    matcher = InventoryMatcher()
+    email_content = f"{test_request.subject} {test_request.body}"
+    product_requests = matcher.extract_product_requests(email_content)
+    inventory_matches = matcher.match_inventory(product_requests, inventory)
+    inventory_context = matcher.generate_inventory_context(inventory_matches)
+    
+    # Determine if we have inventory matches
+    has_matches = len(inventory_matches) > 0
+    
+    if has_matches:
+        inventory_instructions = """
+    - If the customer is asking about products you have in inventory, provide the pricing naturally
+    - For generic inquiries, show them what options are available
+    - If quantities were mentioned, acknowledge them in your response"""
+    else:
+        inventory_instructions = """
+    - The customer is asking about products you don't currently have in stock or offer
+    - Politely let them know you don't have those specific items available
+    - Be helpful by suggesting they contact you for custom requests or alternative options
+    - Don't make up products or prices - be honest about what you don't have"""
+        inventory_context = "\n\n--- INVENTORY STATUS ---\nNo matching products found in current inventory for this request."
+    
+    # Build email format template section
+    format_template_section = ""
+    if email_format_template:
+        format_template_section = f"""
+    
+    EMAIL FORMAT TEMPLATE - Match this structure and style:
+    {email_format_template}
+    
+    Use this example email as a template for the structure, tone, and formatting style. Match the greeting style, paragraph breaks, and overall flow."""
+    
+    # Build email instructions section
+    instructions_section = ""
+    if email_instructions:
+        instructions_section = f"""
+    
+    SPECIFIC EMAIL INSTRUCTIONS - Follow these rules:
+    {email_instructions}"""
+    
+    # Generate the full prompt (same as in generate_draft)
+    prompt = f"""You are writing an email reply for a small business owner.
+
+    Here's how they typically write - match this natural style:
+    - Their sentences are usually {tone['communication_patterns']['avg_sentence_length']:.0f} words long
+    - They frequently use words like: {', '.join([w for w, _ in tone['top_words']][:5])}
+    - They tend to be {tone['politeness_analysis']['communication_style']} in tone
+    - They often express {tone['emotional_tone']['dominant_emotion']}
+    
+    Their brand identity:
+    {brand_summary or "No brand information available."}
+    {format_template_section}{instructions_section}
+
+    {inventory_context}
+
+    INSTRUCTIONS:
+    - Write a helpful, natural reply that sounds like a real person
+    - Don't be overly enthusiastic or robotic
+    - NEVER INCLUDE ANY CLOSING SIGNATURE OR SIGN OFF like Thanks or Best Regards or Warm Regards — that will be handled outside your response
+    - Be conversational and match their tone{inventory_instructions}
+
+    —— Incoming email ——
+    Subject: {test_request.subject}
+    Body: {test_request.body}
+    """
+    
+    return TestPromptResponse(
+        prompt=prompt,
+        email_format_template=email_format_template or "(not set)",
+        email_instructions=email_instructions or "(not set)",
+        brand_summary=brand_summary or "(not set)"
     )

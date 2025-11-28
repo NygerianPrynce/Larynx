@@ -69,32 +69,44 @@ const SettingsPageModern = () => {
   const [summarySuccess, setSummarySuccess] = useState('')
   const [signoffSuccess, setSignoffSuccess] = useState('')
   const [monitoringSuccess, setMonitoringSuccess] = useState('')
+  const [emailFormatSuccess, setEmailFormatSuccess] = useState('')
+  const [emailInstructionsSuccess, setEmailInstructionsSuccess] = useState('')
   const api = import.meta.env.VITE_API_URL
   const [summary, setSummary] = useState(null)
   const [signoff, setSignoff] = useState(null)
   const [name, setName] = useState(null)
+  const [emailFormatTemplate, setEmailFormatTemplate] = useState(null)
+  const [emailInstructions, setEmailInstructions] = useState(null)
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
-        const [summaryRes, nameRes, sigRes] = await Promise.all([
+        const [summaryRes, nameRes, sigRes, formatRes, instructionsRes] = await Promise.all([
           fetch(`${api}/get-brand-summary`, { credentials: 'include' }),
           fetch(`${api}/user/name`, { credentials: 'include' }),
           fetch(`${api}/signature`, { credentials: 'include' }),
+          fetch(`${api}/get-email-format-template`, { credentials: 'include' }),
+          fetch(`${api}/get-email-instructions`, { credentials: 'include' }),
         ])
 
         const summaryData = await summaryRes.json()
         const nameData = await nameRes.json()
         const sigData = await sigRes.json()
+        const formatData = await formatRes.json()
+        const instructionsData = await instructionsRes.json()
 
         setSummary(summaryData.summary || '')
         setName(nameData.name || '')
         setSignoff(sigData.signature || '')
+        setEmailFormatTemplate(formatData.email_format_template || '')
+        setEmailInstructions(instructionsData.email_instructions || '')
       } catch (err) {
         console.error('Error fetching settings data:', err)
         setSummary('')
         setName('')
         setSignoff('')
+        setEmailFormatTemplate('')
+        setEmailInstructions('')
       }
     }
 
@@ -137,6 +149,20 @@ const SettingsPageModern = () => {
     }
   }, [monitoringSuccess])
 
+  useEffect(() => {
+    if (emailFormatSuccess) {
+      const timer = setTimeout(() => setEmailFormatSuccess(''), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [emailFormatSuccess])
+
+  useEffect(() => {
+    if (emailInstructionsSuccess) {
+      const timer = setTimeout(() => setEmailInstructionsSuccess(''), 4000)
+      return () => clearTimeout(timer)
+    }
+  }, [emailInstructionsSuccess])
+
   const updateName = async () => {
     setNameSuccess('')
     setError('')
@@ -172,6 +198,30 @@ const SettingsPageModern = () => {
       body: JSON.stringify({ signature: signoff })
     })
     setSignoffSuccess('Sign off updated!')
+  }
+
+  const updateEmailFormatTemplate = async () => {
+    setEmailFormatSuccess('')
+    setError('')
+    await fetch(`${api}/update-email-format-template`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email_format_template: emailFormatTemplate })
+    })
+    setEmailFormatSuccess('Email format template updated!')
+  }
+
+  const updateEmailInstructions = async () => {
+    setEmailInstructionsSuccess('')
+    setError('')
+    await fetch(`${api}/update-email-instructions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email_instructions: emailInstructions })
+    })
+    setEmailInstructionsSuccess('Email instructions updated!')
   }
 
   const stopMonitoring = async () => {
@@ -451,6 +501,96 @@ const SettingsPageModern = () => {
               >
                 <Save />
                 <span>{signoffSuccess}</span>
+              </motion.div>
+            )}
+          </motion.div>
+        </motion.div>
+
+        {/* Email Format Template Section */}
+        <motion.div className="mb-12" variants={itemVariants}>
+          <motion.div className="flex items-center gap-4 mb-8" variants={itemVariants}>
+            <div className="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+              <Edit />
+            </div>
+            <h2 className="text-2xl font-bold text-seasalt-100">Email Format Template</h2>
+          </motion.div>
+          <motion.div
+            className="p-8 bg-white rounded-xl border border-seasalt-200/50 shadow-sm"
+            variants={cardVariants}
+            whileHover={{ y: -2, transition: { duration: 0.2 } }}
+          >
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-seasalt-100 mb-3">
+                Provide an example email to match the structure and style
+              </label>
+              <p className="text-sm text-seasalt-300 mb-4">
+                Paste an example email you've written. The AI will use this as a template to match your email structure, tone, and formatting style when generating responses.
+              </p>
+              <textarea
+                value={emailFormatTemplate || ''}
+                onChange={(e) => setEmailFormatTemplate(e.target.value)}
+                className="w-full min-h-[200px] px-4 py-3 bg-seasalt-500/5 border border-seasalt-200/60 rounded-lg text-seasalt-100 placeholder-seasalt-300 focus:outline-none focus:ring-2 focus:ring-amethyst-400 focus:border-amethyst-400 transition-all duration-200 resize-vertical font-mono text-sm"
+                placeholder="Example:&#10;&#10;Hi [Name],&#10;&#10;Thanks for reaching out! I'd be happy to help with [topic].&#10;&#10;Let me know if you have any questions.&#10;&#10;Best,&#10;[Your Name]"
+              />
+            </div>
+            <Button onClick={updateEmailFormatTemplate} className="w-full sm:w-auto">
+              Save Format Template
+            </Button>
+            
+            {emailFormatSuccess && (
+              <motion.div
+                className="flex items-center gap-3 p-4 bg-green-500/20 border border-green-500/30 rounded-xl text-green-300 mt-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <Save />
+                <span>{emailFormatSuccess}</span>
+              </motion.div>
+            )}
+          </motion.div>
+        </motion.div>
+
+        {/* Email Instructions Section */}
+        <motion.div className="mb-12" variants={itemVariants}>
+          <motion.div className="flex items-center gap-4 mb-8" variants={itemVariants}>
+            <div className="w-10 h-10 bg-amber-500/10 rounded-lg flex items-center justify-center">
+              <MessageCircle />
+            </div>
+            <h2 className="text-2xl font-bold text-seasalt-100">Email Instructions</h2>
+          </motion.div>
+          <motion.div
+            className="p-8 bg-white rounded-xl border border-seasalt-200/50 shadow-sm"
+            variants={cardVariants}
+            whileHover={{ y: -2, transition: { duration: 0.2 } }}
+          >
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-seasalt-100 mb-3">
+                Specific instructions for email generation
+              </label>
+              <p className="text-sm text-seasalt-300 mb-4">
+                Provide specific instructions that the AI should follow when generating emails. For example, "Start all emails with Hello!" or "Always include pricing in the first paragraph."
+              </p>
+              <textarea
+                value={emailInstructions || ''}
+                onChange={(e) => setEmailInstructions(e.target.value)}
+                className="w-full min-h-[120px] px-4 py-3 bg-seasalt-500/5 border border-seasalt-200/60 rounded-lg text-seasalt-100 placeholder-seasalt-300 focus:outline-none focus:ring-2 focus:ring-amethyst-400 focus:border-amethyst-400 transition-all duration-200 resize-vertical"
+                placeholder="Example: Start all emails with 'Hello!' and always include a call to action at the end."
+              />
+            </div>
+            <Button onClick={updateEmailInstructions} className="w-full sm:w-auto">
+              Save Instructions
+            </Button>
+            
+            {emailInstructionsSuccess && (
+              <motion.div
+                className="flex items-center gap-3 p-4 bg-green-500/20 border border-green-500/30 rounded-xl text-green-300 mt-6"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+              >
+                <Save />
+                <span>{emailInstructionsSuccess}</span>
               </motion.div>
             )}
           </motion.div>

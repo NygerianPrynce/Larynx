@@ -128,3 +128,63 @@ async def update_brand_summary(request: Request, payload: BrandSummaryPayload):
     store_brand_context(user_id, {"brand_summary": payload.summary})
 
     return {"status": "success", "message": "Brand summary updated"}
+
+# Email Format Template endpoints
+class EmailFormatTemplatePayload(BaseModel):
+    email_format_template: Optional[str] = None
+
+@router.get("/get-email-format-template")
+async def get_email_format_template(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    response = supabase.table("users").select("email_format_template").eq("id", user_id).execute()
+
+    if not response.data:
+        return {"email_format_template": ""}
+
+    template = response.data[0].get("email_format_template", "")
+    return {"email_format_template": template}
+
+@router.post("/update-email-format-template")
+async def update_email_format_template(request: Request, payload: EmailFormatTemplatePayload):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    supabase.table("users").update({
+        "email_format_template": payload.email_format_template or ""
+    }).eq("id", user_id).execute()
+
+    return {"status": "success", "message": "Email format template updated"}
+
+# Email Instructions endpoints
+class EmailInstructionsPayload(BaseModel):
+    email_instructions: Optional[str] = None
+
+@router.get("/get-email-instructions")
+async def get_email_instructions(request: Request):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    response = supabase.table("users").select("email_instructions").eq("id", user_id).execute()
+
+    if not response.data:
+        return {"email_instructions": ""}
+
+    instructions = response.data[0].get("email_instructions", "")
+    return {"email_instructions": instructions}
+
+@router.post("/update-email-instructions")
+async def update_email_instructions(request: Request, payload: EmailInstructionsPayload):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    supabase.table("users").update({
+        "email_instructions": payload.email_instructions or ""
+    }).eq("id", user_id).execute()
+
+    return {"status": "success", "message": "Email instructions updated"}
