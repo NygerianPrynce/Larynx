@@ -28,18 +28,23 @@
 
 .editor-content {
   outline: none !important;
-  font-size: 16px !important; /* Default font size for normal text */
+  font-size: 20px !important; /* Default font size for normal text (size 4) */
   direction: ltr !important; /* Ensure left-to-right text direction */
   text-align: left !important; /* Ensure left alignment */
 }
 
 .editor-content p {
   margin: 0 0 12px 0 !important;
-  font-size: 16px !important; /* Ensure paragraphs have proper size */
+  font-size: 20px !important; /* Ensure paragraphs have proper size */
 }
 
 .editor-content div {
-  font-size: 16px !important; /* Ensure divs have proper size */
+  font-size: 20px !important; /* Ensure divs have proper size */
+}
+
+/* Ensure new text gets default size */
+.editor-content * {
+  font-size: inherit !important;
 }
 
 .editor-content span {

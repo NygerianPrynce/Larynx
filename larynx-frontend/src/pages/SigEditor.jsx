@@ -428,7 +428,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
               {/* Editor - Uncontrolled */}
               <div
                 ref={editorRef}
-                className={`editor-content ${compact ? 'p-3' : 'p-6'} ${compact ? 'min-h-[150px]' : 'min-h-[300px]'} text-gray-800 text-base leading-relaxed focus:outline-none bg-white relative`}
+                className={`editor-content ${compact ? 'p-3' : 'p-6'} ${compact ? 'min-h-[150px]' : 'min-h-[300px]'} text-gray-800 leading-relaxed focus:outline-none bg-white relative`}
                 contentEditable={true}
                 onKeyDown={handleKeyDown}
                 onSelect={handleSelectionChange}
@@ -438,6 +438,30 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                   if (placeholder) {
                     const hasContent = e.target.textContent.trim() && e.target.textContent.trim() !== '';
                     placeholder.style.display = hasContent ? 'none' : 'block';
+                  }
+                  
+                  // Ensure new text gets default font size (size 4 = 20px)
+                  const selection = window.getSelection();
+                  if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const container = range.commonAncestorContainer;
+                    
+                    // If typing in a text node without font size, apply default
+                    if (container.nodeType === Node.TEXT_NODE) {
+                      const parent = container.parentElement;
+                      if (parent && (!parent.hasAttribute('size') || parent.tagName !== 'FONT')) {
+                        // Check if we need to wrap in font tag with size 4
+                        const fontElements = parent.querySelectorAll('font[size]');
+                        if (fontElements.length === 0) {
+                          // Apply default font size to parent if no font tags exist
+                          try {
+                            document.execCommand('fontSize', false, '4');
+                          } catch (err) {
+                            // Ignore if command fails
+                          }
+                        }
+                      }
+                    }
                   }
                 }}
                 onFocus={(e) => {

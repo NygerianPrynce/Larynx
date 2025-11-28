@@ -20,9 +20,9 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
     7: '36px'
   }
 
-  // Initialize editor content
+  // Initialize editor content - only set initial value, don't update on every change
   useEffect(() => {
-    if (editorRef.current) {
+    if (editorRef.current && !editorRef.current.hasAttribute('data-initialized')) {
       if (value) {
         editorRef.current.innerHTML = value
         editorRef.current.removeAttribute('data-empty')
@@ -30,23 +30,27 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
         editorRef.current.innerHTML = ''
         editorRef.current.setAttribute('data-empty', 'true')
       }
+      editorRef.current.setAttribute('data-initialized', 'true')
     }
-  }, [value])
+  }, []) // Only run once on mount
 
-  // Sync content changes to parent
+  // Sync content changes to parent - use requestAnimationFrame to avoid cursor jumping
   const handleInput = useCallback((e) => {
-    if (onChange && editorRef.current) {
-      onChange(editorRef.current.innerHTML)
-    }
-    // Update placeholder visibility
-    if (editorRef.current) {
-      const isEmpty = !editorRef.current.textContent || editorRef.current.textContent.trim() === ''
-      if (isEmpty) {
-        editorRef.current.setAttribute('data-empty', 'true')
-      } else {
-        editorRef.current.removeAttribute('data-empty')
+    // Use requestAnimationFrame to batch updates and preserve cursor
+    requestAnimationFrame(() => {
+      if (onChange && editorRef.current) {
+        onChange(editorRef.current.innerHTML)
       }
-    }
+      // Update placeholder visibility
+      if (editorRef.current) {
+        const isEmpty = !editorRef.current.textContent || editorRef.current.textContent.trim() === ''
+        if (isEmpty) {
+          editorRef.current.setAttribute('data-empty', 'true')
+        } else {
+          editorRef.current.removeAttribute('data-empty')
+        }
+      }
+    })
   }, [onChange])
 
   const execCommand = useCallback((command, value = null) => {
