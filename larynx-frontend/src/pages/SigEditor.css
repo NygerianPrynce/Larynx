@@ -31,6 +31,7 @@
   font-size: 20px !important; /* Default font size for normal text (size 4) */
   direction: ltr !important; /* Ensure left-to-right text direction */
   text-align: left !important; /* Ensure left alignment */
+  line-height: 1.5 !important;
 }
 
 .editor-content p {
@@ -42,13 +43,47 @@
   font-size: 20px !important; /* Ensure divs have proper size */
 }
 
-/* Ensure new text gets default size */
-.editor-content * {
-  font-size: inherit !important;
-}
-
 .editor-content span {
   font-size: inherit !important; /* Inherit from parent */
+}
+
+/* Override font tags to ensure proper sizing */
+.editor-content font[size="1"] {
+  font-size: 8px !important;
+}
+
+.editor-content font[size="2"] {
+  font-size: 10px !important;
+}
+
+.editor-content font[size="3"] {
+  font-size: 12px !important;
+}
+
+.editor-content font[size="4"] {
+  font-size: 20px !important; /* Normal text size */
+}
+
+.editor-content font[size="5"] {
+  font-size: 18px !important;
+}
+
+.editor-content font[size="6"] {
+  font-size: 24px !important;
+}
+
+.editor-content font[size="7"] {
+  font-size: 36px !important;
+}
+
+/* Ensure all text nodes and elements without explicit font size get default size */
+.editor-content > *:not(font) {
+  font-size: 20px !important;
+}
+
+/* Ensure direct text content gets default size */
+.editor-content {
+  font-size: 20px !important;
 }
 
 /* Fix bullet points visibility */
@@ -83,6 +118,12 @@
 
 .editor-content a:hover {
   color: #7c3aed !important;
+}
+
+/* Placeholder text styling */
+.editor-content .placeholder-text {
+  font-size: 20px !important;
+  line-height: 1.5 !important;
 }
 
 /* Font size controls */
@@ -164,6 +205,7 @@
   top: 1rem;
   left: 1rem;
   white-space: pre-wrap;
+  font-size: 16px !important; /* Match textarea placeholder size */
 }
 
 .editor-content[data-placeholder]:not([data-empty="true"]):before {

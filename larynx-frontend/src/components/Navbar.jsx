@@ -159,7 +159,8 @@ const Navbar = () => {
             transform: translateX(4px);
           }
           
-          @media (max-width: 1024px) {
+          /* Show mobile menu from 1200px down to avoid squeeze between 1200–1000px */
+          @media (max-width: 1200px) {
             .desktop-nav {
               display: none !important;
             }
@@ -168,7 +169,7 @@ const Navbar = () => {
             }
           }
           
-          @media (min-width: 1025px) {
+          @media (min-width: 1201px) {
             .desktop-nav {
               display: flex !important;
             }
@@ -218,19 +219,12 @@ const Navbar = () => {
             transform: scale(1.1);
           }
           
-          /* Reduce nav gap on smaller screens instead of compressing logo */
-          @media (max-width: 1200px) {
+          /* Desktop nav gaps (only visible above 1200px now) */
+          @media (min-width: 1201px) and (max-width: 1400px) {
             .desktop-nav {
               gap: 24px !important;
             }
           }
-          
-          @media (max-width: 1100px) {
-            .desktop-nav {
-              gap: 16px !important;
-            }
-          }
-          
           
           .mobile-menu-button:hover {
             background: #f3f4f6 !important;

@@ -209,7 +209,7 @@ const SimpleRichTextEditor = ({ value = '', onChange, placeholder = '', minHeigh
         contentEditable={true}
         onInput={handleInput}
         onBlur={handleInput}
-        style={{ minHeight, direction: 'ltr' }}
+        style={{ minHeight, direction: 'ltr', fontSize: '16px' }}
         dir="ltr"
         suppressContentEditableWarning={true}
         data-placeholder={placeholder}
