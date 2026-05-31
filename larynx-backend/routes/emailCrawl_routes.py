@@ -28,8 +28,12 @@ async def crawl_emails(request: Request):
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")    
     
-    token_response = supabase.table("tokens").select("access_token").eq("user_id", user_id).execute()
-    access_token = await refresh_access_token_if_needed(user_id, supabase)
+    try:
+        access_token = await refresh_access_token_if_needed(user_id, supabase)
+    except Exception as e:
+        # No token / refresh failed → tell the client to re-authenticate rather than 500.
+        logging.warning(f"Token unavailable for user {user_id} during crawl: {e}")
+        raise HTTPException(status_code=401, detail="Google authorization required. Please reconnect your account.")
 
     headers = {
         "Authorization": f"Bearer {access_token}"

@@ -27,17 +27,18 @@ async def login(request: Request):
     if not redirect_uri:
         raise HTTPException(status_code=500, detail="GOOGLE_REDIRECT_URI not configured")
     
-    # Check if user is already authenticated
+    # Check if user is already authenticated.
+    # Only skip re-auth if a usable refresh token actually exists — a session alone
+    # is NOT enough (a user can have a session but no token row after a failed flow).
     user_id = request.session.get("user_id")
     if user_id:
-        # User has a session, check if they need to re-authenticate
         try:
-            user_data = supabase.table("users").select("token_status").eq("id", user_id).execute()
-            if user_data.data:
-                token_status = user_data.data[0].get("token_status", "unknown")
-                if token_status != "expired":
-                    # User is already authenticated, redirect to home
-                    return RedirectResponse(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/home")
+            token_data = supabase.table("tokens").select("refresh_token, token_status").eq("user_id", user_id).execute()
+            has_refresh = bool(token_data.data and token_data.data[0].get("refresh_token"))
+            token_status = token_data.data[0].get("token_status") if token_data.data else None
+            if has_refresh and token_status != "expired":
+                # Fully authenticated with a valid token — go home.
+                return RedirectResponse(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/home")
         except Exception as e:
             logging.warning(f"Error checking existing session: {e}")
     
@@ -91,11 +92,7 @@ async def auth_callback(request: Request):
             user_id = new_user.data[0]["id"]
             has_onboarded = False
 
-        # 2. Save session
-        request.session["user_email"] = email
-        request.session["user_id"] = user_id
-
-        # 3. Store tokens
+        # 2. Determine the refresh token
         expires_at = datetime.now(timezone.utc) + timedelta(seconds=token["expires_in"])
 
         # Fetch existing token row to preserve refresh_token if needed
@@ -104,26 +101,28 @@ async def auth_callback(request: Request):
 
         # Use new refresh_token if present, otherwise fallback to existing
         refresh_token_to_store = token.get("refresh_token") or existing_refresh_token
-        
-        # If we still don't have a refresh token, redirect back to Google with consent.
-        # FIX: was using the deprecated /oauth/authorize endpoint.
-        # Correct endpoint is /o/oauth2/v2/auth (required for CASA compliance).
+
+        # If we have no refresh token, force a consent prompt to obtain one.
+        # IMPORTANT: use Authlib's authorize_redirect (NOT a hand-built URL) so the
+        # OAuth state is written to the session — otherwise the return trip fails with
+        # MismatchingStateError and the user ends up "logged in" with no token row.
+        # The one-shot session guard prevents an infinite consent loop.
         if not refresh_token_to_store:
-            logging.info(f"No refresh token received for user {user_id} - redirecting with consent")
-            from urllib.parse import urlencode
+            if request.session.get("consent_retry"):
+                request.session.pop("consent_retry", None)
+                logging.error(f"Still no refresh token after consent retry for user {user_id}")
+                return RedirectResponse(f"{FRONTEND_URL}/login?error=no_refresh_token")
+            request.session["consent_retry"] = True
+            logging.info(f"No refresh token for user {user_id} - forcing consent prompt")
             redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
-            params = urlencode({
-                "client_id": os.getenv("GOOGLE_CLIENT_ID"),
-                "redirect_uri": redirect_uri,
-                "scope": "openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose",
-                "response_type": "code",
-                "access_type": "offline",
-                "prompt": "consent",
-            })
-            consent_url = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
-            return RedirectResponse(consent_url)
-        
-        # Upsert token
+            return await oauth.google.authorize_redirect(
+                request, redirect_uri, access_type="offline", prompt="consent"
+            )
+
+        # Got a refresh token — clear the retry guard.
+        request.session.pop("consent_retry", None)
+
+        # 3. Store tokens (BEFORE setting the session, so a session always implies a token)
         supabase.table("tokens").upsert({
             "user_id": user_id,
             "access_token": token["access_token"],
@@ -135,8 +134,14 @@ async def auth_callback(request: Request):
             "last_token_error": None
         }, on_conflict=["user_id"]).execute()
 
+        # Mirror status onto the users row used elsewhere for quick checks.
+        supabase.table("users").update({"token_status": "valid"}).eq("id", user_id).execute()
 
-        # 4. Redirect to appropriate page
+        # 4. Save session — only now that the token is safely stored.
+        request.session["user_email"] = email
+        request.session["user_id"] = user_id
+
+        # 5. Redirect to appropriate page
         if has_onboarded:
             return RedirectResponse(f"{FRONTEND_URL}/home")
         else:
