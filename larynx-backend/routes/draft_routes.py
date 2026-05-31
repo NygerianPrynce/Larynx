@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel, Field
 from datetime import datetime
 from functions import fetch_tone_profile
+from tone_engine import build_voice_section
 from config import supabase
 from openai import OpenAI
 import re
@@ -313,7 +314,6 @@ async def generate_draft(request: Request, email: DraftRequest):
         raise HTTPException(401, "Not authenticated")
 
     # Fetch user data
-    tone = fetch_tone_profile(user_id)
     user_row = supabase.table("users").select("signature", "brand_summary", "email_format_template", "email_instructions").eq("id", user_id).execute()
     row = user_row.data[0] if user_row.data else {}
     signature_block = row.get("signature", "")
@@ -379,14 +379,13 @@ async def generate_draft(request: Request, email: DraftRequest):
     SPECIFIC EMAIL INSTRUCTIONS - Follow these rules:
     {email_instructions}"""
     
+    # Voice section: prose style card + the user's most relevant past emails.
+    voice_section = build_voice_section(user_id, email_content)
+
     prompt = f"""You are writing an email reply for a small business owner.
 
-    Here's how they typically write - match this natural style:
-    - Their sentences are usually {tone['communication_patterns']['avg_sentence_length']:.0f} words long
-    - They frequently use words like: {', '.join([w for w, _ in tone['top_words']][:5])}
-    - They tend to be {tone['politeness_analysis']['communication_style']} in tone
-    - They often express {tone['emotional_tone']['dominant_emotion']}
-    
+    {voice_section}
+
     Their brand identity:
     {brand_summary or "No brand information available."}
     {format_template_section}{instructions_section}
@@ -489,7 +488,6 @@ async def test_prompt_preview(request: Request, test_request: TestPromptRequest)
         raise HTTPException(401, "Not authenticated")
     
     # Fetch user data (same as in generate_draft)
-    tone = fetch_tone_profile(user_id)
     user_row = supabase.table("users").select("signature", "brand_summary", "email_format_template", "email_instructions").eq("id", user_id).execute()
     row = user_row.data[0] if user_row.data else {}
     signature_block = row.get("signature", "")
@@ -542,14 +540,11 @@ async def test_prompt_preview(request: Request, test_request: TestPromptRequest)
     {email_instructions}"""
     
     # Generate the full prompt (same as in generate_draft)
+    voice_section = build_voice_section(user_id, email_content)
     prompt = f"""You are writing an email reply for a small business owner.
 
-    Here's how they typically write - match this natural style:
-    - Their sentences are usually {tone['communication_patterns']['avg_sentence_length']:.0f} words long
-    - They frequently use words like: {', '.join([w for w, _ in tone['top_words']][:5])}
-    - They tend to be {tone['politeness_analysis']['communication_style']} in tone
-    - They often express {tone['emotional_tone']['dominant_emotion']}
-    
+    {voice_section}
+
     Their brand identity:
     {brand_summary or "No brand information available."}
     {format_template_section}{instructions_section}

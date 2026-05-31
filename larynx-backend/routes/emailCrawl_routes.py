@@ -12,6 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from config import supabase
 from functions import analyze_email_batch, store_tone_profile, refresh_access_token_if_needed
+from tone_engine import generate_style_card, store_style_card, store_exemplars
 from services.email_service import EmailProcessingService
 from rate_limiter import limiter
 
@@ -92,8 +93,12 @@ async def crawl_emails(request: Request):
             
         # Check if we have enough usable emails for analysis
         if len(email_data) >= 5:  # Require at least 5 emails for meaningful analysis
+            # Voice capture (style card + retrievable exemplars). This is what actually
+            # makes drafts sound like the user. Stats kept only for the response payload.
             tone_profile = analyze_email_batch(email_data)
-            store_tone_profile(user_id, tone_profile)
+            style_card = generate_style_card(email_data)
+            store_style_card(user_id, style_card)
+            store_exemplars(user_id, email_data)
             profile_type = "analyzed"
         else:
             # Fall back to generic tone profile
@@ -136,7 +141,9 @@ async def crawl_emails(request: Request):
                     "avg_paragraphs": 2.5, "avg_sentence_length": 15.8
                 }
             }
-            store_tone_profile(user_id, tone_profile)
+            # Not enough real emails to learn a voice — store a neutral generic
+            # style card (generate_style_card([]) returns the generic card, no API call).
+            store_style_card(user_id, generate_style_card([]))
             profile_type = "generic_fallback"
         
         if signature_counter:

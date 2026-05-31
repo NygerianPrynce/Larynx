@@ -18,6 +18,7 @@ from pydantic import BaseModel
 
 from config import supabase
 from functions import refresh_access_token_if_needed, fetch_tone_profile
+from tone_engine import build_voice_section
 from routes.draft_routes import InventoryMatcher, create_draft_with_gpt
 from services.email_service import EmailProcessingService
 
@@ -831,7 +832,6 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
     try:
         # Fetch user data
         logging.info(f"Generating draft for user {user_id}, subject: {subject[:50]}...")
-        tone = fetch_tone_profile(user_id)
         user_row = supabase.table("users").select("signature", "brand_summary", "email_format_template", "email_instructions").eq("id", user_id).execute()
         row = user_row.data[0] if user_row.data else {}
         signature_block = row.get("signature", "")
@@ -896,13 +896,12 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         SPECIFIC EMAIL INSTRUCTIONS - Follow these rules:
         {email_instructions}"""
         
+        # Voice section: prose style card + the user's most relevant past emails.
+        voice_section = build_voice_section(user_id, email_content)
+
         prompt = f"""You are writing an email reply for a small business owner.
 
-        Here's how they typically write - match this natural style:
-        - Their sentences are usually {tone['communication_patterns']['avg_sentence_length']:.0f} words long
-        - They frequently use words like: {', '.join([w for w, _ in tone['top_words']][:5])}
-        - They tend to be {tone['politeness_analysis']['communication_style']} in tone
-        - They often express {tone['emotional_tone']['dominant_emotion']}
+        {voice_section}
 
         Their brand identity:
         {brand_summary or "No brand information available."}
