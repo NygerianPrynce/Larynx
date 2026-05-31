@@ -74,12 +74,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Session (https_only=True secures the cookie to HTTPS-only transport) ──────
+# ── Session ───────────────────────────────────────────────────────────────────
+# https_only=True (Secure cookie flag) is correct for production (HTTPS).
+# In local dev (ENVIRONMENT != "production") we set it to False so the session
+# cookie is sent over plain HTTP — required for the OAuth state round-trip to
+# work when running against localhost.
+_is_production = os.getenv("ENVIRONMENT", "development") == "production"
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY"),
     same_site="lax",
-    https_only=True,   # FIX: was False — sessions now require HTTPS, preventing cookie theft
+    https_only=_is_production,
     max_age=30 * 24 * 60 * 60  # 30 days
 )
 
