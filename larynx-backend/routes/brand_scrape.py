@@ -137,10 +137,18 @@ async def test_brand_scrape(request: Request, url: str = Query(...)):
 
     # 🧠 Optional: Check if scraping succeeded
     if "error" in brand_summary:
-        raise HTTPException(500, detail=brand_summary["error"])
-    
-    store_brand_context(user_id, brand_summary)
-    
+        # Log the real reason server-side so we can diagnose (OpenAI/auth/quota/etc.)
+        import logging
+        logging.error(f"website-scrape failed for {url}: {brand_summary['error']}")
+        raise HTTPException(502, detail="Could not analyze that website. Please try again or enter your brand details manually.")
+
+    try:
+        store_brand_context(user_id, brand_summary)
+    except Exception:
+        import logging
+        logging.exception("store_brand_context failed")
+        raise HTTPException(500, detail="Failed to save brand summary")
+
     return {"status": "SUCCESS", "summary": brand_summary["brand_summary"]}
 
 
