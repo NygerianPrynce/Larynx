@@ -4,14 +4,15 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Request, HTTPException
+from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
+from authlib.integrations.base_client.errors import MismatchingStateError
 import httpx
 
 from config import supabase, oauth  # Shared objects from your config
 
 from pydantic import BaseModel
 import os
-from fastapi.responses import RedirectResponse
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
@@ -145,10 +146,17 @@ async def auth_callback(request: Request):
             return RedirectResponse(f"{FRONTEND_URL}/onboarding")
 
 
+    except MismatchingStateError:
+        # State mismatch = user retried an already-used OAuth callback URL (the session
+        # state was consumed on the first attempt). Send them back to login cleanly.
+        logging.warning("auth_callback: mismatching OAuth state — redirecting to login")
+        return RedirectResponse(f"{FRONTEND_URL}/login?error=session_expired")
+
     except Exception as e:
-        # Log internally, return generic message — never expose raw OAuth/internal errors.
+        # Log internally, redirect browser back to login — avoids showing raw JSON
+        # to users and prevents internal error details from leaking.
         logging.exception("auth_callback failed")
-        raise HTTPException(status_code=400, detail="Authentication failed")
+        return RedirectResponse(f"{FRONTEND_URL}/login?error=auth_failed")
 
 @router.delete("/user/delete")
 async def delete_user_account(request: Request):
