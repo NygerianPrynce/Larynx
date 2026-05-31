@@ -1,5 +1,6 @@
+import logging
 from fastapi import APIRouter, Request, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from config import supabase
 import pandas as pd
 import re
@@ -11,14 +12,18 @@ import csv
 from difflib import SequenceMatcher
 import inflect
 from datetime import datetime, timedelta
+from rate_limiter import limiter
 
 
 router = APIRouter()
+
+
+# Field-length caps prevent oversized payloads from being stored or used in prompts.
 class InventoryItem(BaseModel):
-    name: str
-    price: float
-    pricing_type: str  # ADD THIS FIELD
-    category: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=200)
+    price: float = Field(..., gt=0, le=1_000_000)
+    pricing_type: str = Field(..., max_length=30)
+    category: Optional[str] = Field(None, max_length=100)
 
 @router.post("/inventory/add")
 async def add_inventory_item(request: Request, item: InventoryItem):
@@ -454,6 +459,7 @@ class FileProcessor:
             "supported": file_ext in [ext.lstrip('.') for ext in self.supported_extensions]
         }
 @router.post("/inventory/bulk-upload")
+@limiter.limit("5/minute")   # File parsing + many DB writes — limit abuse
 async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
     user_id = request.session.get("user_id")
     if not user_id:
@@ -580,7 +586,9 @@ async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(400, f"Error processing {file_info['type']} file: {str(e)}")
+        # Log full error internally, return generic message to the client
+        logging.exception("bulk_upload_inventory failed")
+        raise HTTPException(400, f"Error processing {file_info['type']} file")
 
 # Optional: Add an endpoint to adjust similarity threshold
 @router.post("/inventory/set-duplicate-threshold")
@@ -710,7 +718,7 @@ async def delete_inventory_item(item_id: str, request: Request):
 
     return {"message": "Item deleted"}
 class SpecialInstructions(BaseModel):
-    special_instructions: str
+    special_instructions: str = Field(..., max_length=5000)
 
 @router.post("/inventory/special-instructions")
 async def save_special_instructions(request: Request, data: SpecialInstructions):

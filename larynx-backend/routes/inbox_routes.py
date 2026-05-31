@@ -23,7 +23,28 @@ from services.email_service import EmailProcessingService
 
 router = APIRouter()
 
-# ─── Global state for tracking processed emails ──────────────────────────────────────
+# ── Security gates ────────────────────────────────────────────────────────────
+# Set ENABLE_DEBUG_ROUTES=true in .env only during local development.
+# In production these endpoints are disabled — they expose user data and
+# internal system state, which would be a finding in a CASA assessment.
+_DEBUG_ROUTES = os.getenv("ENABLE_DEBUG_ROUTES", "false").lower() == "true"
+
+# Admin-only endpoints require this secret in the X-Admin-Secret header.
+# Set a strong random value in production .env — never expose in code.
+_ADMIN_SECRET = os.getenv("ADMIN_SECRET", "")
+
+def _require_debug(func_name: str):
+    """Raise 404 if debug routes are disabled (production default)."""
+    if not _DEBUG_ROUTES:
+        raise HTTPException(status_code=404, detail="Not found")
+
+def _require_admin(request: Request):
+    """Raise 403 if caller doesn't supply the correct X-Admin-Secret header."""
+    secret = request.headers.get("X-Admin-Secret", "")
+    if not _ADMIN_SECRET or secret != _ADMIN_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+# ─── Global state for tracking processed emails ──────────────────────────────
 active_monitoring_tasks: Set[str] = set()
 
 
@@ -263,12 +284,19 @@ async def fetch_email_details(client: httpx.AsyncClient, headers: dict, msg_id: 
         
         # Customer classification
         customer_status = customer_detector.analyze_customer_status(raw_body)
-        
-        # Skip unknown customers if desired (you can change this)
-        if customer_status == 'unknown':
-            await mark_email_as_filtered(user_id, msg_id, "unknown_customer", sender, subject)
-            return None
-        
+
+        # FIX: Previously, 'unknown' status caused the email to be silently dropped.
+        # This was far too aggressive — the detector returns 'unknown' for ANY email
+        # that doesn't match explicit customer/prospect keyword patterns, which includes
+        # many real, ambiguous business inquiries ("Hi, do you have availability?").
+        #
+        # New rule: only hard-filter if the detector is CONFIDENT it's non-business.
+        # 'customer'  → process (clear existing customer)
+        # 'prospect'  → process (clear new inquiry)
+        # 'unknown'   → process (ambiguous — better to draft and not need it than miss it)
+        # The old 'unknown' → drop behavior caused silent loss of real customer emails.
+        logging.info(f"📧 Email classification: '{customer_status}' — Subject: {subject[:40]}")
+
         # This email passed all filters - return it for processing
         logging.info(f"✅ Email passed all filters - Subject: {subject[:50]}...")
         return {
@@ -304,8 +332,10 @@ async def cleanup_old_filtered_emails():
 @router.get("/debug/filtered-emails")
 async def debug_filtered_emails(request: Request, limit: int = 20):
     """
-    Debug endpoint to see recently filtered emails
+    Debug endpoint to see recently filtered emails.
+    DISABLED in production (ENABLE_DEBUG_ROUTES env var must be 'true').
     """
+    _require_debug("debug_filtered_emails")
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -459,8 +489,10 @@ async def monitor_user_emails(user_id: str):
 @router.get("/debug/email/{message_id}")
 async def debug_email_structure(request: Request, message_id: str):
     """
-    Debug endpoint to inspect email structure and understand why it might be filtered
+    Debug endpoint to inspect email structure and understand why it might be filtered.
+    DISABLED in production (ENABLE_DEBUG_ROUTES env var must be 'true').
     """
+    _require_debug("debug_email_structure")
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
@@ -981,11 +1013,14 @@ async def auto_start_monitoring_on_login(request: Request):
 @router.get("/all-monitoring-users")
 async def get_all_monitoring_users(request: Request):
     """
-    Get all users currently being monitored (for debugging)
+    Get all users currently being monitored.
+    Requires X-Admin-Secret header matching ADMIN_SECRET env var.
+    Previously any authenticated user could enumerate all user IDs — fixed.
     """
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    _require_admin(request)
     
     try:
         result = supabase.table("users").select(
@@ -1382,74 +1417,54 @@ async def create_gmail_draft_endpoint(draft_id: str, request: Request):
 
 class BotEmailDetector:
     def __init__(self):
-        # Expanded bot sender patterns
-        self.bot_sender_patterns = [
-            r'no-?reply',
-            r'noreply',
-            r'notifications?@',
-            r'do[-_.]?not[-_.]?reply'
-            r'calendar@',
-            r'automated?@',
-            r'do-?not-?reply',
-            r'support@',
-            r'help@',
-            r'system@',
-            r'admin@',
-            r'bounce',
-            r'mailer-?daemon',
-            r'postmaster',
-            r'marketing@',
-            r'newsletter',
-            r'campaigns?@',
-            r'alerts?@',
-            r'updates?@',
-            r'info@',
-            r'service@',
-            r'team@',
-            r'security@',
-            r'billing@',
-            r'invoices?@',
-            r'receipts?@',
-            r'orders?@',
-            r'shipping@',
-            r'delivery@',
-            r'tracking@',
-            r'api@',
-            r'bot@',
-            r'auto@',
-            r'robot@',
+        # ── Sender local-part patterns ─────────────────────────────────────────
+        # CRITICAL FIX: These are matched ONLY against the local part of the
+        # email address (the part before @).  The old code ran re.search()
+        # against the FULL address, so bare words like 'info', 'team', 'service'
+        # would match legitimate business emails such as:
+        #   info@besteventsrental.com  ← real customer, was being dropped
+        #   team@johncatering.com      ← real customer, was being dropped
+        #   john@informatica.com       ← 'info' matched inside domain, false positive
+        #
+        # New rules:
+        #   • Clearly-automated prefixes (noreply, mailer-daemon, etc.) → partial match OK
+        #   • Common-word prefixes (billing, newsletter, etc.)          → exact match (^...$)
+        #   • Ambiguous words that real humans use (info, team, service,
+        #     support, help, admin, security)                           → REMOVED entirely
+        self.bot_sender_local_patterns = [
+            # Clearly automated — partial match is safe (these never appear in real names)
             r'no[-_.]?reply',
+            r'noreply',
+            r'donotreply',
             r'do[-_.]?not[-_.]?reply',
             r'auto[-_.]?reply',
-            r'donotreply',
-            r'automated?',
-            r'notifications?',
-            r'support',
-            r'help',
-            r'system',
-            r'admin',
-            r'bounce',
+            r'autoreply',
             r'mailer[-_.]?daemon',
             r'postmaster',
-            r'marketing',
-            r'newsletter',
-            r'campaigns?',
-            r'alerts?',
-            r'updates?',
-            r'info',
-            r'service',
-            r'team',
-            r'security',
-            r'billing',
-            r'invoices?',
-            r'receipts?',
-            r'orders?',
-            r'shipping',
-            r'delivery',
-            r'tracking',
-            r'api',
-            r'bot',
-            r'robot'
+            r'bounce',
+            r'unsubscribe',
+
+            # Exact-match only — prevents "john-notification@co.com" from matching
+            r'^automated?$',
+            r'^notifications?$',
+            r'^newsletter$',
+            r'^campaigns?$',
+            r'^marketing$',
+            r'^alerts?$',
+            r'^updates?$',
+            r'^billing$',
+            r'^invoices?$',
+            r'^receipts?$',
+            r'^orders?$',
+            r'^shipping$',
+            r'^delivery$',
+            r'^tracking$',
+            r'^api$',
+            r'^bot$',
+            r'^robot$',
+            r'^calendar$',
+            r'^system$',
+            r'^auto$',
         ]
         
         # Bot subject patterns
@@ -1524,15 +1539,14 @@ class BotEmailDetector:
             r'here\s+is\s+your\s+daily\s+report',
             r'new\s+comment\s+on\s+your\s+post',
             r'you\s+have\s+a\s+new\s+message',
-            r'don’t\s+miss\s+out\s+on',
+            r"don't\s+miss\s+out\s+on",
             r'special\s+offer\s+just\s+for\s+you',
             r'limited\s+time\s+deal',
             r'thank\s+you\s+for\s+registering',
             r'your\s+information\s+was\s+successfully\s+submitted',
-            r'we[’\']?ll\s+follow\s+up\s+with\s+you',
+            r"we['']?ll\s+follow\s+up\s+with\s+you",
             r'application\s+(received|submitted)',
             r'explore\s+our\s+open\s+roles',
-            r'nvidia[’\']?s\s+university\s+recruiting\s+team'
         ]
         
         # Headers that indicate automated emails
@@ -1547,17 +1561,31 @@ class BotEmailDetector:
 
     def is_bot_sender(self, sender: str) -> bool:
         """
-        Check if sender appears to be a bot based on email address patterns and known bot domains.
+        Check if sender appears to be a bot.
+
+        FIX: Now matches ONLY against the local part (before @).
+        Previously matched against the full address, causing false positives:
+          • r'info'    matched info@besteventsrental.com  → real customer DROPPED
+          • r'team'    matched team@johncatering.com      → real customer DROPPED
+          • r'bot'     matched john@robotics.com          → false positive on domain
+          • r'api'     matched rapid@company.com          → 'api' inside 'rapid'
+
+        Also removed 'nvidia.com' from bot_domains — that was a personal-inbox
+        artifact from development, not a production rule.
         """
-        # Extract only the email address (e.g., 'donotreply@nvidia.com')
         sender_email = email.utils.parseaddr(sender)[1].lower()
 
-        # Match flexible sender patterns like 'donotreply', 'do.not.reply', 'no-reply', etc.
-        for pattern in self.bot_sender_patterns:
-            if re.search(pattern, sender_email):
+        if not sender_email or '@' not in sender_email:
+            return False
+
+        # Split into local part and domain — match patterns against LOCAL PART ONLY
+        local_part, domain = sender_email.split('@', 1)
+
+        for pattern in self.bot_sender_local_patterns:
+            if re.search(pattern, local_part):
                 return True
 
-        # Match against known marketing/automation email domains
+        # Known email service provider domains — always automated
         bot_domains = [
             'mailgun.org',
             'sendgrid.net',
@@ -1569,11 +1597,10 @@ class BotEmailDetector:
             'zendesk.com',
             'freshdesk.com',
             'helpscout.net',
-            'nvidia.com'  # add this if you regularly get automated mail from NVIDIA
         ]
 
-        for domain in bot_domains:
-            if sender_email.endswith(domain):
+        for bot_domain in bot_domains:
+            if domain == bot_domain or domain.endswith('.' + bot_domain):
                 return True
 
         return False

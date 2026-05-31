@@ -105,8 +105,22 @@ const PrivacyPolicy = () => {
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
                 <div>
-                  <strong className="text-gray-900">Email Data:</strong>
-                  <span className="text-gray-700"> Email content, metadata, and sending patterns to generate AI responses</span>
+                  <strong className="text-gray-900">Sent Email Data (one-time, during onboarding):</strong>
+                  <span className="text-gray-700"> Up to 100 of your most recent sent emails are analyzed to learn your writing style. We extract aggregate statistics (sentence length, vocabulary, tone) and a signature — we do not store the underlying email bodies after analysis.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Incoming Email Data (while monitoring is on):</strong>
+                  <span className="text-gray-700"> The subject and body of incoming business emails are processed to generate a draft reply, stored for up to 7 days, then automatically deleted from our servers.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Business Profile Data:</strong>
+                  <span className="text-gray-700"> Brand summary, inventory items and pricing, email signature, and any custom formatting or instructions you provide.</span>
                 </div>
               </li>
               <li className="flex items-start space-x-3">
@@ -167,7 +181,7 @@ const PrivacyPolicy = () => {
           </motion.section>
 
           {/* Gmail Integration */}
-          <motion.section 
+          <motion.section
             className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm"
             variants={itemVariants}
           >
@@ -175,31 +189,59 @@ const PrivacyPolicy = () => {
               <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
                 <Mail className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">4. Gmail Integration</h2>
+              <h2 className="text-2xl font-bold text-gray-900">4. Gmail Integration & Google API Services</h2>
             </div>
             <p className="text-gray-700 mb-4">
-              Our service integrates with Gmail to read your emails and generate responses. We:
+              Larynx AI uses the Gmail API under two OAuth scopes, each with a specific purpose:
+            </p>
+            <ul className="space-y-3 mb-6">
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">gmail.readonly</strong>
+                  <span className="text-gray-700"> — Required to read incoming business emails so the AI can generate appropriate draft replies. We only process messages received after your account was created and that pass our business-email classifier.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">gmail.compose</strong>
+                  <span className="text-gray-700"> — Required to save the generated reply as a draft in your Gmail Drafts folder. We never send emails on your behalf — you review and send each draft yourself.</span>
+                </div>
+              </li>
+            </ul>
+            <p className="text-gray-700 mb-4">
+              Larynx AI's use of information received from Google APIs adheres to the{' '}
+              <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer" className="text-purple-700 underline hover:text-purple-900">
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements. Specifically:
             </p>
             <ul className="space-y-3">
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">Only access emails necessary for our AI service functionality</span>
+                <span className="text-gray-700">Gmail data is used solely to provide and improve the email drafting features of Larynx AI</span>
               </li>
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">Do not store your emails permanently on our servers</span>
+                <span className="text-gray-700">Gmail data is never used for advertising, sold, or transferred to third parties for marketing purposes</span>
               </li>
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">Use Gmail data solely to provide our email AI service</span>
+                <span className="text-gray-700">Gmail data is never used to train, fine-tune, or improve any general-purpose machine learning model</span>
               </li>
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">Do not share your Gmail data with third parties for advertising</span>
+                <span className="text-gray-700">No human at Larynx AI reads your Gmail messages, except as strictly necessary for security investigations, abuse prevention, or when you explicitly request support that requires it</span>
               </li>
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">Comply with Google's API Services User Data Policy</span>
+                <span className="text-gray-700">
+                  You can revoke our Gmail access at any time from your{' '}
+                  <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer" className="text-purple-700 underline hover:text-purple-900">
+                    Google Account permissions page
+                  </a>
+                </span>
               </li>
             </ul>
           </motion.section>
@@ -239,7 +281,7 @@ const PrivacyPolicy = () => {
           </motion.section>
 
           {/* Data Sharing */}
-          <motion.section 
+          <motion.section
             className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm"
             variants={itemVariants}
           >
@@ -247,27 +289,60 @@ const PrivacyPolicy = () => {
               <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
                 <Shield className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">6. Data Sharing</h2>
+              <h2 className="text-2xl font-bold text-gray-900">6. Data Sharing & Sub-Processors</h2>
             </div>
             <p className="text-gray-700 mb-4">
-              We do not sell, trade, or rent your personal information. We may share data only in these circumstances:
+              We do not sell, trade, or rent your personal information. To provide the service, we rely on the following sub-processors who process your data on our behalf:
+            </p>
+            <ul className="space-y-4 mb-6">
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">OpenAI</strong>
+                  <span className="text-gray-700"> — To generate AI-powered draft replies, the subject and body of incoming emails, along with your tone profile, brand summary, and inventory list, are sent to OpenAI's API. OpenAI processes this data under their{' '}
+                    <a href="https://openai.com/policies/api-data-usage-policies" target="_blank" rel="noopener noreferrer" className="text-purple-700 underline hover:text-purple-900">
+                      API Data Usage Policies
+                    </a>
+                    {' '}and does not use API inputs or outputs to train their models. We send only the data needed to generate a reply — no other personal information.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Supabase</strong>
+                  <span className="text-gray-700"> — Hosts our application database where your account, OAuth tokens, drafts, tone profile, inventory, and brand summary are stored. Supabase is SOC 2 Type II certified and encrypts data at rest with AES-256.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Render</strong>
+                  <span className="text-gray-700"> — Hosts our backend and frontend application servers. Render is SOC 2 Type II certified and enforces TLS 1.3 in transit.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Google</strong>
+                  <span className="text-gray-700"> — Provides sign-in (OAuth 2.0) and Gmail API access. Your Google account data is governed by Google's own privacy policy.</span>
+                </div>
+              </li>
+            </ul>
+            <p className="text-gray-700 mb-4">
+              Outside of these sub-processors, we share data only when:
             </p>
             <ul className="space-y-3">
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">With your explicit consent</span>
+                <span className="text-gray-700">You give us explicit consent</span>
               </li>
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">To comply with legal requirements</span>
+                <span className="text-gray-700">Required by law (subpoena, court order, or other legal process)</span>
               </li>
               <li className="flex items-start space-x-3">
                 <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">To protect our rights and prevent fraud</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
-                <span className="text-gray-700">With service providers who assist in our operations (under strict confidentiality agreements)</span>
+                <span className="text-gray-700">Necessary to protect our rights, prevent fraud, or investigate security incidents</span>
               </li>
             </ul>
           </motion.section>
@@ -313,7 +388,7 @@ const PrivacyPolicy = () => {
           </motion.section>
 
           {/* Data Retention */}
-          <motion.section 
+          <motion.section
             className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm"
             variants={itemVariants}
           >
@@ -323,9 +398,49 @@ const PrivacyPolicy = () => {
               </div>
               <h2 className="text-2xl font-bold text-gray-900">8. Data Retention</h2>
             </div>
+            <p className="text-gray-700 mb-4">
+              We retain different categories of data for different periods:
+            </p>
+            <ul className="space-y-3 mb-6">
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Email drafts and incoming email content:</strong>
+                  <span className="text-gray-700"> Automatically deleted from our servers 7 days after creation. The draft itself remains in your Gmail Drafts folder, under your control.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Filtered email records (metadata only):</strong>
+                  <span className="text-gray-700"> Sender, subject, and filter reason are retained for up to 30 days so the same message isn't re-processed.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Account information, tone profile, brand summary, inventory, signature:</strong>
+                  <span className="text-gray-700"> Retained as long as your account is active; permanently deleted within 30 days of account deletion.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">OAuth tokens:</strong>
+                  <span className="text-gray-700"> Retained while your account is active. On account deletion, we revoke the token with Google and delete it from our database immediately.</span>
+                </div>
+              </li>
+              <li className="flex items-start space-x-3">
+                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0"></div>
+                <div>
+                  <strong className="text-gray-900">Server activity logs:</strong>
+                  <span className="text-gray-700"> Retained for up to 30 days for security monitoring and debugging.</span>
+                </div>
+              </li>
+            </ul>
             <p className="text-gray-700 leading-relaxed">
-              We retain your data only as long as necessary to provide our services or as required by law. 
-              You can request deletion of your account and associated data at any time.
+              You can permanently delete your account and all associated data at any time from{' '}
+              <strong>Settings → Delete Account</strong>. This action is irreversible: it revokes our Gmail access with Google, removes all your drafts, tone profile, inventory, brand data, and account record from our database.
             </p>
           </motion.section>
 

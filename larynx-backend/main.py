@@ -3,8 +3,15 @@ import logging
 from datetime import datetime, timedelta, timezone
 import asyncio
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+# ProxyHeadersMiddleware: trusts X-Forwarded-Proto / X-Forwarded-For from Render's edge.
+# Without this, behind Render: request.url.scheme == "http" (incorrect), and the rate
+# limiter sees Render's internal IP for every request (one user could exhaust the limit
+# for everyone).
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from routes.auth_routes import router as auth_router
 from routes.emailCrawl_routes import router as email_router
@@ -14,10 +21,31 @@ from routes.inventory_routes import router as inventory_routes
 from routes.inbox_routes import router as inbox_router
 from routes.analytics_routes import router as analytics_router
 
-
-
 from config import supabase
 from fastapi.middleware.cors import CORSMiddleware
+
+# Rate limiter (shared instance — routes import this too)
+from rate_limiter import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+
+
+# ─── Security headers middleware ──────────────────────────────────────────────
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Adds OWASP-recommended HTTP security headers to every response.
+    Required for CASA Tier 2 assessment compliance.
+    """
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        # HSTS — only send over HTTPS (production)
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
 
 
 # Create app
@@ -25,24 +53,50 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
+# ── Proxy headers (Render terminates TLS at the edge) ─────────────────────────
+# Must be added BEFORE other middlewares so request.url.scheme reflects the
+# original client scheme (https), not the internal proxy hop (http).
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
+# ── Rate limiter ──────────────────────────────────────────────────────────────
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# ── Security headers ──────────────────────────────────────────────────────────
+app.add_middleware(SecurityHeadersMiddleware)
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://larynxai.com"],  # or ["*"] if testing
+    allow_origins=["https://larynxai.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Required to keep login session between redirects
+# ── Session (https_only=True secures the cookie to HTTPS-only transport) ──────
 app.add_middleware(
     SessionMiddleware,
     secret_key=os.getenv("SECRET_KEY"),
     same_site="lax",
-    https_only=False,
-    max_age=30 * 24 * 60 * 60  # 30 days in seconds (2,592,000 seconds)
+    https_only=True,   # FIX: was False — sessions now require HTTPS, preventing cookie theft
+    max_age=30 * 24 * 60 * 60  # 30 days
 )
 
 
+
+
+# ── Global exception handler ──────────────────────────────────────────────────
+# Catches anything an endpoint forgot to wrap. Logs the real traceback internally
+# but returns a generic 500 to the client — prevents stack-trace / DB-internal
+# leakage which is a standard CASA finding.
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logging.exception(f"Unhandled exception on {request.method} {request.url.path}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
 
 
 @app.get("/")

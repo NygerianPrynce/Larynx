@@ -13,11 +13,13 @@ from starlette.middleware.sessions import SessionMiddleware
 from config import supabase
 from functions import analyze_email_batch, store_tone_profile, refresh_access_token_if_needed
 from services.email_service import EmailProcessingService
+from rate_limiter import limiter
 
 
 router = APIRouter()
 
 @router.get("/crawl-emails")
+@limiter.limit("3/hour")   # Each call = up to 100 Gmail API requests. 3/hr is plenty for onboarding.
 async def crawl_emails(request: Request):
     email = request.session.get("user_email")
     if not email:
@@ -56,9 +58,12 @@ async def crawl_emails(request: Request):
             subject = next((h["value"] for h in headers_list if h["name"] == "Subject"), "(No Subject)")
             sender = next((h["value"] for h in headers_list if h["name"] == "From"), "(Unknown Sender)")
             
-            # Skip if sender looks like a bot or system
-            bot_senders = ["no-reply", "noreply", "notifications@", "calendar@", "automated@", "do-not-reply"]
-            if any(bot_id in sender.lower() for bot_id in bot_senders):
+            # Skip if sender looks like a bot or system.
+            # FIX: was using primitive substring match against full sender — caused
+            # false positives. Now uses the same BotEmailDetector as the inbox monitor
+            # for consistent, anchored matching against the local part only.
+            from routes.inbox_routes import BotEmailDetector
+            if BotEmailDetector().is_bot_sender(sender):
                 continue
 
             # Extract and clean body using centralized service
@@ -267,11 +272,11 @@ async def set_generic_tone(request: Request):
         }
     
     except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to set generic tone profile: {str(e)}"
-        )
-        
+        # Log the real error internally — return a generic message to the user.
+        # Exposing str(e) leaks stack-trace / DB internals (CASA finding).
+        logging.exception("set_generic_tone failed")
+        raise HTTPException(status_code=500, detail="Failed to set generic tone profile")
+
 
 from pydantic import BaseModel
 
@@ -309,10 +314,8 @@ async def get_signature(request: Request):
         }
     
     except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to fetch signature: {str(e)}"
-        )
+        logging.exception("get_signature failed")
+        raise HTTPException(status_code=500, detail="Failed to fetch signature")
 
 @router.put("/signature")
 async def update_signature(request: Request, signature_data: SignatureUpdateRequest):
@@ -343,7 +346,5 @@ async def update_signature(request: Request, signature_data: SignatureUpdateRequ
         }
     
     except Exception as e:
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to update signature: {str(e)}"
-        )
+        logging.exception("update_signature failed")
+        raise HTTPException(status_code=500, detail="Failed to update signature")

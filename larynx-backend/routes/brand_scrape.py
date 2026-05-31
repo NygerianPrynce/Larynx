@@ -4,10 +4,48 @@ from pydantic import BaseModel, Field
 from functions import scrape_brand_context, store_brand_context
 import httpx
 import json
-from typing import Optional
+import ipaddress
+import socket
+from urllib.parse import urlparse
+from typing import Optional, Dict
 from config import supabase
-from typing import Dict
 from functions import store_brand_context
+from rate_limiter import limiter
+
+
+def _is_ssrf_url(url: str) -> bool:
+    """
+    Return True if the URL points to a private/internal address.
+    Blocks SSRF (Server-Side Request Forgery) attacks where a caller could
+    trick the server into fetching cloud metadata services, internal DBs, etc.
+    Examples blocked: http://169.254.169.254 (AWS meta), http://localhost,
+                      http://192.168.1.1, http://10.0.0.1
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return True
+        hostname = parsed.hostname
+        if not hostname:
+            return True
+        # Block obvious localhost variants
+        if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0", "::1"):
+            return True
+        # If it's already an IP, check directly
+        try:
+            ip = ipaddress.ip_address(hostname)
+            return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+        except ValueError:
+            pass
+        # It's a hostname — resolve it and check the resulting IP
+        try:
+            resolved = socket.gethostbyname(hostname)
+            ip = ipaddress.ip_address(resolved)
+            return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+        except socket.gaierror:
+            return True  # Can't resolve → block
+    except Exception:
+        return True  # Any parse error → block
 
 router = APIRouter()
 
@@ -75,19 +113,24 @@ async def upload_brand_summary(request: Request, brand_data: BrandSummaryUpload)
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to store brand summary: {str(e)}")
+        import logging
+        logging.exception("upload_brand_summary failed")
+        raise HTTPException(status_code=500, detail="Failed to store brand summary")
 
 
 @router.get("/website-scrape")
+@limiter.limit("10/minute")   # Prevents SSRF-via-loop and runaway OpenAI scrape cost
 async def test_brand_scrape(request: Request, url: str = Query(...)):
-    #print("Scraping:", url)
-    #return {"status": "scraped", "url": url}
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")
-    
+
     if not url.startswith("http"):
         raise HTTPException(400, detail="URL must start with http or https")
+
+    # SSRF protection — block internal/private addresses
+    if _is_ssrf_url(url):
+        raise HTTPException(400, detail="Invalid URL")
     
     # 🔧 Await the async scraper
     brand_summary = await scrape_brand_context(url)

@@ -105,12 +105,23 @@ async def auth_callback(request: Request):
         # Use new refresh_token if present, otherwise fallback to existing
         refresh_token_to_store = token.get("refresh_token") or existing_refresh_token
         
-        # If we still don't have a refresh token, redirect back to Google with consent
+        # If we still don't have a refresh token, redirect back to Google with consent.
+        # FIX: was using the deprecated /oauth/authorize endpoint.
+        # Correct endpoint is /o/oauth2/v2/auth (required for CASA compliance).
         if not refresh_token_to_store:
             logging.info(f"No refresh token received for user {user_id} - redirecting with consent")
             from fastapi.responses import RedirectResponse
+            from urllib.parse import urlencode
             redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
-            consent_url = f"https://accounts.google.com/oauth/authorize?client_id={os.getenv('GOOGLE_CLIENT_ID')}&redirect_uri={redirect_uri}&scope=openid%20email%20profile%20https://www.googleapis.com/auth/gmail.readonly%20https://www.googleapis.com/auth/gmail.compose&response_type=code&access_type=offline&prompt=consent"
+            params = urlencode({
+                "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+                "redirect_uri": redirect_uri,
+                "scope": "openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose",
+                "response_type": "code",
+                "access_type": "offline",
+                "prompt": "consent",
+            })
+            consent_url = f"https://accounts.google.com/o/oauth2/v2/auth?{params}"
             return RedirectResponse(consent_url)
         
         # Upsert token
@@ -135,8 +146,9 @@ async def auth_callback(request: Request):
 
 
     except Exception as e:
-        print("Error:", str(e))
-        raise HTTPException(status_code=400, detail=str(e))
+        # Log internally, return generic message — never expose raw OAuth/internal errors.
+        logging.exception("auth_callback failed")
+        raise HTTPException(status_code=400, detail="Authentication failed")
 
 @router.delete("/user/delete")
 async def delete_user_account(request: Request):
@@ -175,7 +187,8 @@ async def delete_user_account(request: Request):
         return {"message": "User, tokens, and related data deleted and permissions revoked successfully"}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+        logging.exception("delete_user_account failed")
+        raise HTTPException(status_code=500, detail="Account deletion failed")
 
 class UpdateNameRequest(BaseModel):
     new_name: str

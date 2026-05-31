@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from functions import fetch_tone_profile
 from config import supabase
@@ -10,14 +10,17 @@ from difflib import SequenceMatcher
 import inflect
 from fuzzywuzzy import fuzz, process
 from functions import clean_email_body
+from rate_limiter import limiter
 
 router = APIRouter()
 client = OpenAI()
 
 # ─── Request + Response schemas ──────────────────────────────────────
 class DraftRequest(BaseModel):
-    subject: str
-    body: str
+    # Hard caps prevent runaway token usage and prompt-injection via oversized payloads.
+    # A real business email subject is never >300 chars; body rarely exceeds 8k chars.
+    subject: str = Field(..., max_length=300)
+    body: str    = Field(..., max_length=8000)
 
 class DraftResponse(BaseModel):
     draft: str
@@ -303,6 +306,7 @@ def create_draft_with_gpt(prompt: str) -> str:
     )
     return response.choices[0].message.content.strip()
 @router.post("/generate-draft", response_model=DraftResponse)
+@limiter.limit("15/minute")   # 15 manual drafts/minute per IP — prevents API cost abuse
 async def generate_draft(request: Request, email: DraftRequest):
     user_id = request.session.get("user_id")
     if not user_id:
