@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Globe, Edit, Mail, Package, Shield, ArrowRight, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react'
+import { Globe, Edit, Mail, Package, Shield, ArrowRight, AlertTriangle, CheckCircle, Loader2, LogOut } from 'lucide-react'
 import OnboardingInventory from './OnboardingInventory'
 import SigEditor from './SigEditor'
 
@@ -11,6 +11,19 @@ const Onboarding = () => {
   const showNotification = (message, type = 'info', duration = 4000) => {
     setNotification({ message, type })
     setTimeout(() => setNotification(null), duration)
+  }
+
+  // Let a user bail out of onboarding without finishing. We log out so the
+  // half-finished session is cleared and they land cleanly on the public page.
+  // Whatever a step already persisted stays; onboarding just isn't marked complete.
+  const handleExitOnboarding = async () => {
+    setShowExitConfirm(false)
+    try {
+      await fetch(`${api}/logout`, { method: 'POST', credentials: 'include' })
+    } catch (e) {
+      // Leaving regardless — ignore network errors on logout.
+    }
+    window.location.href = '/'
   }
 
   const handleDeleteAccount = async () => {
@@ -41,6 +54,7 @@ const Onboarding = () => {
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [notification, setNotification] = useState(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [brandSummary, setBrandSummary] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [loadingMessage, setLoadingMessage] = useState('')
@@ -353,6 +367,16 @@ const Onboarding = () => {
       className="min-h-screen bg-white"
       style={{ width: '100vw', maxWidth: '100%' }}
     >
+      {/* Exit Setup button — always available so a user can leave onboarding */}
+      <button
+        onClick={() => setShowExitConfirm(true)}
+        disabled={isLoading}
+        className="fixed top-4 right-4 z-40 flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 bg-white/90 border border-gray-200 rounded-xl hover:bg-gray-50 hover:text-gray-900 transition-all duration-200 shadow-sm disabled:opacity-50"
+      >
+        <LogOut size={16} />
+        <span>Exit setup</span>
+      </button>
+
       {/* Error Banner */}
       {error && (
         <motion.div 
@@ -915,6 +939,60 @@ const Onboarding = () => {
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
                   Delete Account
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* Exit Onboarding Confirmation Modal */}
+    <AnimatePresence>
+      {showExitConfirm && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-white rounded-xl max-w-md w-full"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold text-gray-900">Leave setup?</h3>
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-700">
+                  You'll be signed out and can finish setup later. Your account won't be deleted, but onboarding won't be marked complete.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-4">
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 bg-transparent border border-gray-300 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleExitOnboarding}
+                  className="px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  Leave setup
                 </button>
               </div>
             </div>
