@@ -37,7 +37,6 @@ async def login(request: Request):
                 token_status = user_data.data[0].get("token_status", "unknown")
                 if token_status != "expired":
                     # User is already authenticated, redirect to home
-                    from fastapi.responses import RedirectResponse
                     return RedirectResponse(f"{os.getenv('FRONTEND_URL', 'http://localhost:5173')}/home")
         except Exception as e:
             logging.warning(f"Error checking existing session: {e}")
@@ -111,7 +110,6 @@ async def auth_callback(request: Request):
         # Correct endpoint is /o/oauth2/v2/auth (required for CASA compliance).
         if not refresh_token_to_store:
             logging.info(f"No refresh token received for user {user_id} - redirecting with consent")
-            from fastapi.responses import RedirectResponse
             from urllib.parse import urlencode
             redirect_uri = os.getenv("GOOGLE_REDIRECT_URI")
             params = urlencode({
@@ -139,7 +137,6 @@ async def auth_callback(request: Request):
 
 
         # 4. Redirect to appropriate page
-        from fastapi.responses import RedirectResponse
         if has_onboarded:
             return RedirectResponse(f"{FRONTEND_URL}/home")
         else:
