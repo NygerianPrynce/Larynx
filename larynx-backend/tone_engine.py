@@ -20,6 +20,7 @@ are unavailable, draft generation still proceeds with whatever is available.
 
 import json
 import logging
+import re
 from typing import List, Dict, Optional
 
 from openai import OpenAI
@@ -40,6 +41,73 @@ _MAX_EXEMPLARS_STORED = 100
 _MAX_CHARS_PER_EXEMPLAR = 1500
 _RETRIEVE_K = 4
 _MAX_CHARS_PER_RETRIEVED = 700
+
+# Quality thresholds for choosing which sent emails actually represent the user's
+# voice. One-liners ("thanks!", "2pm works"), link dumps, and pasted blocks carry
+# no voice signal and dilute the style card / pollute retrieval, so we drop them.
+_MIN_CHARS = 120
+_MIN_WORDS = 20
+_MIN_SENTENCES = 2
+_MIN_ALPHA_RATIO = 0.55          # below this = mostly URLs/numbers/symbols
+_MIN_UNIQUE_WORD_RATIO = 0.4     # below this = repetitive/pasted list
+_QUALITY_FLOOR = 3               # if fewer than this pass, relax (terse writers)
+
+
+def _looks_substantive(body: str) -> bool:
+    """Heuristic: does this email carry enough writing to reflect the user's voice?"""
+    body = (body or "").strip()
+    if len(body) < _MIN_CHARS:
+        return False
+    words = body.split()
+    if len(words) < _MIN_WORDS:
+        return False
+    sentences = [s for s in re.split(r"[.!?]+", body) if len(s.strip()) > 3]
+    if len(sentences) < _MIN_SENTENCES:
+        return False
+    # Reject link/number dumps — require mostly letters/whitespace.
+    alpha = sum(c.isalpha() or c.isspace() for c in body)
+    if alpha / max(len(body), 1) < _MIN_ALPHA_RATIO:
+        return False
+    # Reject pasted lists / repetitive content — require lexical variety.
+    lowered = [w.lower() for w in words]
+    if len(set(lowered)) < max(8, len(words) * _MIN_UNIQUE_WORD_RATIO):
+        return False
+    return True
+
+
+def select_quality_emails(emails: List[Dict], limit: int) -> List[Dict]:
+    """
+    Choose the emails that best represent the user's voice:
+      - keep only substantive ones (drops one-liners, link dumps, pasted blocks)
+      - dedupe near-identical openings (so 10 "Hi, thanks for reaching out" don't skew it)
+      - sample evenly across the whole history for variety, not just the newest N
+    Falls back to the loosest usable set if too few pass, so terse writers still
+    get something rather than nothing.
+    """
+    seen_openings = set()
+    quality = []
+    for e in emails:
+        body = (e.get("body") or "").strip()
+        if not _looks_substantive(body):
+            continue
+        opening = " ".join(body.split()[:6]).lower()
+        if opening in seen_openings:
+            continue
+        seen_openings.add(opening)
+        quality.append(e)
+
+    # Graceful fallback: if the quality bar leaves almost nothing (e.g. a user who
+    # genuinely writes very short emails), use all non-empty emails instead.
+    pool = quality
+    if len(quality) < _QUALITY_FLOOR:
+        pool = [e for e in emails if (e.get("body") or "").strip()]
+
+    if len(pool) <= limit:
+        return pool
+
+    # Evenly-spaced sample across the pool for time/topic diversity.
+    step = len(pool) / limit
+    return [pool[int(i * step)] for i in range(limit)]
 
 
 # ─── Embeddings ───────────────────────────────────────────────────────────────
@@ -62,11 +130,12 @@ def generate_style_card(emails: List[Dict]) -> str:
     Produce a concise prose 'style card' describing the user's writing voice,
     from a sample of their sent emails. Focuses on HOW they write, not topics.
     """
-    samples = []
-    for e in emails[:_MAX_EMAILS_FOR_STYLE_CARD]:
-        body = (e.get("body") or "").strip()
-        if body:
-            samples.append(body[:_MAX_CHARS_PER_STYLE_SAMPLE])
+    chosen = select_quality_emails(emails, _MAX_EMAILS_FOR_STYLE_CARD)
+    samples = [
+        (e.get("body") or "").strip()[:_MAX_CHARS_PER_STYLE_SAMPLE]
+        for e in chosen
+        if (e.get("body") or "").strip()
+    ]
 
     if not samples:
         return _generic_style_card()
@@ -159,8 +228,11 @@ def store_exemplars(user_id: str, emails: List[Dict]) -> None:
     except Exception:
         logging.exception("store_exemplars: failed clearing old exemplars")
 
+    # Only store substantive emails — we never want to retrieve a "thanks!" one-liner
+    # and feed it back as a voice example.
+    chosen = select_quality_emails(emails, _MAX_EXEMPLARS_STORED)
     rows = []
-    for e in emails[:_MAX_EXEMPLARS_STORED]:
+    for e in chosen:
         body = (e.get("body") or "").strip()
         if not body:
             continue
