@@ -45,9 +45,12 @@ _MAX_CHARS_PER_RETRIEVED = 700
 # Quality thresholds for choosing which sent emails actually represent the user's
 # voice. One-liners ("thanks!", "2pm works"), link dumps, and pasted blocks carry
 # no voice signal and dilute the style card / pollute retrieval, so we drop them.
-_MIN_CHARS = 120
-_MIN_WORDS = 20
-_MIN_SENTENCES = 2
+# Tuned for signature-STRIPPED bodies: with the signature removed, junk one-liners
+# collapse to <40 chars while real (even short) replies stay well above. Don't raise
+# these without re-checking against /debug/tone-filter on a real inbox.
+_MIN_CHARS = 80
+_MIN_WORDS = 14
+_MIN_SENTENCES = 1
 _MIN_ALPHA_RATIO = 0.55          # below this = mostly URLs/numbers/symbols
 _MIN_UNIQUE_WORD_RATIO = 0.4     # below this = repetitive/pasted list
 _QUALITY_FLOOR = 3               # if fewer than this pass, relax (terse writers)
@@ -81,6 +84,50 @@ def classify_email(body: str) -> Dict:
 def _looks_substantive(body: str) -> bool:
     """Heuristic: does this email carry enough writing to reflect the user's voice?"""
     return classify_email(body)["passed"]
+
+
+_SIG_PHONE = re.compile(r"\d{3}[.\-\s]\d{3}[.\-\s]\d{4}")
+
+
+def strip_signature(body: str, known_signature: str = "") -> str:
+    """
+    Remove the user's signature block from an email body so it doesn't pollute the
+    style card / exemplars. Talon's extraction misses many cases (esp. forwards that
+    are mostly signature), so this is a belt-and-suspenders pass:
+      1) remove the known dominant signature line-by-line,
+      2) cut at the standard "--" delimiter line (or a line starting with "-- "),
+      3) cut at an inline " -- " when a signature marker (image alt / phone) follows,
+      4) strip leftover "[image: ...]" alt-text artifacts.
+    """
+    if not body:
+        return ""
+    text = body.replace("\r\n", "\n")
+
+    # 1) Remove the user's known signature, matched line-by-line.
+    if known_signature:
+        sig_lines = {ln.strip() for ln in known_signature.splitlines() if ln.strip()}
+        if sig_lines:
+            text = "\n".join(ln for ln in text.split("\n") if ln.strip() not in sig_lines)
+
+    # 2) Cut at the conventional signature delimiter.
+    out_lines = []
+    for ln in text.split("\n"):
+        s = ln.strip()
+        if s in ("--", "—") or s.startswith("-- "):
+            break
+        out_lines.append(ln)
+    text = "\n".join(out_lines)
+
+    # 3) Collapsed-body fallback: inline " -- " immediately preceding signature markers.
+    idx = text.find(" -- ")
+    if idx != -1:
+        tail = text[idx:]
+        if "[image:" in tail or _SIG_PHONE.search(tail):
+            text = text[:idx]
+
+    # 4) Strip inline-image alt artifacts and normalize whitespace.
+    text = re.sub(r"\[image:[^\]]*\]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 def select_quality_emails(emails: List[Dict], limit: int) -> List[Dict]:

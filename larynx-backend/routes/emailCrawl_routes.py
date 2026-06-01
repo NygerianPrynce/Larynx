@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import base64
 import logging
@@ -12,12 +13,31 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from config import supabase
 from functions import analyze_email_batch, store_tone_profile, refresh_access_token_if_needed
-from tone_engine import generate_style_card, store_style_card, store_exemplars, classify_email, select_quality_emails
+from tone_engine import generate_style_card, store_style_card, store_exemplars, classify_email, select_quality_emails, strip_signature
 from services.email_service import EmailProcessingService
 from rate_limiter import limiter
 
 
 router = APIRouter()
+
+_EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+")
+
+
+def _is_self_send(headers_list, own_email: str) -> bool:
+    """
+    True if this sent email went ONLY to the user themselves (e.g. emailing files
+    to yourself). Such emails are never customer communication, so they should not
+    feed the voice model regardless of length.
+    """
+    if not own_email:
+        return False
+    own = own_email.lower()
+    recipients = set()
+    for h in headers_list:
+        if h.get("name") in ("To", "Cc", "Bcc"):
+            recipients.update(m.lower() for m in _EMAIL_RE.findall(h.get("value", "")))
+    return bool(recipients) and recipients == {own}
+
 
 @router.get("/crawl-emails")
 @limiter.limit("3/hour")   # Each call = up to 100 Gmail API requests. 3/hr is plenty for onboarding.
@@ -71,6 +91,10 @@ async def crawl_emails(request: Request):
             if BotEmailDetector().is_bot_sender(sender):
                 continue
 
+            # Skip pure self-sends (emailing files/notes to yourself) — not customer voice.
+            if _is_self_send(headers_list, email):
+                continue
+
             # Extract and clean body using centralized service
             raw_body = EmailProcessingService.extract_email_body(full_msg)
             # Try HTML signature extraction first if the body contains HTML
@@ -91,6 +115,16 @@ async def crawl_emails(request: Request):
                     "body": body
                 })
             
+        # Strip the user's signature from every body BEFORE analysis. Forwarded emails
+        # are often just the signature, and even real emails carry the signature tail —
+        # both pollute the style card and exemplars if left in. Use the dominant
+        # signature (most common across this batch) for an exact line-by-line removal,
+        # plus the generic delimiter/[image:] cleanup inside strip_signature().
+        dominant_sig = signature_counter.most_common(1)[0][0] if signature_counter else ""
+        for e in email_data:
+            e["body"] = strip_signature(e["body"], dominant_sig)
+        email_data = [e for e in email_data if e["body"].strip()]
+
         # Check if we have enough usable emails for analysis
         if len(email_data) >= 5:  # Require at least 5 emails for meaningful analysis
             # Voice capture (style card + retrievable exemplars). This is what actually
@@ -171,6 +205,7 @@ async def debug_tone_filter(request: Request):
     _require_debug("debug_tone_filter")
 
     user_id = request.session.get("user_id")
+    own_email = request.session.get("user_email", "")
     if not user_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
@@ -179,9 +214,12 @@ async def debug_tone_filter(request: Request):
     except Exception:
         raise HTTPException(status_code=401, detail="Google authorization required.")
 
+    from collections import Counter
     headers = {"Authorization": f"Bearer {access_token}"}
     bot = BotEmailDetector()
     results = []
+    collected = []          # (subject, body) for non-bot emails, pre-signature-strip
+    signature_counter = Counter()
 
     async with httpx.AsyncClient() as client:
         r = await client.get(
@@ -205,20 +243,32 @@ async def debug_tone_filter(request: Request):
                                 "reason": "bot/automated sender", "preview": ""})
                 continue
 
+            if _is_self_send(hdrs, own_email):
+                results.append({"subject": subject[:80], "passed": False,
+                                "reason": "sent only to self", "preview": ""})
+                continue
+
             raw_body = EmailProcessingService.extract_email_body(full)
             if "<" in raw_body and ">" in raw_body:
-                body, _ = EmailProcessingService.extract_html_signature(raw_body)
+                body, sig = EmailProcessingService.extract_html_signature(raw_body)
             else:
-                body, _ = EmailProcessingService.clean_email_body(raw_body)
-            body = (body or "").strip()
+                body, sig = EmailProcessingService.clean_email_body(raw_body)
+            if sig:
+                normalized_sig = "\n".join(ln.strip() for ln in sig.strip().splitlines() if ln.strip())
+                signature_counter[normalized_sig] += 1
+            collected.append((subject, (body or "").strip()))
 
-            verdict = classify_email(body)
-            results.append({
-                "subject": subject[:80],
-                "passed": verdict["passed"],
-                "reason": verdict["reason"],
-                "preview": body[:160].replace("\n", " "),
-            })
+    # Mirror the real pipeline: strip the dominant signature, THEN classify.
+    dominant_sig = signature_counter.most_common(1)[0][0] if signature_counter else ""
+    for subject, body in collected:
+        cleaned = strip_signature(body, dominant_sig)
+        verdict = classify_email(cleaned)
+        results.append({
+            "subject": subject[:80],
+            "passed": verdict["passed"],
+            "reason": verdict["reason"],
+            "preview": cleaned[:160].replace("\n", " "),
+        })
 
     passed = [r for r in results if r["passed"]]
     failed = [r for r in results if not r["passed"]]
