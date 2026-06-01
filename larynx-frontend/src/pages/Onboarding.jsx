@@ -69,7 +69,10 @@ const Onboarding = () => {
     target_audience: '',
     industry: '',
     business_mission: '',
-    key_differentiators: ''
+    key_differentiators: '',
+    service_area: '',
+    policies: '',
+    booking_process: ''
   })
 
   const api = import.meta.env.VITE_API_URL
@@ -125,7 +128,10 @@ const Onboarding = () => {
     { key: 'target_audience', label: 'Who are your ideal customers?', type: 'textarea', min: 5, max: 500 },
     { key: 'industry', label: 'What industry are you in?', type: 'input', min: 2, max: 100 },
     { key: 'business_mission', label: "What's your company's mission? (Optional)", type: 'textarea', optional: true, max: 500 },
-    { key: 'key_differentiators', label: 'What makes you different? (Optional)', type: 'textarea', optional: true, max: 1000 }
+    { key: 'key_differentiators', label: 'What makes you different? (Optional)', type: 'textarea', optional: true, max: 1000 },
+    { key: 'service_area', label: 'Where do you operate or deliver to? (Optional)', type: 'textarea', optional: true, max: 500 },
+    { key: 'policies', label: 'Any key policies? e.g. deposits, minimums, cancellation, hours (Optional)', type: 'textarea', optional: true, max: 1000 },
+    { key: 'booking_process', label: 'How do customers book or order from you? (Optional)', type: 'textarea', optional: true, max: 500 }
   ]
 
   const crawlMessages = [
@@ -281,7 +287,7 @@ const Onboarding = () => {
     }, "Failed to analyze website. Please try again.")
   }
 
-  const handleManualSubmit = () => {
+  const handleManualSubmit = async () => {
     const currentStepData = manualSteps[manualStep]
     const value = brandInfo[currentStepData.key]
 
@@ -298,10 +304,59 @@ const Onboarding = () => {
     if (manualStep < manualSteps.length - 1) {
       setManualStep(manualStep + 1)
       setErrors({})
-      } else {
-      setBrandSummary(Object.values(brandInfo).filter(Boolean).join(' '))
-      transitionToStep('tone')
+      return
     }
+
+    // Final step — persist the brand info to the backend (summary + retrievable facts).
+    // Optional empty fields are sent as null so they're simply skipped server-side.
+    await handleAsyncOperation(async () => {
+      setLoadingState(true, ['Saving your business info...', 'Building your brand profile...'])
+      try {
+        const response = await fetch(`${api}/upload-brand-summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            brand_name: brandInfo.brand_name,
+            business_description: brandInfo.business_description,
+            target_audience: brandInfo.target_audience,
+            industry: brandInfo.industry,
+            business_mission: brandInfo.business_mission || null,
+            key_differentiators: brandInfo.key_differentiators || null,
+            service_area: brandInfo.service_area || null,
+            policies: brandInfo.policies || null,
+            booking_process: brandInfo.booking_process || null,
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to save business info (${response.status})`)
+        }
+
+        const data = await response.json()
+        setBrandSummary(data.summary || Object.values(brandInfo).filter(Boolean).join(' '))
+        transitionToStep('tone')
+      } finally {
+        setLoadingState(false)
+      }
+    }, "Failed to save your business info. Please try again.")
+  }
+
+  // Persist edits the user made to the scraped brand summary before moving on.
+  // Non-blocking: the original scraped summary is already saved server-side, so even
+  // if this save fails we still let them continue.
+  const saveScrapedSummary = async () => {
+    try {
+      await fetch(`${api}/update-brand-summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ summary: brandSummary })
+      })
+    } catch (e) {
+      console.warn('Failed to save brand summary edits, continuing:', e)
+    }
+    transitionToStep('tone')
   }
 
   const handleEmailCrawl = async () => {
@@ -694,8 +749,8 @@ const Onboarding = () => {
                       Back
                     </motion.button>
                     
-                    <motion.button 
-                      onClick={() => transitionToStep('tone')}
+                    <motion.button
+                      onClick={saveScrapedSummary}
                       className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}

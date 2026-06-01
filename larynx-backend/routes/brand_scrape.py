@@ -58,6 +58,11 @@ class BrandSummaryUpload(BaseModel):
     industry: str = Field(..., min_length=2, max_length=100, description="What industry are you in? How would you categorize your business?")
     business_mission: Optional[str] = Field(None, max_length=500, description="What's your company's main goal or mission? What problem do you solve?")
     key_differentiators: Optional[str] = Field(None, max_length=1000, description="What makes you different from competitors? (Optional)")
+    # Operational fields — the facts customers actually email about. Optional so the
+    # form stays light, but they make a no-website business draft as well as a scraped one.
+    service_area: Optional[str] = Field(None, max_length=500, description="Where do you operate / deliver to? (Optional)")
+    policies: Optional[str] = Field(None, max_length=1000, description="Key policies — deposits, minimums, cancellation, hours (Optional)")
+    booking_process: Optional[str] = Field(None, max_length=500, description="How do customers book or order from you? (Optional)")
 
 @router.post("/upload-brand-summary")
 async def upload_brand_summary(request: Request, brand_data: BrandSummaryUpload):
@@ -118,6 +123,12 @@ async def upload_brand_summary(request: Request, brand_data: BrandSummaryUpload)
             facts.append(f"Mission: {brand_data.business_mission}")
         if brand_data.key_differentiators:
             facts.append(f"What makes them different: {brand_data.key_differentiators}")
+        if brand_data.service_area:
+            facts.append(f"Service area: {brand_data.service_area}")
+        if brand_data.policies:
+            facts.append(f"Policies: {brand_data.policies}")
+        if brand_data.booking_process:
+            facts.append(f"How to book or order: {brand_data.booking_process}")
         try:
             store_brand_knowledge(user_id, facts)
         except Exception:
@@ -131,7 +142,6 @@ async def upload_brand_summary(request: Request, brand_data: BrandSummaryUpload)
         }
         
     except Exception as e:
-        import logging
         logging.exception("upload_brand_summary failed")
         raise HTTPException(status_code=500, detail="Failed to store brand summary")
 

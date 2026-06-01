@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from config import supabase
 from functions import analyze_email_batch, store_tone_profile, refresh_access_token_if_needed
-from tone_engine import generate_style_card, store_style_card, store_exemplars, classify_email, select_quality_emails, strip_signature
+from tone_engine import generate_style_card, store_style_card, store_exemplars, classify_email, select_quality_emails, clean_for_voice
 from services.email_service import EmailProcessingService
 from rate_limiter import limiter
 
@@ -122,7 +122,7 @@ async def crawl_emails(request: Request):
         # plus the generic delimiter/[image:] cleanup inside strip_signature().
         dominant_sig = signature_counter.most_common(1)[0][0] if signature_counter else ""
         for e in email_data:
-            e["body"] = strip_signature(e["body"], dominant_sig)
+            e["body"] = clean_for_voice(e["body"], dominant_sig)
         email_data = [e for e in email_data if e["body"].strip()]
 
         # Check if we have enough usable emails for analysis
@@ -261,7 +261,7 @@ async def debug_tone_filter(request: Request):
     # Mirror the real pipeline: strip the dominant signature, THEN classify.
     dominant_sig = signature_counter.most_common(1)[0][0] if signature_counter else ""
     for subject, body in collected:
-        cleaned = strip_signature(body, dominant_sig)
+        cleaned = clean_for_voice(body, dominant_sig)
         verdict = classify_email(cleaned)
         results.append({
             "subject": subject[:80],

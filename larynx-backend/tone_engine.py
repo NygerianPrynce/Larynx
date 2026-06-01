@@ -88,6 +88,39 @@ def _looks_substantive(body: str) -> bool:
 
 _SIG_PHONE = re.compile(r"\d{3}[.\-\s]\d{3}[.\-\s]\d{4}")
 
+_FWD_RE = re.compile(r"^-+\s*forwarded message\s*-+", re.I)
+_ONWROTE_RE = re.compile(r"^On\b.+\bwrote:\s*$")
+_REACT_RE = re.compile(r"reacted via Gmail", re.I)
+
+
+def strip_quotes_and_boilerplate(body: str) -> str:
+    """
+    Remove quoted reply history, forwarded-message headers, and Gmail reaction
+    notifications — none of which are the user's own writing. Backup for talon,
+    which misses some of these (esp. reactions and certain forward formats).
+    Everything from the first quote/forward marker onward is dropped.
+    """
+    if not body:
+        return ""
+    out = []
+    for ln in body.replace("\r\n", "\n").split("\n"):
+        s = ln.strip()
+        if _FWD_RE.match(s):        # "---------- Forwarded message ----------"
+            break
+        if _ONWROTE_RE.match(s):    # "On <date>, <person> wrote:" → quote follows
+            break
+        if s.startswith(">"):       # quoted line
+            continue
+        if _REACT_RE.search(s):     # "X reacted via Gmail"
+            continue
+        out.append(ln)
+    return "\n".join(out)
+
+
+def clean_for_voice(body: str, known_signature: str = "") -> str:
+    """Full cleanup for voice analysis: strip quotes/forwards/reactions, then signature."""
+    return strip_signature(strip_quotes_and_boilerplate(body), known_signature)
+
 
 def strip_signature(body: str, known_signature: str = "") -> str:
     """
