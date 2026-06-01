@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from functions import fetch_tone_profile
 from tone_engine import build_voice_section
+from brand_engine import build_brand_section
 from config import supabase
 from openai import OpenAI
 import re
@@ -381,13 +382,14 @@ async def generate_draft(request: Request, email: DraftRequest):
     
     # Voice section: prose style card + the user's most relevant past emails.
     voice_section = build_voice_section(user_id, email_content)
+    # Brand section: identity summary + facts relevant to this specific email.
+    brand_section = build_brand_section(user_id, brand_summary, email_content)
 
     prompt = f"""You are writing an email reply for a small business owner.
 
     {voice_section}
 
-    Their brand identity:
-    {brand_summary or "No brand information available."}
+    {brand_section}
     {format_template_section}{instructions_section}
 
     {inventory_context}
@@ -541,12 +543,12 @@ async def test_prompt_preview(request: Request, test_request: TestPromptRequest)
     
     # Generate the full prompt (same as in generate_draft)
     voice_section = build_voice_section(user_id, email_content)
+    brand_section = build_brand_section(user_id, brand_summary, email_content)
     prompt = f"""You are writing an email reply for a small business owner.
 
     {voice_section}
 
-    Their brand identity:
-    {brand_summary or "No brand information available."}
+    {brand_section}
     {format_template_section}{instructions_section}
 
     {inventory_context}

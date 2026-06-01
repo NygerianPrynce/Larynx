@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from config import supabase
 from functions import refresh_access_token_if_needed, fetch_tone_profile
 from tone_engine import build_voice_section
+from brand_engine import build_brand_section
 from routes.draft_routes import InventoryMatcher, create_draft_with_gpt
 from services.email_service import EmailProcessingService
 
@@ -898,13 +899,14 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
         
         # Voice section: prose style card + the user's most relevant past emails.
         voice_section = build_voice_section(user_id, email_content)
+        # Brand section: identity summary + facts relevant to this specific email.
+        brand_section = build_brand_section(user_id, brand_summary, email_content)
 
         prompt = f"""You are writing an email reply for a small business owner.
 
         {voice_section}
 
-        Their brand identity:
-        {brand_summary or "No brand information available."}
+        {brand_section}
         {format_template_section}{instructions_section}
 
         {inventory_context}

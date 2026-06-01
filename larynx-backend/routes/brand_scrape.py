@@ -4,12 +4,14 @@ from pydantic import BaseModel, Field
 from functions import scrape_brand_context, store_brand_context
 import httpx
 import json
+import logging
 import ipaddress
 import socket
 from urllib.parse import urlparse
 from typing import Optional, Dict
 from config import supabase
 from functions import store_brand_context
+from brand_engine import scrape_site, extract_brand_profile, store_brand_knowledge
 from rate_limiter import limiter
 
 
@@ -104,7 +106,23 @@ async def upload_brand_summary(request: Request, brand_data: BrandSummaryUpload)
         
         # Store the brand context using existing function
         store_brand_context(user_id, formatted_brand_data)
-        
+
+        # Also store the structured fields as retrievable brand facts, so the manual
+        # path benefits from the same per-email knowledge retrieval as the scraper.
+        facts = [
+            f"{brand_data.brand_name}: {brand_data.business_description}",
+            f"Target customers: {brand_data.target_audience}",
+            f"Industry: {brand_data.industry}",
+        ]
+        if brand_data.business_mission:
+            facts.append(f"Mission: {brand_data.business_mission}")
+        if brand_data.key_differentiators:
+            facts.append(f"What makes them different: {brand_data.key_differentiators}")
+        try:
+            store_brand_knowledge(user_id, facts)
+        except Exception:
+            logging.warning("store_brand_knowledge (manual) failed", exc_info=True)
+
         return {
             "status": "SUCCESS",
             "message": "Brand summary created and stored successfully",
@@ -132,24 +150,30 @@ async def test_brand_scrape(request: Request, url: str = Query(...)):
     if _is_ssrf_url(url):
         raise HTTPException(400, detail="Invalid URL")
     
-    # 🔧 Await the async scraper
-    brand_summary = await scrape_brand_context(url)
+    import logging
 
-    # 🧠 Optional: Check if scraping succeeded
-    if "error" in brand_summary:
-        # Log the real reason server-side so we can diagnose (OpenAI/auth/quota/etc.)
-        import logging
-        logging.error(f"website-scrape failed for {url}: {brand_summary['error']}")
+    # Multi-page scrape → structured extraction (summary + retrievable facts).
+    site = await scrape_site(url)
+    if not site.get("combined_text"):
+        raise HTTPException(502, detail="Could not read that website. Please try again or enter your brand details manually.")
+
+    profile = extract_brand_profile(site["combined_text"])
+    summary = profile.get("brand_summary") or ""
+    facts = profile.get("facts") or []
+
+    if not summary and not facts:
         raise HTTPException(502, detail="Could not analyze that website. Please try again or enter your brand details manually.")
 
     try:
-        store_brand_context(user_id, brand_summary)
+        # Editable positioning summary lives on the user row...
+        store_brand_context(user_id, {"brand_summary": summary})
+        # ...and the atomic facts go to the retrievable knowledge base.
+        store_brand_knowledge(user_id, facts, source_url=url)
     except Exception:
-        import logging
-        logging.exception("store_brand_context failed")
-        raise HTTPException(500, detail="Failed to save brand summary")
+        logging.exception("storing brand profile failed")
+        raise HTTPException(500, detail="Failed to save brand profile")
 
-    return {"status": "SUCCESS", "summary": brand_summary["brand_summary"]}
+    return {"status": "SUCCESS", "summary": summary, "facts_extracted": len(facts)}
 
 
 @router.get("/get-brand-summary")
