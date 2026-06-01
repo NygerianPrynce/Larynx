@@ -26,6 +26,7 @@ or the DB is unavailable.
 import ipaddress
 import json
 import logging
+import re
 import socket
 from typing import List, Dict, Optional
 from urllib.parse import urljoin, urlparse
@@ -92,11 +93,18 @@ def _clean_html_to_text(html: str) -> str:
     return " ".join(ln for ln in lines if ln)
 
 
-def _discover_links(homepage_html: str, base_url: str) -> List[str]:
-    """Return prioritized same-domain inner-page URLs worth scraping."""
+def _label_from_url(u: str) -> str:
+    """Derive a human-ish label from a URL path (e.g. /our-story -> 'our story')."""
+    path = urlparse(u).path.rstrip("/")
+    seg = path.split("/")[-1] if path else ""
+    return seg.replace("-", " ").replace("_", " ").strip() or u
+
+
+def _homepage_links(homepage_html: str, base_url: str) -> List[Dict]:
+    """All same-domain links on the homepage, with their anchor text."""
     soup = BeautifulSoup(homepage_html, "html.parser")
     base_host = urlparse(base_url).netloc
-    scored = {}
+    seen = {}
     for a in soup.find_all("a", href=True):
         href = urljoin(base_url, a["href"].split("#")[0])
         p = urlparse(href)
@@ -104,17 +112,100 @@ def _discover_links(homepage_html: str, base_url: str) -> List[str]:
             continue
         if href.rstrip("/") == base_url.rstrip("/"):
             continue
-        haystack = (href + " " + (a.get_text() or "")).lower()
+        text = (a.get_text() or "").strip()
+        # Keep the first non-empty anchor text we see for a given URL.
+        if href not in seen or (text and not seen[href]):
+            seen[href] = text
+    return [{"url": u, "text": t} for u, t in seen.items()]
+
+
+def _discover_links(homepage_html: str, base_url: str) -> List[str]:
+    """Heuristic FALLBACK: keyword-score same-domain links, highest first."""
+    scored = {}
+    for link in _homepage_links(homepage_html, base_url):
+        haystack = (link["url"] + " " + link["text"]).lower()
         score = sum(1 for kw in _PAGE_KEYWORDS if kw in haystack)
-        if score > 0 and href not in scored:
-            scored[href] = score
-    # Highest-scoring first.
+        if score > 0:
+            scored[link["url"]] = score
     return [u for u, _ in sorted(scored.items(), key=lambda kv: kv[1], reverse=True)]
+
+
+async def _sitemap_urls(http: httpx.AsyncClient, base_url: str) -> List[str]:
+    """
+    Pull page URLs from /sitemap.xml (handles sitemap-index files too). Robust to
+    JS-rendered nav and footer-only links that homepage parsing would miss. [] on failure.
+    """
+    p = urlparse(base_url)
+    base_host = p.netloc
+    try:
+        resp = await http.get(f"{p.scheme}://{base_host}/sitemap.xml")
+        if resp.status_code != 200 or "<loc>" not in resp.text.lower():
+            return []
+        locs = re.findall(r"<loc>\s*(.*?)\s*</loc>", resp.text, re.I | re.S)
+        page_locs = [l for l in locs if not l.lower().rstrip().endswith(".xml")]
+        # If this was a sitemap index, fetch a few child sitemaps for actual pages.
+        for child in [l for l in locs if l.lower().rstrip().endswith(".xml")][:3]:
+            try:
+                r2 = await http.get(child)
+                if r2.status_code == 200:
+                    page_locs += re.findall(r"<loc>\s*(.*?)\s*</loc>", r2.text, re.I | re.S)
+            except Exception:
+                continue
+        urls = []
+        for l in page_locs:
+            lp = urlparse(l)
+            if lp.scheme in ("http", "https") and lp.netloc == base_host:
+                urls.append(l.split("#")[0])
+        return list(dict.fromkeys(urls))  # dedupe, preserve order
+    except Exception:
+        return []
+
+
+def _select_pages_llm(candidates: List[Dict], max_pages: int) -> List[str]:
+    """
+    Ask the LLM which candidate pages most likely hold answerable business facts.
+    Understands creative labels ("Investment" = pricing, "Our Story" = about) that
+    keyword matching misses. Returns [] on failure so the caller can fall back.
+    """
+    if not candidates:
+        return []
+    listing = "\n".join(f"{i+1}. {c['label']} — {c['url']}" for i, c in enumerate(candidates[:60]))
+    prompt = f"""From this list of pages on a small business's website, choose up to {max_pages}
+that are MOST likely to contain factual info needed to answer customer emails:
+services/products offered, pricing/rates/packages, policies (deposits, minimums,
+cancellation), delivery or service area, hours, how to book or order, FAQ, and contact.
+
+Ignore: blog/news posts, individual product/item pages (prefer a category or
+collection page), login/account/cart, careers, and legal pages (privacy, terms).
+Businesses use creative labels — e.g. "Investment" or "Collections" usually means
+pricing, "Our Story" means about. Judge by intent, not exact words.
+
+Return ONLY JSON: {{"urls": ["<exact url from the list>", ...]}}
+
+PAGES:
+{listing}"""
+    try:
+        resp = _client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+            max_tokens=400,
+            response_format={"type": "json_object"},
+        )
+        chosen = json.loads(resp.choices[0].message.content).get("urls") or []
+        valid = {c["url"] for c in candidates}
+        # Preserve the model's ordering; keep only real candidate URLs.
+        return [u for u in chosen if u in valid][:max_pages]
+    except Exception:
+        logging.exception("_select_pages_llm failed")
+        return []
 
 
 async def scrape_site(url: str) -> Dict:
     """
-    Fetch the homepage plus a few high-value inner pages. Returns
+    Fetch the homepage plus the high-value inner pages. Page selection: gather
+    candidate links from the homepage AND sitemap.xml, let the LLM pick the most
+    useful ones (falls back to keyword heuristic if the LLM call fails). Returns
     {"combined_text": str, "pages": [{"url":..., "text":...}]}.
     """
     pages = []
@@ -128,7 +219,20 @@ async def scrape_site(url: str) -> Dict:
 
         pages.append({"url": url, "text": _clean_html_to_text(home_html)[:_MAX_CHARS_PER_PAGE]})
 
-        for link in _discover_links(home_html, url)[:_MAX_PAGES]:
+        # Build candidate pages from homepage links + sitemap, deduped by URL.
+        candidates = {}
+        for link in _homepage_links(home_html, url):
+            candidates[link["url"]] = {"url": link["url"], "label": link["text"] or _label_from_url(link["url"])}
+        for su in await _sitemap_urls(http, url):
+            if su.rstrip("/") != url.rstrip("/") and su not in candidates:
+                candidates[su] = {"url": su, "label": _label_from_url(su)}
+
+        # LLM picks the most useful pages; fall back to the keyword heuristic.
+        selected = _select_pages_llm(list(candidates.values()), _MAX_PAGES)
+        if not selected:
+            selected = _discover_links(home_html, url)[:_MAX_PAGES]
+
+        for link in selected:
             if _is_blocked_url(link):
                 continue
             try:
