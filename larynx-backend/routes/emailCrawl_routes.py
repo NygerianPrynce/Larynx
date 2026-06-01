@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from config import supabase
 from functions import analyze_email_batch, store_tone_profile, refresh_access_token_if_needed
-from tone_engine import generate_style_card, store_style_card, store_exemplars
+from tone_engine import generate_style_card, store_style_card, store_exemplars, classify_email, select_quality_emails
 from services.email_service import EmailProcessingService
 from rate_limiter import limiter
 
@@ -158,6 +158,79 @@ async def crawl_emails(request: Request):
             "signature_extracted": safe_signature,
             "tone_profile": tone_profile
         }
+
+
+@router.get("/debug/tone-filter")
+async def debug_tone_filter(request: Request):
+    """
+    DEBUG ONLY (requires ENABLE_DEBUG_ROUTES=true). Fetches the user's sent emails,
+    runs each through the voice-quality heuristic, and reports pass/fail + reason —
+    WITHOUT storing anything. Lets you see exactly which emails feed the style card.
+    """
+    from routes.inbox_routes import _require_debug, BotEmailDetector
+    _require_debug("debug_tone_filter")
+
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    try:
+        access_token = await refresh_access_token_if_needed(user_id, supabase)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Google authorization required.")
+
+    headers = {"Authorization": f"Bearer {access_token}"}
+    bot = BotEmailDetector()
+    results = []
+
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages",
+            headers=headers,
+            params={"maxResults": 100, "labelIds": "SENT"},
+        )
+        messages = r.json().get("messages", [])
+
+        for msg in messages:
+            full = (await client.get(
+                f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{msg['id']}",
+                headers=headers,
+            )).json()
+            hdrs = full.get("payload", {}).get("headers", [])
+            subject = next((h["value"] for h in hdrs if h["name"] == "Subject"), "(No Subject)")
+            sender = next((h["value"] for h in hdrs if h["name"] == "From"), "")
+
+            if bot.is_bot_sender(sender):
+                results.append({"subject": subject[:80], "passed": False,
+                                "reason": "bot/automated sender", "preview": ""})
+                continue
+
+            raw_body = EmailProcessingService.extract_email_body(full)
+            if "<" in raw_body and ">" in raw_body:
+                body, _ = EmailProcessingService.extract_html_signature(raw_body)
+            else:
+                body, _ = EmailProcessingService.clean_email_body(raw_body)
+            body = (body or "").strip()
+
+            verdict = classify_email(body)
+            results.append({
+                "subject": subject[:80],
+                "passed": verdict["passed"],
+                "reason": verdict["reason"],
+                "preview": body[:160].replace("\n", " "),
+            })
+
+    passed = [r for r in results if r["passed"]]
+    failed = [r for r in results if not r["passed"]]
+    return {
+        "summary": {
+            "total": len(results),
+            "passed": len(passed),
+            "failed": len(failed),
+        },
+        "passed": passed,
+        "failed": failed,
+    }
 
 
 @router.post("/set-generic-tone")

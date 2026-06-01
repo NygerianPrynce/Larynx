@@ -53,26 +53,34 @@ _MIN_UNIQUE_WORD_RATIO = 0.4     # below this = repetitive/pasted list
 _QUALITY_FLOOR = 3               # if fewer than this pass, relax (terse writers)
 
 
-def _looks_substantive(body: str) -> bool:
-    """Heuristic: does this email carry enough writing to reflect the user's voice?"""
+def classify_email(body: str) -> Dict:
+    """
+    Run the voice-quality heuristic and return {"passed": bool, "reason": str}.
+    Single source of truth for both filtering and the debug preview endpoint.
+    """
     body = (body or "").strip()
     if len(body) < _MIN_CHARS:
-        return False
+        return {"passed": False, "reason": f"too short ({len(body)} chars < {_MIN_CHARS})"}
     words = body.split()
     if len(words) < _MIN_WORDS:
-        return False
+        return {"passed": False, "reason": f"too few words ({len(words)} < {_MIN_WORDS})"}
     sentences = [s for s in re.split(r"[.!?]+", body) if len(s.strip()) > 3]
     if len(sentences) < _MIN_SENTENCES:
-        return False
-    # Reject link/number dumps — require mostly letters/whitespace.
+        return {"passed": False, "reason": f"too few sentences ({len(sentences)} < {_MIN_SENTENCES})"}
     alpha = sum(c.isalpha() or c.isspace() for c in body)
-    if alpha / max(len(body), 1) < _MIN_ALPHA_RATIO:
-        return False
-    # Reject pasted lists / repetitive content — require lexical variety.
+    alpha_ratio = alpha / max(len(body), 1)
+    if alpha_ratio < _MIN_ALPHA_RATIO:
+        return {"passed": False, "reason": f"mostly non-text/links ({alpha_ratio:.0%} letters)"}
     lowered = [w.lower() for w in words]
-    if len(set(lowered)) < max(8, len(words) * _MIN_UNIQUE_WORD_RATIO):
-        return False
-    return True
+    uniq = len(set(lowered))
+    if uniq < max(8, len(words) * _MIN_UNIQUE_WORD_RATIO):
+        return {"passed": False, "reason": f"repetitive/pasted ({uniq} unique of {len(words)} words)"}
+    return {"passed": True, "reason": "ok"}
+
+
+def _looks_substantive(body: str) -> bool:
+    """Heuristic: does this email carry enough writing to reflect the user's voice?"""
+    return classify_email(body)["passed"]
 
 
 def select_quality_emails(emails: List[Dict], limit: int) -> List[Dict]:
