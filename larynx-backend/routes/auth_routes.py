@@ -42,17 +42,18 @@ async def login(request: Request):
         except Exception as e:
             logging.warning(f"Error checking existing session: {e}")
     
-    # Show the account picker AND force consent in a single step.
-    # Forcing consent guarantees Google returns a refresh_token on the FIRST callback,
-    # so we never have to bounce the user back to Google a second time (which made new
-    # users pick their account twice). Returning users with a valid session skip this
-    # entirely via the early-return above, so the consent screen is only seen when a
-    # fresh authorization is actually needed.
+    # Show only the account picker — NOT a forced consent screen. Google returns a
+    # refresh_token automatically on a user's first authorization, and for returning
+    # users it remembers the grant and waves them straight through (no re-permission
+    # prompt every login). The rare case where we end up without a refresh_token
+    # (e.g. the user authorized before but we have no stored token) is handled by the
+    # one-shot consent fallback in /auth/callback, so consent is only ever forced when
+    # it's actually needed.
     return await oauth.google.authorize_redirect(
         request,
         redirect_uri,
         access_type="offline",
-        prompt="select_account consent"
+        prompt="select_account"
     )
 
 # Step 2: Google sends the user back here (with a code)
