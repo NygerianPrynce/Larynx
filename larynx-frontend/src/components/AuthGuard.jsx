@@ -85,7 +85,7 @@ const AuthGuard = ({ children }) => {
   if (isChecking) {
     return (
       <div 
-        className="fixed inset-0 bg-white flex items-center justify-center z-50"
+        className="fixed inset-0 bg-gray-50 flex items-center justify-center z-50"
         style={{ width: '100vw', maxWidth: '100%' }}
       >
         {/* Background Elements */}

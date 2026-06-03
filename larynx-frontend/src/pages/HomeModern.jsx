@@ -417,7 +417,7 @@ const HomeModern = () => {
           <div className="p-6">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="w-8 h-8 border-3 border-gray-200 border-t-amethyst-500 rounded-full animate-spin"></div>
+                <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
                 <span className="ml-3 text-gray-600">Loading activity...</span>
               </div>
             ) : recentActivity.length > 0 ? (

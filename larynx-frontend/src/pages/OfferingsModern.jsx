@@ -1969,7 +1969,7 @@ const OfferingsModern = () => {
               <div className="text-center py-12">
                 {isLoadingOfferings ? (
                   <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+                    <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-gray-600">Loading offerings...</p>
                   </div>
                 ) : offerings.length === 0 ? (
