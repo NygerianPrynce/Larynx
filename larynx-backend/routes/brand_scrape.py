@@ -130,7 +130,7 @@ async def upload_brand_summary(request: Request, brand_data: BrandSummaryUpload)
         if brand_data.booking_process:
             facts.append(f"How to book or order: {brand_data.booking_process}")
         try:
-            store_brand_knowledge(user_id, facts)
+            store_brand_knowledge(user_id, facts, source="manual")
         except Exception:
             logging.warning("store_brand_knowledge (manual) failed", exc_info=True)
 
@@ -178,7 +178,7 @@ async def test_brand_scrape(request: Request, url: str = Query(...)):
         # Editable positioning summary lives on the user row...
         store_brand_context(user_id, {"brand_summary": summary})
         # ...and the atomic facts go to the retrievable knowledge base.
-        store_brand_knowledge(user_id, facts, source_url=url)
+        store_brand_knowledge(user_id, facts, source_url=url, source="website")
     except Exception:
         logging.exception("storing brand profile failed")
         raise HTTPException(500, detail="Failed to save brand profile")

@@ -15,7 +15,9 @@ const OnboardingInventory = ({ onBack, onNext }) => {
   const [uploadFile, setUploadFile] = useState(null);
   const [specialInstructions, setSpecialInstructions] = useState('');
 
-  const defaultCategories = ['Catering', 'Event Rentals', 'Food & Beverages', 'Furniture', 'Decorations', 'Party Supplies', 'Venue Services'];
+  // Product categories for the industries we target (event rental + catering).
+  // These describe the TYPE of item, not the business itself.
+  const defaultCategories = ['Furniture', 'Linens & Covers', 'Tableware & Place Settings', 'Decor & Florals', 'Tents & Structures', 'Lighting & A/V', 'Food & Beverage', 'Staff & Services'];
   const [customCategories, setCustomCategories] = useState(['Chairs', 'Tables', 'Party Platters', 'Drinks', 'Linens', 'Lighting']);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const categories = [...defaultCategories, ...customCategories, 'Other'];
@@ -126,9 +128,22 @@ const OnboardingInventory = ({ onBack, onNext }) => {
   const handleNext = async () => {
     try {
       const api = import.meta.env.VITE_API_URL;
-      
+
+      // Safety net: if the user typed an offering into the add-form but didn't click
+      // "Add" before continuing, don't silently lose it — include it in the save.
+      let offeringsToSave = offerings;
+      if (newOffering.name && newOffering.price) {
+        offeringsToSave = [...offerings, {
+          id: Date.now(),
+          name: newOffering.name.trim(),
+          price: normalizePrice(newOffering.price),
+          pricingType: newOffering.pricingType || 'fixed',
+          category: newOffering.category || 'Other'
+        }];
+      }
+
       // Save each offering to the backend - categories are handled by AI during email processing
-      for (const offering of offerings) {
+      for (const offering of offeringsToSave) {
         const response = await fetch(`${api}/inventory/add`, {
           method: 'POST',
           headers: { 

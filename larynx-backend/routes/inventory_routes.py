@@ -733,6 +733,20 @@ async def save_special_instructions(request: Request, data: SpecialInstructions)
     if not result.data:
         raise HTTPException(status_code=500, detail="Failed to save instructions")
 
+    # Embed the instructions as retrievable brand facts (source='instructions') so they
+    # surface in drafts alongside the scraped/manual facts. Scoped by source, so this
+    # never wipes the website-scraped facts. Split into bite-sized statements for
+    # better retrieval; fall back to the whole blob if it's one chunk.
+    try:
+        from brand_engine import store_brand_knowledge
+        raw = data.special_instructions
+        chunks = [c.strip() for c in re.split(r"[\n.;]+", raw) if len(c.strip()) >= 15]
+        if not chunks and raw.strip():
+            chunks = [raw.strip()]
+        store_brand_knowledge(user_id, chunks, source="instructions")
+    except Exception:
+        logging.warning("embedding special instructions failed", exc_info=True)
+
     # Log to analytics
     analytics_resp = supabase.table("analytics").select("recent_activity").eq("user_id", user_id).execute()
     analytics_data = analytics_resp.data[0] if analytics_resp.data else {}

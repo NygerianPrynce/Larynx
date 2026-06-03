@@ -84,8 +84,9 @@ const OfferingsModern = () => {
   const [duplicateResolutions, setDuplicateResolutions] = useState({})
   const [notification, setNotification] = useState(null)
 
-  const defaultCategories = ['Consulting', 'Design', 'Marketing', 'Writing', 'Development', 'Catering', 'Events']
-  const [customCategories, setCustomCategories] = useState(['Drinks', 'Party Size', 'Custom Package'])
+  // Must match the onboarding category set — product TYPES for event rental + catering.
+  const defaultCategories = ['Furniture', 'Linens & Covers', 'Tableware & Place Settings', 'Decor & Florals', 'Tents & Structures', 'Lighting & A/V', 'Food & Beverage', 'Staff & Services']
+  const [customCategories, setCustomCategories] = useState([])
   const [selectedCategory, setSelectedCategory] = useState('All')
   const categories = [...defaultCategories, ...customCategories, 'Other']
 

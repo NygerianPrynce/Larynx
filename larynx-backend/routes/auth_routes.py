@@ -303,9 +303,18 @@ async def finish_onboarding(request: Request):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
-    
+
     # Update onboarding flag
     supabase.table("users").update({"has_onboarded": True}).eq("id", user_id).execute()
+
+    # Ensure email monitoring is ON once setup completes — the whole product depends
+    # on it running, so a freshly-onboarded user should never land in settings with
+    # monitoring off. Idempotent: start_email_monitoring no-ops if already monitoring.
+    try:
+        from routes.inbox_routes import start_email_monitoring
+        await start_email_monitoring(user_id)
+    except Exception as e:
+        logging.error(f"finish_onboarding: failed to start monitoring for {user_id}: {e}")
 
     return {"message": "Onboarding completed"}
 

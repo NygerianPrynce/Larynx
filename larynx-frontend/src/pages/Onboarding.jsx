@@ -249,13 +249,15 @@ const Onboarding = () => {
   useEffect(() => {
     if (isLoading) {
       setLoadingProgress(0)
+      const start = Date.now()
+      // Ease toward ~92% over RAMP_MS, then hold until the op actually completes.
+      // To change how slow the bar feels, just adjust RAMP_MS (currently ~16s).
+      const RAMP_MS = 16000
       const interval = setInterval(() => {
-        setLoadingProgress((prev) => {
-          if (prev >= 92) return 92
-          const remaining = 92 - prev
-          return prev + Math.max(0.4, remaining * 0.045)
-        })
-      }, 150)
+        const elapsed = Date.now() - start
+        const pct = 92 * (1 - Math.exp(-3.5 * elapsed / RAMP_MS))
+        setLoadingProgress(Math.min(92, pct))
+      }, 100)
       return () => clearInterval(interval)
     } else {
       // Operation finished — fill to 100%, then reset shortly after.
@@ -518,7 +520,15 @@ const Onboarding = () => {
               </div>
             </div>
 
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Processing...</h3>
+            <h3 className="text-xl font-semibold text-gray-900 mb-4">
+              {step === 'tone'
+                ? 'Analyzing your emails'
+                : step === 'monitoringConsent'
+                ? 'Finishing setup'
+                : step === 'intro'
+                ? (hasWebsite ? 'Analyzing your website' : 'Saving your business info')
+                : 'Processing...'}
+            </h3>
             
             <div className="h-8 flex items-center justify-center mb-4">
               <AnimatePresence mode="wait">

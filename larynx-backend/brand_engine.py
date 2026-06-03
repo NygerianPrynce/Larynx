@@ -307,10 +307,16 @@ WEBSITE CONTENT:
 
 
 # ─── Knowledge storage + retrieval (pgvector) ──────────────────────────────────
-def store_brand_knowledge(user_id: str, facts: List[str], source_url: Optional[str] = None) -> None:
-    """Replace the user's brand facts with a fresh embedded set."""
+def store_brand_knowledge(user_id: str, facts: List[str], source_url: Optional[str] = None,
+                          source: str = "website") -> None:
+    """
+    Replace the user's brand facts FOR A GIVEN SOURCE with a fresh embedded set.
+    Scoping deletes by `source` ('website' | 'manual' | 'instructions') lets each
+    source refresh independently — so saving business instructions never wipes the
+    facts scraped from the website, and vice versa.
+    """
     try:
-        supabase.table("brand_knowledge").delete().eq("user_id", user_id).execute()
+        supabase.table("brand_knowledge").delete().eq("user_id", user_id).eq("source", source).execute()
     except Exception:
         logging.exception("store_brand_knowledge: clear failed")
 
@@ -323,6 +329,7 @@ def store_brand_knowledge(user_id: str, facts: List[str], source_url: Optional[s
             "user_id": user_id,
             "content": fact[:1000],
             "source_url": (source_url or "")[:500],
+            "source": source,
             "embedding": embedding,
         })
 
