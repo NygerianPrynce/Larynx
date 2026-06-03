@@ -57,6 +57,7 @@ const Onboarding = () => {
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [brandSummary, setBrandSummary] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingProgress, setLoadingProgress] = useState(0)
   const [loadingMessage, setLoadingMessage] = useState('')
   const [signoff, setSignoff] = useState('')
   const [emailCrawlMessages, setEmailCrawlMessages] = useState([])
@@ -240,6 +241,29 @@ const Onboarding = () => {
       return () => clearInterval(interval)
     }
   }, [isLoading, emailCrawlMessages.length])
+
+  // Animate the progress ring. We don't get real progress from the backend, so we
+  // ease toward ~92% over time (fast at first, slowing as it climbs) and snap to
+  // 100% the moment the operation actually finishes. Gives an impatient user a
+  // sense of motion without ever lying that it's done.
+  useEffect(() => {
+    if (isLoading) {
+      setLoadingProgress(0)
+      const interval = setInterval(() => {
+        setLoadingProgress((prev) => {
+          if (prev >= 92) return 92
+          const remaining = 92 - prev
+          return prev + Math.max(0.4, remaining * 0.045)
+        })
+      }, 150)
+      return () => clearInterval(interval)
+    } else {
+      // Operation finished — fill to 100%, then reset shortly after.
+      setLoadingProgress(100)
+      const t = setTimeout(() => setLoadingProgress(0), 600)
+      return () => clearTimeout(t)
+    }
+  }, [isLoading])
 
   const handleWebsiteSubmit = async () => {
     if (!websiteUrl.trim()) {
@@ -466,10 +490,34 @@ const Onboarding = () => {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
           >
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <Loader2 className="w-8 h-8 text-white animate-spin" />
+            {/* Circular progress ring — fills as the operation runs */}
+            <div className="relative w-24 h-24 mx-auto mb-6">
+              <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+                {/* track */}
+                <circle
+                  cx="50" cy="50" r="42" fill="none"
+                  stroke="#e5e7eb" strokeWidth="8"
+                />
+                {/* progress */}
+                <circle
+                  cx="50" cy="50" r="42" fill="none"
+                  stroke="url(#progressGradient)" strokeWidth="8" strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 42}
+                  strokeDashoffset={(2 * Math.PI * 42) * (1 - loadingProgress / 100)}
+                  style={{ transition: 'stroke-dashoffset 0.2s ease-out' }}
+                />
+                <defs>
+                  <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#a855f7" />
+                    <stop offset="100%" stopColor="#3b82f6" />
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-xl font-bold text-gray-900">{Math.round(loadingProgress)}%</span>
+              </div>
             </div>
-            
+
             <h3 className="text-xl font-semibold text-gray-900 mb-4">Processing...</h3>
             
             <div className="h-8 flex items-center justify-center mb-4">
