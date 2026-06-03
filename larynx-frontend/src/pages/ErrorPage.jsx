@@ -31,7 +31,7 @@ const ErrorPage = ({
     if (window.history.length > 1) {
       navigate(-1)
     } else {
-      navigate('/landing')
+      navigate('/')
     }
   }
 
@@ -40,7 +40,7 @@ const ErrorPage = ({
   }
 
   const handleGoHome = () => {
-    navigate('/landing')
+    navigate('/')
   }
 
   const getErrorIcon = () => {
@@ -219,7 +219,7 @@ const ErrorPage = ({
             </a>
             <span className="hidden sm:inline text-gray-300">•</span>
             <a 
-              href="/landing" 
+              href="/" 
               className="text-sm text-purple-600 hover:text-purple-800 font-medium transition-colors"
             >
               Return to Home

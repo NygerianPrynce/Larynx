@@ -72,7 +72,7 @@ const OfferingsModern = () => {
   const [showPreview, setShowPreview] = useState(false)
   const [previewData, setPreviewData] = useState(null)
   const [uploading, setUploading] = useState(false)
-  const [specialInstructions, setSpecialInstructions] = useState('All services include free initial consultation. Custom packages available upon request. Rush orders require 48-hour notice with additional fees. Delivery available within 20-mile radius. 30-day satisfaction guarantee on all services.')
+  const [specialInstructions, setSpecialInstructions] = useState('')
   
   // Error resolution states
   const [uploadErrors, setUploadErrors] = useState(null)
