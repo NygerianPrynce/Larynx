@@ -57,6 +57,10 @@ _MAX_CHARS_PER_PAGE = 3000
 _MAX_TOTAL_CHARS = 12000
 _RETRIEVE_K = 5
 _MAX_FACTS_STORED = 40
+# Lenient relevance floor for injecting a fact into a draft. Unrelated text scores
+# ~0.05-0.2; genuinely related ~0.35-0.65. 0.30 drops clear noise while letting real
+# matches for short emails through. Lower it if facts are being dropped too eagerly.
+_MIN_FACT_SIMILARITY = 0.30
 
 
 # ─── SSRF guard (mirror of the route-level check, applied per fetched URL) ─────
@@ -333,7 +337,13 @@ def store_brand_knowledge(user_id: str, facts: List[str], source_url: Optional[s
 
 
 def retrieve_brand_knowledge(user_id: str, query_text: str, k: int = _RETRIEVE_K) -> List[str]:
-    """Return up to k brand facts most relevant to query_text. [] on failure."""
+    """
+    Return up to k brand facts relevant to query_text. Facts below a LENIENT
+    similarity floor are dropped so an off-topic email (e.g. "thanks!") doesn't pull
+    random facts. The threshold is intentionally low (_MIN_FACT_SIMILARITY) so that
+    genuinely-relevant facts for even short emails still pass; the always-on brand
+    summary in build_brand_section covers the floor regardless. [] on failure.
+    """
     embedding = embed_text(query_text)
     if embedding is None:
         return []
@@ -342,7 +352,10 @@ def retrieve_brand_knowledge(user_id: str, query_text: str, k: int = _RETRIEVE_K
             "match_brand_knowledge",
             {"p_user_id": user_id, "query_embedding": embedding, "match_count": k},
         ).execute()
-        return [r["content"] for r in (res.data or []) if r.get("content")]
+        return [
+            r["content"] for r in (res.data or [])
+            if r.get("content") and r.get("similarity", 0) >= _MIN_FACT_SIMILARITY
+        ]
     except Exception:
         logging.exception("retrieve_brand_knowledge failed")
         return []
