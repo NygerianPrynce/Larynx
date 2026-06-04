@@ -1061,9 +1061,12 @@ async def create_gmail_draft(user_id: str, original_message_id: str, reply_body:
         access_token = await refresh_access_token_if_needed(user_id, supabase)
         headers = {"Authorization": f"Bearer {access_token}"}
         
-        # Get the user's signature
-        user_row = supabase.table("users").select("signature").eq("id", user_id).execute()
-        signature_html = user_row.data[0].get("signature", "") if user_row.data else ""
+        # Get the user's signature. Prefer the HTML form (preserves their logo/image)
+        # for the draft; fall back to the plain-text signature. create_reply_message
+        # renders HTML in the HTML part and down-converts it for the plain part.
+        user_row = supabase.table("users").select("signature, signature_html").eq("id", user_id).execute()
+        row = user_row.data[0] if user_row.data else {}
+        signature_html = row.get("signature_html") or row.get("signature") or ""
         
         # Get the original message to extract proper headers for reply
         original_message = await get_original_message_headers(headers, original_message_id)

@@ -60,6 +60,7 @@ const Onboarding = () => {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [loadingMessage, setLoadingMessage] = useState('')
   const [signoff, setSignoff] = useState('')
+  const [signatureDetected, setSignatureDetected] = useState(false)
   const [emailCrawlMessages, setEmailCrawlMessages] = useState([])
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
@@ -104,6 +105,28 @@ const Onboarding = () => {
       throw err
     }
   }
+
+  // When the user reaches the signoff step, pre-fill the editor with the signature
+  // we auto-detected from their sent emails during the crawl (if any). Lets them
+  // confirm/tweak instead of writing from scratch — or skip entirely.
+  useEffect(() => {
+    if (step !== 'signoff') return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`${api}/signature`, { credentials: 'include' })
+        if (!res.ok || cancelled) return
+        const data = await res.json()
+        if (data.signature && data.signature.trim()) {
+          setSignatureDetected(true)
+          setSignoff(prev => (prev && prev.trim()) ? prev : data.signature)
+        }
+      } catch (e) {
+        // non-critical — they can just type a signature
+      }
+    })()
+    return () => { cancelled = true }
+  }, [step])
 
   // Auto-clear errors
   useEffect(() => {
@@ -865,13 +888,33 @@ const Onboarding = () => {
 
             {/* Signature Step */}
           {step === 'signoff' && (
-              <SigEditor
-                value={signoff}
-                setValue={setSignoff}
-                onBack={() => transitionToStep('tone')}
-                onSave={updateSignoff}
-                showHeader={false}
-              />
+              <div>
+                {signatureDetected && (
+                  <div className="max-w-2xl mx-auto mb-4 flex items-start gap-2 bg-green-50 border border-green-200 rounded-xl p-3">
+                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-green-800">
+                      We found your email signature — logo and all — and we'll add it to the replies Larynx drafts.
+                      The text below is editable: rewrite it to replace your signature, or just keep it and skip.
+                      (Gmail won't add a second signature.)
+                    </p>
+                  </div>
+                )}
+                <SigEditor
+                  value={signoff}
+                  setValue={setSignoff}
+                  onBack={() => transitionToStep('tone')}
+                  onSave={updateSignoff}
+                  showHeader={false}
+                />
+                <div className="text-center mt-4">
+                  <button
+                    onClick={() => transitionToStep('inventory')}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline transition-colors"
+                  >
+                    Skip this step — you can set or change your signature anytime in Settings
+                  </button>
+                </div>
+              </div>
           )}
 
             {/* Inventory Step */}

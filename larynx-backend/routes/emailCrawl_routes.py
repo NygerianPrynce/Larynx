@@ -69,6 +69,8 @@ async def crawl_emails(request: Request):
         )
         messages = r.json().get("messages", [])
         signature_counter = Counter()
+        html_sig_by_text = {}   # clean-text sig -> its raw HTML form (incl. logo <img>)
+        from routes.inbox_routes import clean_html_to_text
         email_data = []
 
         for msg in messages:
@@ -103,8 +105,16 @@ async def crawl_emails(request: Request):
             else:
                 body, sig = EmailProcessingService.clean_email_body(raw_body)
             if sig:
-                normalized_sig = "\n".join([line.strip() for line in sig.strip().splitlines() if line.strip()])
-                signature_counter[normalized_sig] += 1
+                # sig may be HTML (Gmail's signature div, incl. the logo <img>) or plain
+                # text. Count by a clean-text key for the editor/plain part, but remember
+                # the raw HTML form so drafts can render the logo.
+                sig_is_html = ('<' in sig and '>' in sig)
+                sig_text = clean_html_to_text(sig) if sig_is_html else sig
+                normalized_sig = "\n".join([line.strip() for line in sig_text.strip().splitlines() if line.strip()])
+                if normalized_sig:
+                    signature_counter[normalized_sig] += 1
+                    if sig_is_html and normalized_sig not in html_sig_by_text:
+                        html_sig_by_text[normalized_sig] = sig.strip()
 
             # Only add emails with meaningful content
             if body and body.strip():
@@ -182,7 +192,12 @@ async def crawl_emails(request: Request):
         
         if signature_counter:
             signature, _ = signature_counter.most_common(1)[0]
-            supabase.table("users").update({"signature": signature}).eq("id", user_id).execute()
+            # Store clean text in `signature` (editor / plain part) and the raw HTML
+            # form (with logo) in `signature_html` (used for the HTML part of drafts).
+            sig_update = {"signature": signature}
+            if signature in html_sig_by_text:
+                sig_update["signature_html"] = html_sig_by_text[signature]
+            supabase.table("users").update(sig_update).eq("id", user_id).execute()
             safe_signature = signature.strip()
         else:
             safe_signature = None
@@ -465,11 +480,17 @@ async def update_signature(request: Request, signature_data: SignatureUpdateRequ
         raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")
     
     try:
-        # Update the user's signature
-        result = supabase.table("users").update({
-            "signature": signature_data.signature
-        }).eq("id", user_id).execute()
-        
+        # If the user actually CHANGED the signature text (vs. keeping the detected one),
+        # their text replaces the auto-detected HTML/logo signature. A no-op save — e.g.
+        # keeping the prefilled signature in onboarding — preserves the logo.
+        update = {"signature": signature_data.signature}
+        current = supabase.table("users").select("signature").eq("id", user_id).execute()
+        current_sig = (current.data[0].get("signature") if current.data else "") or ""
+        if signature_data.signature.strip() != current_sig.strip():
+            update["signature_html"] = None
+
+        result = supabase.table("users").update(update).eq("id", user_id).execute()
+
         if not result.data:
             raise HTTPException(status_code=404, detail="User not found")
         
