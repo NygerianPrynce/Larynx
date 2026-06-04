@@ -275,21 +275,8 @@ const SettingsDashboardClean = () => {
     
     try {
       if (isMonitoringEnabled) {
-        // Stop monitoring
+        // Just open the confirmation — the real stop runs in handleStopMonitoring.
         setShowStopConfirm(true)
-        return
-
-        const res = await fetch(`${api}/stop-monitoring`, {
-          method: 'POST',
-          credentials: 'include'
-        })
-
-        if (res.ok) {
-          setIsMonitoringEnabled(false)
-          setMonitoringSuccess('Email monitoring disabled')
-        } else {
-          setError('Failed to stop monitoring.')
-        }
       } else {
         // Start monitoring
         const res = await fetch(`${api}/start-monitoring`, {
@@ -310,15 +297,9 @@ const SettingsDashboardClean = () => {
     }
   }
 
-  const deleteAccount = async () => {
+  const deleteAccount = () => {
+    // Just open the confirmation modal — the real delete runs in handleDeleteAccount.
     setShowDeleteConfirm(true)
-    return
-
-    await fetch(`${api}/user/delete`, {
-      method: 'DELETE',
-      credentials: 'include'
-    })
-    window.location.href = '/'
   }
 
   // Notification system
@@ -329,15 +310,34 @@ const SettingsDashboardClean = () => {
 
   const handleStopMonitoring = async () => {
     setShowStopConfirm(false)
-    await toggleMonitoring()
-    showNotification('Email monitoring stopped successfully', 'success')
+    try {
+      const res = await fetch(`${api}/stop-monitoring`, {
+        method: 'POST',
+        credentials: 'include'
+      })
+      if (!res.ok) throw new Error(`Stop failed (${res.status})`)
+      setIsMonitoringEnabled(false)
+      showNotification('Email monitoring stopped successfully', 'success')
+    } catch (err) {
+      console.error('Error stopping monitoring:', err)
+      showNotification('Failed to stop monitoring. Please try again.', 'error')
+    }
   }
 
   const handleDeleteAccount = async () => {
     setShowDeleteConfirm(false)
-    await deleteAccount()
-    showNotification('Your account has been deleted. Goodbye 🫡', 'success')
-    setTimeout(() => window.location.href = '/', 2000)
+    try {
+      const res = await fetch(`${api}/user/delete`, {
+        method: 'DELETE',
+        credentials: 'include'
+      })
+      if (!res.ok) throw new Error(`Delete failed (${res.status})`)
+      showNotification('Your account has been deleted. Goodbye 🫡', 'success')
+      setTimeout(() => { window.location.href = '/' }, 1500)
+    } catch (err) {
+      console.error('Error deleting account:', err)
+      showNotification('Failed to delete account. Please try again.', 'error')
+    }
   }
 
   // Animation variants

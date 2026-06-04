@@ -193,10 +193,12 @@ async def delete_user_account(request: Request):
         # 3. Delete tokens
         supabase.table("tokens").delete().eq("user_id", user_id).execute()
 
-        # 4. Delete user account
-        user_response = supabase.table("users").delete().eq("id", user_id).execute()
-        if not user_response.data:
-            raise HTTPException(status_code=500, detail="Failed to delete user")
+        # 4. Delete user account. Child rows (tokens, inventory, drafts, analytics,
+        # tone_profiles, email_exemplars, brand_knowledge, etc.) cascade via their
+        # ON DELETE CASCADE foreign keys. Don't treat an empty representation as a
+        # failure — a successful delete can return no rows depending on PostgREST
+        # settings; a real failure raises and is handled by the except below.
+        supabase.table("users").delete().eq("id", user_id).execute()
 
         # 5. Clear session
         request.session.clear()
