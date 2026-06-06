@@ -447,17 +447,19 @@ async def get_signature(request: Request):
     
     try:
         # Fetch user's signature from database
-        user_data = supabase.table("users").select("signature, name").eq("id", user_id).execute()
-        
+        user_data = supabase.table("users").select("signature, signature_html, name").eq("id", user_id).execute()
+
         if not user_data.data:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
         user_info = user_data.data[0]
         current_signature = user_info.get("signature")
+        signature_html = user_info.get("signature_html")
         user_name = user_info.get("name")
-        
+
         return {
             "signature": current_signature,
+            "signature_html": signature_html,   # HTML form (incl. logo) for preview
             "user_name": user_name,
             "has_signature": current_signature is not None
         }

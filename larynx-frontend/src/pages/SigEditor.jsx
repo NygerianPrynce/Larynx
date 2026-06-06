@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Save, Edit, Bold, Italic, Underline, Link, List, ArrowLeft, Palette, Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, Strikethrough, Plus, Minus } from 'lucide-react'
+import { Save, Edit, Bold, Italic, Underline, Link, List, ListOrdered, ArrowLeft, Palette, Highlighter, Type, AlignLeft, AlignCenter, AlignRight, AlignJustify, Strikethrough, Plus, Minus, Image as ImageIcon, Eraser } from 'lucide-react'
 import { Helmet } from "react-helmet"
 import './SigEditor.css'
 
@@ -9,6 +9,9 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false)
+  const [isHighlightOpen, setIsHighlightOpen] = useState(false)
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false)
+  const [imageUrl, setImageUrl] = useState('')
   const [selectedColor, setSelectedColor] = useState('#000000')
   const [isInitialized, setIsInitialized] = useState(false)
   const [selectedText, setSelectedText] = useState('')
@@ -164,6 +167,60 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
     }
   }, [execCommand])
 
+  const handleHighlightSelect = useCallback((color) => {
+    try {
+      // hiliteColor is the cross-browser highlight command (Gmail's "highlight").
+      execCommand('hiliteColor', color)
+      setIsHighlightOpen(false)
+    } catch (error) {
+      console.error('Error in handleHighlightSelect:', error)
+    }
+  }, [execCommand])
+
+  const handleFontFamily = useCallback((family) => {
+    if (family) execCommand('fontName', family)
+  }, [execCommand])
+
+  const handleInsertImage = useCallback(() => {
+    try {
+      const url = imageUrl.trim()
+      if (!url) return
+      if (selectedRange) {
+        const selection = window.getSelection()
+        selection.removeAllRanges()
+        selection.addRange(selectedRange)
+      }
+      execCommand('insertImage', url)
+      // Constrain any oversized images so they don't blow out the signature/email.
+      if (editorRef.current) {
+        editorRef.current.querySelectorAll('img').forEach(img => {
+          if (!img.style.maxWidth) {
+            img.style.maxWidth = '200px'
+            img.style.height = 'auto'
+          }
+        })
+      }
+      setIsImageDialogOpen(false)
+      setImageUrl('')
+    } catch (error) {
+      console.error('Error inserting image:', error)
+    }
+  }, [imageUrl, selectedRange, execCommand])
+
+  // Gmail's signature font set.
+  const fontFamilies = [
+    { label: 'Sans Serif', value: 'arial, sans-serif' },
+    { label: 'Serif', value: 'georgia, serif' },
+    { label: 'Fixed Width', value: 'monospace' },
+    { label: 'Wide', value: 'verdana, sans-serif' },
+    { label: 'Narrow', value: '"arial narrow", sans-serif' },
+    { label: 'Comic Sans', value: '"comic sans ms", cursive' },
+    { label: 'Garamond', value: 'garamond, serif' },
+    { label: 'Tahoma', value: 'tahoma, sans-serif' },
+    { label: 'Trebuchet MS', value: '"trebuchet ms", sans-serif' },
+    { label: 'Verdana', value: 'verdana, sans-serif' },
+  ]
+
   const increaseFontSize = useCallback(() => {
     try {
       if (editorRef.current && currentFontSize < 7) {
@@ -317,6 +374,21 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
 
                 <div className="w-px h-6 bg-gray-300 mx-2"></div>
 
+                {/* Font Family */}
+                <select
+                  className="text-sm border border-gray-300 rounded px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  defaultValue=""
+                  onChange={(e) => handleFontFamily(e.target.value)}
+                  title="Font"
+                >
+                  <option value="" disabled>Font</option>
+                  {fontFamilies.map(f => (
+                    <option key={f.label} value={f.value} style={{ fontFamily: f.value }}>{f.label}</option>
+                  ))}
+                </select>
+
+                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+
                 {/* Font Size Controls with A indicator */}
                 <div className="flex items-center space-x-1">
                   <button
@@ -392,6 +464,20 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                   >
                     <List size={16} />
                   </button>
+                  <button
+                    className="toolbar-button"
+                    onClick={() => execCommand('insertOrderedList')}
+                    title="Numbered List"
+                  >
+                    <ListOrdered size={16} />
+                  </button>
+                  <button
+                    className="toolbar-button"
+                    onClick={() => setIsImageDialogOpen(true)}
+                    title="Insert Image"
+                  >
+                    <ImageIcon size={16} />
+                  </button>
                 </div>
 
                 <div className="w-px h-6 bg-gray-300 mx-2"></div>
@@ -426,6 +512,48 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                     </motion.div>
                   )}
                 </div>
+
+                {/* Highlight Color */}
+                <div className="relative">
+                  <button
+                    className="toolbar-button"
+                    onClick={() => setIsHighlightOpen(!isHighlightOpen)}
+                    title="Highlight Color"
+                  >
+                    <Highlighter size={16} />
+                  </button>
+
+                  {isHighlightOpen && (
+                    <motion.div
+                      className="absolute top-full left-0 mt-2 p-4 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-max"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="color-palette-grid">
+                        {colors.map((color) => (
+                          <button
+                            key={color}
+                            className="color-swatch"
+                            style={{ backgroundColor: color }}
+                            onClick={() => handleHighlightSelect(color)}
+                          />
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                <div className="w-px h-6 bg-gray-300 mx-2"></div>
+
+                {/* Remove Formatting */}
+                <button
+                  className="toolbar-button"
+                  onClick={() => execCommand('removeFormat')}
+                  title="Clear Formatting"
+                >
+                  <Eraser size={16} />
+                </button>
               </div>
 
               {/* Editor - Uncontrolled */}
@@ -524,7 +652,51 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
           </div>
         </div>
 
-        {/* Link Dialog */}
+        {/* Image Dialog */}
+        {isImageDialogOpen && (
+          <motion.div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.div
+              className="bg-white rounded-2xl p-6 w-full max-w-md"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Insert Image</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Paste a hosted image URL (e.g. your logo). It must be a public link ending in .png/.jpg so it shows in sent emails.
+              </p>
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://yoursite.com/logo.png"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                autoFocus
+              />
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={() => { setIsImageDialogOpen(false); setImageUrl('') }}
+                  className="px-6 py-2 border border-purple-300 text-purple-700 bg-white rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all duration-200 font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleInsertImage}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+                >
+                  Insert
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+      {/* Link Dialog */}
         {isLinkDialogOpen && (
           <motion.div
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"

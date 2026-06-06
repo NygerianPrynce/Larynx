@@ -61,6 +61,8 @@ const Onboarding = () => {
   const [loadingMessage, setLoadingMessage] = useState('')
   const [signoff, setSignoff] = useState('')
   const [signatureDetected, setSignatureDetected] = useState(false)
+  const [detectedSigHtml, setDetectedSigHtml] = useState('')
+  const [sigMode, setSigMode] = useState('editing') // 'choosing' (use detected vs new) | 'editing'
   const [emailCrawlMessages, setEmailCrawlMessages] = useState([])
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0)
   const [showSuccessMessage, setShowSuccessMessage] = useState(false)
@@ -119,7 +121,9 @@ const Onboarding = () => {
         const data = await res.json()
         if (data.signature && data.signature.trim()) {
           setSignatureDetected(true)
+          setDetectedSigHtml(data.signature_html || '')
           setSignoff(prev => (prev && prev.trim()) ? prev : data.signature)
+          setSigMode('choosing')   // offer "use this vs create new" before the editor
         }
       } catch (e) {
         // non-critical — they can just type a signature
@@ -888,17 +892,42 @@ const Onboarding = () => {
 
             {/* Signature Step */}
           {step === 'signoff' && (
+            signatureDetected && sigMode === 'choosing' ? (
+              <motion.div
+                className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm max-w-2xl mx-auto"
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <h3 className="text-xl font-semibold text-gray-900">We found your email signature</h3>
+                </div>
+                <p className="text-gray-600 mb-4">
+                  We recognized this from your sent emails — logo and all. Use it as-is, or create a new one.
+                </p>
+                <div className="border border-gray-200 rounded-xl p-4 mb-6 bg-gray-50 overflow-x-auto">
+                  {detectedSigHtml
+                    ? <div dangerouslySetInnerHTML={{ __html: detectedSigHtml }} />
+                    : <pre className="whitespace-pre-wrap text-sm text-gray-800" style={{ fontFamily: 'inherit' }}>{signoff}</pre>}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button
+                    onClick={() => { setSignoff(''); setSignatureDetected(false); setSigMode('editing') }}
+                    className="flex-1 px-6 py-3 border border-purple-300 text-purple-700 bg-white rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all duration-200 font-medium"
+                  >
+                    Create a new one
+                  </button>
+                  <button
+                    onClick={() => transitionToStep('inventory')}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+                  >
+                    Use this signature
+                  </button>
+                </div>
+              </motion.div>
+            ) : (
               <div>
-                {signatureDetected && (
-                  <div className="max-w-2xl mx-auto mb-4 flex items-start gap-2 bg-green-50 border border-green-200 rounded-xl p-3">
-                    <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-green-800">
-                      We found your email signature — logo and all — and we'll add it to the replies Larynx drafts.
-                      The text below is editable: rewrite it to replace your signature, or just keep it and skip.
-                      (Gmail won't add a second signature.)
-                    </p>
-                  </div>
-                )}
                 <SigEditor
                   value={signoff}
                   setValue={setSignoff}
@@ -915,6 +944,7 @@ const Onboarding = () => {
                   </button>
                 </div>
               </div>
+            )
           )}
 
             {/* Inventory Step */}
