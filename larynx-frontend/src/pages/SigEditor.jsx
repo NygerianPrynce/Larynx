@@ -12,6 +12,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
   const [isHighlightOpen, setIsHighlightOpen] = useState(false)
   const [isImageDialogOpen, setIsImageDialogOpen] = useState(false)
   const [imageUrl, setImageUrl] = useState('')
+  const [uploading, setUploading] = useState(false)
   const [selectedColor, setSelectedColor] = useState('#000000')
   const [isInitialized, setIsInitialized] = useState(false)
   const [selectedText, setSelectedText] = useState('')
@@ -181,31 +182,54 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
     if (family) execCommand('fontName', family)
   }, [execCommand])
 
-  const handleInsertImage = useCallback(() => {
-    try {
-      const url = imageUrl.trim()
-      if (!url) return
-      if (selectedRange) {
-        const selection = window.getSelection()
-        selection.removeAllRanges()
-        selection.addRange(selectedRange)
-      }
-      execCommand('insertImage', url)
-      // Constrain any oversized images so they don't blow out the signature/email.
-      if (editorRef.current) {
-        editorRef.current.querySelectorAll('img').forEach(img => {
-          if (!img.style.maxWidth) {
-            img.style.maxWidth = '200px'
-            img.style.height = 'auto'
-          }
-        })
-      }
-      setIsImageDialogOpen(false)
-      setImageUrl('')
-    } catch (error) {
-      console.error('Error inserting image:', error)
+  const insertImageUrl = useCallback((url) => {
+    if (!url) return
+    if (selectedRange) {
+      const selection = window.getSelection()
+      selection.removeAllRanges()
+      selection.addRange(selectedRange)
     }
-  }, [imageUrl, selectedRange, execCommand])
+    execCommand('insertImage', url)
+    // Constrain any oversized images so they don't blow out the signature/email.
+    if (editorRef.current) {
+      editorRef.current.querySelectorAll('img').forEach(img => {
+        if (!img.style.maxWidth) {
+          img.style.maxWidth = '200px'
+          img.style.height = 'auto'
+        }
+      })
+    }
+    setIsImageDialogOpen(false)
+    setImageUrl('')
+  }, [selectedRange, execCommand])
+
+  const handleInsertImage = useCallback(() => {
+    insertImageUrl(imageUrl.trim())
+  }, [imageUrl, insertImageUrl])
+
+  const handleImageUpload = useCallback(async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/upload-signature-image`, {
+        method: 'POST',
+        credentials: 'include',
+        body: fd,
+      })
+      if (!res.ok) throw new Error(`Upload failed (${res.status})`)
+      const data = await res.json()
+      if (data.url) insertImageUrl(data.url)
+    } catch (err) {
+      console.error('Image upload failed:', err)
+      alert('Image upload failed. Please try a smaller PNG/JPG, or paste a URL instead.')
+    } finally {
+      setUploading(false)
+      e.target.value = '' // allow re-selecting the same file
+    }
+  }, [insertImageUrl])
 
   // Gmail's signature font set.
   const fontFamilies = [
@@ -666,17 +690,35 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.2 }}
             >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Insert Image</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Paste a hosted image URL (e.g. your logo). It must be a public link ending in .png/.jpg so it shows in sent emails.
-              </p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Insert Image</h3>
+
+              {/* Upload from computer */}
+              <label className={`block w-full text-center px-4 py-3 border-2 border-dashed border-purple-300 rounded-xl cursor-pointer hover:bg-purple-50 transition-colors ${uploading ? 'opacity-60 pointer-events-none' : ''}`}>
+                <ImageIcon size={18} className="inline mr-2 text-purple-600" />
+                <span className="text-sm font-medium text-purple-700">
+                  {uploading ? 'Uploading…' : 'Upload a logo / image (PNG, JPG · max 2MB)'}
+                </span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                  disabled={uploading}
+                />
+              </label>
+
+              <div className="flex items-center gap-3 my-4">
+                <div className="flex-1 h-px bg-gray-200"></div>
+                <span className="text-xs text-gray-400">or paste a URL</span>
+                <div className="flex-1 h-px bg-gray-200"></div>
+              </div>
+
               <input
                 type="url"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 placeholder="https://yoursite.com/logo.png"
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                autoFocus
               />
               <div className="flex justify-end space-x-3 mt-6">
                 <button
@@ -687,9 +729,10 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                 </button>
                 <button
                   onClick={handleInsertImage}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+                  disabled={uploading}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium disabled:opacity-50"
                 >
-                  Insert
+                  Insert URL
                 </button>
               </div>
             </motion.div>

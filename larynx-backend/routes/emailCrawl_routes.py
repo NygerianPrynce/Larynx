@@ -7,8 +7,9 @@ from datetime import datetime, timedelta, timezone
 from collections import Counter
 
 
+import uuid
 import httpx
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, UploadFile, File
 from starlette.middleware.sessions import SessionMiddleware
 
 from config import supabase
@@ -505,3 +506,50 @@ async def update_signature(request: Request, signature_data: SignatureUpdateRequ
     except Exception as e:
         logging.exception("update_signature failed")
         raise HTTPException(status_code=500, detail="Failed to update signature")
+
+
+_SIG_IMAGE_BUCKET = "signature-images"
+_ALLOWED_IMAGE_TYPES = {"image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"}
+_MAX_IMAGE_BYTES = 2 * 1024 * 1024  # 2 MB
+
+
+@router.post("/upload-signature-image")
+@limiter.limit("20/minute")
+async def upload_signature_image(request: Request, file: UploadFile = File(...)):
+    """
+    Upload a signature image (logo) to Supabase Storage and return its public URL.
+    The frontend inserts that URL into the signature so it renders in sent emails.
+    """
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    content_type = (file.content_type or "").lower()
+    if content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Unsupported file type. Use PNG, JPG, GIF, or WEBP.")
+
+    contents = await file.read()
+    if len(contents) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=400, detail="Image too large (max 2 MB).")
+    if not contents:
+        raise HTTPException(status_code=400, detail="Empty file.")
+
+    ext = {
+        "image/png": "png", "image/jpeg": "jpg", "image/jpg": "jpg",
+        "image/gif": "gif", "image/webp": "webp",
+    }.get(content_type, "png")
+    key = f"{user_id}/{uuid.uuid4().hex}.{ext}"
+
+    try:
+        supabase.storage.from_(_SIG_IMAGE_BUCKET).upload(
+            path=key,
+            file=contents,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+        public_url = supabase.storage.from_(_SIG_IMAGE_BUCKET).get_public_url(key)
+        # Some client versions append a trailing "?" — trim it.
+        public_url = public_url.rstrip("?")
+        return {"status": "success", "url": public_url}
+    except Exception:
+        logging.exception("upload_signature_image failed")
+        raise HTTPException(status_code=500, detail="Failed to upload image. Please try again.")
