@@ -18,7 +18,7 @@ from pydantic import BaseModel
 
 from config import supabase
 from functions import refresh_access_token_if_needed, fetch_tone_profile
-from tone_engine import build_voice_section
+from tone_engine import build_voice_section, strip_quotes_and_boilerplate
 from brand_engine import build_brand_section
 from routes.draft_routes import InventoryMatcher, create_draft_with_gpt
 from services.email_service import EmailProcessingService
@@ -1266,12 +1266,19 @@ async def process_and_store_email(user_id: str, email_data: Dict):
     Process a single email: clean, generate draft, store, and create Gmail draft
     """
     try:
-        # Clean the email body using centralized service
-        # Try HTML signature extraction first if the body contains HTML
-        if '<' in email_data['raw_body'] and '>' in email_data['raw_body']:
-            cleaned_body, extracted_signature = EmailProcessingService.extract_html_signature(email_data['raw_body'])
+        # Backup quote/forward/reaction stripping BEFORE talon. Talon misses some
+        # formats (we saw this on the crawl), and clean_email_body collapses newlines
+        # at the end — so this line-based pass has to run first, while the raw body
+        # still has line breaks. Cuts at "On <date> ... wrote:", ">" quoted lines,
+        # forwarded-message headers, and Gmail reaction notices, so the model only
+        # sees the customer's new message — not the whole quoted thread.
+        raw_body = strip_quotes_and_boilerplate(email_data['raw_body'])
+
+        # Then the centralized clean (talon quotes + signature, artifact removal).
+        if '<' in raw_body and '>' in raw_body:
+            cleaned_body, extracted_signature = EmailProcessingService.extract_html_signature(raw_body)
         else:
-            cleaned_body, extracted_signature = EmailProcessingService.clean_email_body(email_data['raw_body'])
+            cleaned_body, extracted_signature = EmailProcessingService.clean_email_body(raw_body)
         
         if EmailProcessingService.is_email_empty_or_too_short(cleaned_body, min_length=5):
             logging.info(f"Skipping email with empty cleaned body: {email_data['message_id']}")
