@@ -966,7 +966,7 @@ async def generate_draft_for_email(user_id: str, subject: str, body: str, sender
             "estimated_hours_saved": round((analytics_data.get("total_drafts", 0) + 1) * 6.0 / 60, 2),
             "recent_activity": recent,
             "updated_at": datetime.utcnow().isoformat()
-        }).execute()
+        }, on_conflict="user_id").execute()
 
         
         return draft_text, matched_items if matched_items else None

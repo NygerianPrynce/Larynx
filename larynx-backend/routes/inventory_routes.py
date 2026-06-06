@@ -58,7 +58,7 @@ async def add_inventory_item(request: Request, item: InventoryItem):
         "user_id": user_id,
         "recent_activity": recent,
         "updated_at": datetime.utcnow().isoformat()
-    }).execute()
+    }, on_conflict="user_id").execute()
 
     # Note: Category analytics should only be updated when emails are processed, 
     # not when manually adding inventory items
@@ -561,7 +561,7 @@ async def bulk_upload_inventory(request: Request, file: UploadFile = File(...)):
             "user_id": user_id,
             "recent_activity": recent,
             "updated_at": datetime.utcnow().isoformat()
-        }).execute()
+        }, on_conflict="user_id").execute()
 
         response = {
             "message": f"Upload completed: {inserted_count} new items, {updated_count} updated, {skipped_count} skipped",
@@ -671,7 +671,7 @@ async def update_inventory_item(item_id: str, request: Request, update: Inventor
         "user_id": user_id,
         "recent_activity": recent,
         "updated_at": datetime.utcnow().isoformat()
-    }).execute()
+    }, on_conflict="user_id").execute()
 
     return {"message": "Item updated", "item": result.data[0]}
 @router.delete("/inventory/delete/{item_id}")
@@ -712,7 +712,7 @@ async def delete_inventory_item(item_id: str, request: Request):
             "user_id": user_id,
             "recent_activity": recent,
             "updated_at": datetime.utcnow().isoformat()
-        }).execute()
+        }, on_conflict="user_id").execute()
     except Exception as e:
         print(f"Failed to log analytics: {e}")
 
@@ -762,7 +762,7 @@ async def save_special_instructions(request: Request, data: SpecialInstructions)
         "user_id": user_id,
         "recent_activity": recent,
         "updated_at": datetime.utcnow().isoformat()
-    }).execute()
+    }, on_conflict="user_id").execute()
     return {"message": "Special instructions saved"}
 
 @router.get("/inventory/special-instructions")

@@ -112,7 +112,7 @@ async def reset_analytics(request: Request):
             }
         ],
         "updated_at": datetime.utcnow().isoformat()
-    }).execute()
+    }, on_conflict="user_id").execute()
 
     return {"message": "Analytics reset"}
 
@@ -152,7 +152,7 @@ async def update_email_processing_analytics(user_id: str):
         analytics_data["updated_at"] = datetime.utcnow().isoformat()
         
         # Upsert analytics
-        supabase.table("analytics").upsert(analytics_data).execute()
+        supabase.table("analytics").upsert(analytics_data, on_conflict="user_id").execute()
         
         logging.info(f"Updated email processing analytics for user {user_id}")
         
