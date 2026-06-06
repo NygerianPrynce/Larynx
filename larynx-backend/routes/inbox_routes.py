@@ -1691,11 +1691,34 @@ class BotEmailDetector:
         # If we find multiple human patterns, likely not a bot
         return human_score >= 2
     
+    def has_bulk_mail_headers(self, headers_list: List[Dict]) -> bool:
+        """
+        DECISIVE automated/bulk-mail signals. A genuine 1:1 customer inquiry from a
+        person's mailbox never carries these — they're exclusive to bulk/marketing/
+        notification senders (Amazon, LinkedIn, newsletters, auto-replies). Presence
+        of ANY of these = filter immediately.
+        """
+        hd = {h["name"].lower(): h["value"].lower() for h in headers_list}
+        if hd.get('auto-submitted', '').startswith('auto-'):
+            return True
+        if hd.get('precedence', '') in ('bulk', 'list', 'junk'):
+            return True
+        for h in ('list-unsubscribe', 'list-id', 'list-subscribe',
+                  'feedback-id', 'x-feedback-id', 'list-unsubscribe-post'):
+            if h in hd:
+                return True
+        return False
+
     def is_bot_email(self, sender: str, subject: str, body: str, headers_list: List[Dict]) -> bool:
         """
         Comprehensive bot detection combining multiple signals
         Returns True if email is likely from a bot
         """
+        # Bulk-mail headers are definitive (catches Amazon shipment/LinkedIn notices,
+        # which otherwise scored only +2 from check_bot_headers and slipped through).
+        if self.has_bulk_mail_headers(headers_list):
+            return True
+
         bot_signals = 0
         
         # Check sender
