@@ -165,17 +165,28 @@ async def find_email_and_text(website: str) -> tuple:
     return (ranked[0] if ranked else ""), text
 
 
+# Default editable "pitch" — everything after the personalized opener. The admin can
+# override this per region from the Outreach UI (e.g., swap the city).
+DEFAULT_PITCH = (
+    "I'm a Vanderbilt student here in Nashville, and I built a tool that drafts your "
+    "email replies — quotes, requests, all of it — in your own voice, so you just skim "
+    "and send. I'm rolling it out to a handful of local teams first and I'd genuinely "
+    "love to show you what it does. Any chance you've got 10 minutes this week for a "
+    "quick demo?\n\nBest,\nFadhil — Vanderbilt '28"
+)
+
+
 def generate_opener(name: str, site_text: str) -> str:
-    fallback = f"love what {name} is doing in the Nashville scene"
+    fallback = f"love what {name} is doing"
     if not site_text:
         return fallback
     try:
         resp = _client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content":
-                f"Write the FIRST line of a cold email to the owner of a local Nashville "
-                f"business. ONE short, specific, natural observation about what they do. "
-                f"12 words max. No greeting, no 'I came across', no fluff. "
+                f"Write the FIRST line of a cold email to the owner of a local business. "
+                f"ONE short, specific, natural observation about what they do. 12 words max. "
+                f"No greeting, no 'I came across', no fluff. "
                 f"Business: {name}. Site text: {site_text}"}],
             temperature=0.5,
             max_tokens=40,
@@ -185,15 +196,8 @@ def generate_opener(name: str, site_text: str) -> str:
         return fallback
 
 
-def build_email(name: str, opener: str) -> tuple:
+def build_email(name: str, opener: str, pitch: str = None) -> tuple:
+    pitch = (pitch or DEFAULT_PITCH).strip()
     subject = "quick one"
-    body = f"""Hey {name} team,
-
-{opener}. I'm a Vanderbilt student here in Nashville, and I built a tool that drafts your email replies — quotes, requests, all of it — in your own voice, so you just skim and hit send.
-
-I'm rolling it out to a handful of Nashville teams first and I'd genuinely love to show you what it does. Any chance you've got 10 minutes this week for a quick demo?
-
-Best,
-Fadhil
-Vanderbilt '28"""
+    body = f"Hey {name} team,\n\n{opener}. {pitch}"
     return subject, body

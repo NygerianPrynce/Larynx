@@ -4,6 +4,9 @@ import { METROS, CITIES_BY_STATE, STATES } from '../data/usCities'
 
 const api = import.meta.env.VITE_API_URL
 
+const DEFAULT_PITCH =
+  "I'm a Vanderbilt student here in Nashville, and I built a tool that drafts your email replies — quotes, requests, all of it — in your own voice, so you just skim and send. I'm rolling it out to a handful of local teams first and I'd genuinely love to show you what it does. Any chance you've got 10 minutes this week for a quick demo?\n\nBest,\nFadhil — Vanderbilt '28"
+
 export default function Outreach() {
   const [checked, setChecked] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -12,6 +15,7 @@ export default function Outreach() {
   const [state, setState] = useState('Tennessee')
   const [selectedCities, setSelectedCities] = useState([])
   const [perCity, setPerCity] = useState(5)
+  const [pitch, setPitch] = useState(() => localStorage.getItem('outreach_pitch') || DEFAULT_PITCH)
 
   const [leads, setLeads] = useState([])
   const [filter, setFilter] = useState('all')
@@ -25,10 +29,11 @@ export default function Outreach() {
         const d = await r.json()
         setIsAdmin(!!d.is_admin)
         if (d.is_admin) loadLeads()
-      } catch (e) { /* ignore */ }
-      finally { setChecked(true) }
+      } catch (e) { /* ignore */ } finally { setChecked(true) }
     })()
   }, [])
+
+  useEffect(() => { localStorage.setItem('outreach_pitch', pitch) }, [pitch])
 
   const loadLeads = async () => {
     try {
@@ -38,27 +43,21 @@ export default function Outreach() {
     } catch (e) { /* ignore */ }
   }
 
-  const toggleCity = (c) =>
-    setSelectedCities(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])
-
-  const addMetro = (metroCities) =>
-    setSelectedCities(prev => Array.from(new Set([...prev, ...metroCities])))
+  const toggleCity = (c) => setSelectedCities(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])
+  const addMetro = (cs) => setSelectedCities(p => Array.from(new Set([...p, ...cs])))
 
   const runSearch = async () => {
     if (selectedCities.length === 0) { setMsg('Pick at least one city.'); return }
     setBusy('search'); setMsg('')
     try {
       const r = await fetch(`${api}/admin/outreach/search`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ query, cities: selectedCities, per_city: Number(perCity) }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ query, cities: selectedCities, per_city: Number(perCity), pitch }),
       })
       const d = await r.json()
-      setMsg(`Found ${d.found} businesses, saved ${d.saved} leads.`)
+      setMsg(`Found ${d.found} businesses · ${d.new} new added (duplicates skipped).`)
       await loadLeads()
-    } catch (e) { setMsg('Search failed.') }
-    finally { setBusy('') }
+    } catch (e) { setMsg('Search failed.') } finally { setBusy('') }
   }
 
   const createDrafts = async () => {
@@ -66,16 +65,38 @@ export default function Outreach() {
     try {
       const r = await fetch(`${api}/admin/outreach/create-drafts`, { method: 'POST', credentials: 'include' })
       const d = await r.json()
-      setMsg(`Created ${d.drafts_created} Gmail drafts (of ${d.eligible} eligible). Check your Drafts.`)
+      setMsg(`Created ${d.drafts_created} Gmail drafts (of ${d.eligible}). Check your Drafts.`)
       await loadLeads()
-    } catch (e) { setMsg('Draft creation failed.') }
-    finally { setBusy('') }
+    } catch (e) { setMsg('Draft creation failed.') } finally { setBusy('') }
+  }
+
+  const update = async (id, status) => {
+    try {
+      await fetch(`${api}/admin/outreach/update`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ id, status }),
+      })
+      await loadLeads()
+    } catch (e) { /* ignore */ }
+  }
+
+  const followup = async (id) => {
+    setBusy('fu' + id)
+    try {
+      const r = await fetch(`${api}/admin/outreach/followup`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ id }),
+      })
+      const d = await r.json()
+      setMsg(d.ok ? 'Follow-up draft created in your inbox.' : 'Follow-up failed.')
+      await loadLeads()
+    } catch (e) { setMsg('Follow-up failed.') } finally { setBusy('') }
   }
 
   const downloadCsv = () => {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
-    const header = ['Name', 'Website', 'Email', 'Subject', 'Body', 'Draft Created', 'Added']
-    const rows = leads.map(l => [l.name, l.website, l.email, l.subject, l.body, l.draft_created, l.created_at].map(esc).join(','))
+    const header = ['Name', 'Website', 'Email', 'Status', 'Sent At', 'Added']
+    const rows = leads.map(l => [l.name, l.website, l.email, l.status, l.sent_at, l.created_at].map(esc).join(','))
     const blob = new Blob([header.join(',') + '\n' + rows.join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'outreach_leads.csv'; a.click()
@@ -91,13 +112,33 @@ export default function Outreach() {
 
   const withEmail = leads.filter(l => l.email).length
   const drafted = leads.filter(l => l.draft_created).length
+  const sent = leads.filter(l => l.status === 'sent').length
+  const replied = leads.filter(l => l.status === 'replied').length
   const shown = leads.filter(l =>
     filter === 'all' ? true :
     filter === 'email' ? !!l.email :
-    filter === 'drafted' ? l.draft_created :
-    filter === 'undrafted' ? !l.draft_created : true
+    filter === 'undrafted' ? (l.email && !l.draft_created) :
+    filter === 'drafted' ? l.status === 'drafted' :
+    filter === 'sent' ? l.status === 'sent' :
+    filter === 'replied' ? l.status === 'replied' : true
   )
-  const fmtDate = (s) => { try { return new Date(s).toLocaleDateString() } catch { return '' } }
+
+  const fmt = (s) => { try { return new Date(s).toLocaleDateString() } catch { return '' } }
+  const ago = (s) => {
+    if (!s) return ''
+    const d = Math.floor((Date.now() - new Date(s)) / 86400000)
+    return d <= 0 ? 'today' : d === 1 ? '1d ago' : `${d}d ago`
+  }
+
+  const Badge = ({ l }) => {
+    if (l.status === 'replied') return <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">Replied 🎉</span>
+    if (l.status === 'sent') return <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">Sent · {ago(l.sent_at)}</span>
+    if (l.status === 'drafted' || l.draft_created) return <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">Draft created</span>
+    if (l.email) return <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">Ready</span>
+    return <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">No email</span>
+  }
+
+  const btn = "px-2.5 py-1 text-xs rounded-md border font-medium"
 
   return (
     <div className="min-h-screen bg-gray-50 overflow-x-hidden" style={{ width: '100vw', maxWidth: '100%' }}>
@@ -111,8 +152,7 @@ export default function Outreach() {
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">What are you searching for?</label>
-              <input value={query} onChange={e => setQuery(e.target.value)}
-                placeholder="catering companies"
+              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="catering companies"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
             </div>
             <div>
@@ -122,14 +162,18 @@ export default function Outreach() {
             </div>
           </div>
 
+          {/* Editable pitch */}
+          <label className="block text-sm font-medium text-gray-700 mb-1">Your pitch (goes after the personalized opener — edit per region)</label>
+          <textarea value={pitch} onChange={e => setPitch(e.target.value)} rows={5}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 mb-1" />
+          <p className="text-xs text-gray-400 mb-4">Each email = <i>“Hey [Business] team, [AI opener about them]. {`{your pitch}`}”</i>. Saved automatically.</p>
+
           {/* Metro presets */}
           <label className="block text-sm font-medium text-gray-700 mb-2">Quick metros (covers the whole surrounding ring)</label>
           <div className="flex flex-wrap gap-2 mb-4">
             {Object.entries(METROS).map(([name, cs]) => (
               <button key={name} onClick={() => addMetro(cs)}
-                className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-full hover:bg-purple-50">
-                + {name}
-              </button>
+                className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-full hover:bg-purple-50">+ {name}</button>
             ))}
           </div>
 
@@ -158,7 +202,6 @@ export default function Outreach() {
             </div>
           </div>
 
-          {/* Selected */}
           {selectedCities.length > 0 && (
             <div className="mt-4">
               <div className="flex items-center justify-between mb-1">
@@ -168,8 +211,7 @@ export default function Outreach() {
               <div className="flex flex-wrap gap-2">
                 {selectedCities.map(c => (
                   <span key={c} className="inline-flex items-center gap-1 px-2 py-1 text-xs bg-purple-50 text-purple-700 rounded-full">
-                    {c}
-                    <button onClick={() => toggleCity(c)} className="text-purple-400 hover:text-purple-700">×</button>
+                    {c}<button onClick={() => toggleCity(c)} className="text-purple-400 hover:text-purple-700">×</button>
                   </span>
                 ))}
               </div>
@@ -181,25 +223,24 @@ export default function Outreach() {
               className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium disabled:opacity-50">
               {busy === 'search' ? 'Finding…' : 'Find leads'}
             </button>
-            <button onClick={createDrafts} disabled={!!busy || withEmail === 0}
+            <button onClick={createDrafts} disabled={!!busy || withEmail === drafted}
               className="px-5 py-2.5 bg-green-600 text-white rounded-lg font-medium disabled:opacity-50">
               {busy === 'drafts' ? 'Drafting…' : 'Create Gmail drafts'}
             </button>
             <button onClick={downloadCsv} disabled={leads.length === 0}
-              className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium disabled:opacity-50">
-              Download CSV
-            </button>
+              className="px-5 py-2.5 border border-gray-300 text-gray-700 rounded-lg font-medium disabled:opacity-50">Download CSV</button>
           </div>
           {msg && <p className="text-sm text-gray-600 mt-3">{msg}</p>}
         </div>
 
         {/* Tracker */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="flex gap-6 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-5 text-sm text-gray-600">
             <span><b className="text-gray-900">{leads.length}</b> leads</span>
-            <span><b className="text-gray-900">{withEmail}</b> with email</span>
+            <span><b className="text-gray-900">{withEmail}</b> w/ email</span>
             <span><b className="text-green-600">{drafted}</b> drafted</span>
-            <span><b className="text-amber-600">{withEmail - drafted}</b> ready to draft</span>
+            <span><b className="text-purple-600">{sent}</b> sent</span>
+            <span><b className="text-blue-600">{replied}</b> replied</span>
           </div>
           <select value={filter} onChange={e => setFilter(e.target.value)}
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white">
@@ -207,6 +248,8 @@ export default function Outreach() {
             <option value="email">With email</option>
             <option value="undrafted">Not yet drafted</option>
             <option value="drafted">Drafted</option>
+            <option value="sent">Sent</option>
+            <option value="replied">Replied</option>
           </select>
         </div>
 
@@ -218,7 +261,7 @@ export default function Outreach() {
                 <th className="text-left p-3">Email</th>
                 <th className="text-left p-3">Status</th>
                 <th className="text-left p-3">Added</th>
-                <th className="text-left p-3">Email preview</th>
+                <th className="text-left p-3">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -229,15 +272,31 @@ export default function Outreach() {
                     <a href={l.website} target="_blank" rel="noreferrer" className="text-xs text-blue-600">{l.website}</a>
                   </td>
                   <td className="p-3">{l.email || <span className="text-red-500">none</span>}</td>
+                  <td className="p-3"><Badge l={l} /></td>
+                  <td className="p-3 text-gray-500 whitespace-nowrap">{fmt(l.created_at)}</td>
                   <td className="p-3">
-                    {l.draft_created
-                      ? <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">Draft created</span>
-                      : l.email
-                        ? <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">Ready</span>
-                        : <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">No email</span>}
+                    <div className="flex flex-wrap gap-2">
+                      {l.status === 'drafted' && (
+                        <button onClick={() => update(l.id, 'sent')} className={`${btn} border-purple-300 text-purple-700 hover:bg-purple-50`}>Mark sent</button>
+                      )}
+                      {l.status === 'sent' && (
+                        <>
+                          <button onClick={() => update(l.id, 'replied')} className={`${btn} border-blue-300 text-blue-700 hover:bg-blue-50`}>Mark replied</button>
+                          <button onClick={() => followup(l.id)} disabled={busy === 'fu' + l.id || l.followup_drafted}
+                            className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50`}>
+                            {l.followup_drafted ? 'Follow-up drafted' : busy === 'fu' + l.id ? 'Drafting…' : 'Draft follow-up'}
+                          </button>
+                        </>
+                      )}
+                      {l.status === 'replied' && (
+                        <button onClick={() => followup(l.id)} disabled={busy === 'fu' + l.id}
+                          className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50`}>
+                          {busy === 'fu' + l.id ? 'Drafting…' : 'Draft follow-up'}
+                        </button>
+                      )}
+                      {l.status === 'new' && <span className="text-xs text-gray-400">{l.email ? 'draft first' : '—'}</span>}
+                    </div>
                   </td>
-                  <td className="p-3 text-gray-500 whitespace-nowrap">{fmtDate(l.created_at)}</td>
-                  <td className="p-3 text-gray-700 max-w-md"><pre className="whitespace-pre-wrap font-sans text-xs">{l.body}</pre></td>
                 </tr>
               ))}
               {shown.length === 0 && (
