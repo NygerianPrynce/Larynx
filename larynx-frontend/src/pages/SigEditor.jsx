@@ -288,8 +288,9 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
         <link rel="canonical" href="https://www.larynxai.com/sig-editor" />
       </Helmet>
       
-      <div className="bg-white overflow-hidden relative" style={{ width: '100vw', maxWidth: '100%' }}>
-        {/* Background Elements */}
+      <div className={compact ? "relative" : "bg-white overflow-hidden relative"} style={compact ? undefined : { width: '100vw', maxWidth: '100%' }}>
+        {/* Background Elements — full-page only, hidden when embedded (compact) */}
+        {!compact && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <motion.div
             className="absolute top-1/4 left-1/4 w-64 h-64 bg-gradient-to-br from-purple-200/20 to-blue-200/20 rounded-full blur-3xl"
@@ -331,10 +332,11 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
             }}
           />
         </div>
+        )}
 
         {/* Main Content */}
         <div className={`relative z-10 ${compact ? 'pt-0 pb-0' : 'pt-16 pb-8'}`}>
-          <div className="max-w-6xl mx-auto px-6">
+          <div className={compact ? "" : "max-w-6xl mx-auto px-6"}>
             {/* Header - Only show when showHeader is true */}
             {showHeader && (
               <motion.div
@@ -357,7 +359,9 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
 
             {/* Editor Card */}
             <motion.div
-              className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+              className={compact
+                ? "border border-gray-300 rounded-lg overflow-hidden bg-white"
+                : "bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
@@ -636,25 +640,26 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
 
             {/* Action Buttons */}
             <motion.div
-              className={`flex flex-col lg:flex-row lg:justify-between items-center ${compact ? 'gap-4 mt-4' : 'gap-6 mt-8'}`}
+              className={`flex flex-col lg:flex-row lg:justify-between items-center ${compact ? 'gap-4 mt-6' : 'gap-6 mt-8'}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
             >
-              <div className={`flex items-start space-x-3 ${compact ? 'p-3' : 'p-4'} bg-blue-50 border border-blue-200 rounded-xl lg:flex-1 lg:max-w-2xl w-full`}>
-                <div className="text-lg flex-shrink-0 mt-0.5">
-                  💡
+              {/* Pro Tips — full-page only; omitted when embedded in settings to stay uniform */}
+              {!compact && (
+                <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-xl lg:flex-1 lg:max-w-2xl w-full">
+                  <div className="text-lg flex-shrink-0 mt-0.5">💡</div>
+                  <div>
+                    <p className="text-blue-800 font-medium text-sm">Pro Tips</p>
+                    <p className="text-blue-700 text-sm leading-relaxed">
+                      Use keyboard shortcuts: Ctrl+B for bold, Ctrl+I for italic, Ctrl+U for underline, Ctrl+S for strikethrough.
+                      Select text and click the link button to add hyperlinks.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-blue-800 font-medium text-sm">Pro Tips</p>
-                  <p className="text-blue-700 text-sm leading-relaxed">
-                    Use keyboard shortcuts: Ctrl+B for bold, Ctrl+I for italic, Ctrl+U for underline, Ctrl+S for strikethrough. 
-                    Select text and click the link button to add hyperlinks.
-                  </p>
-                </div>
-              </div>
+              )}
 
-              <div className="flex flex-col sm:flex-row gap-4 lg:flex-shrink-0 lg:ml-4 w-full lg:w-auto">
+              <div className={`flex flex-col sm:flex-row gap-4 ${compact ? 'w-full' : 'lg:flex-shrink-0 lg:ml-4 w-full lg:w-auto'}`}>
                 {onBack && (
                   <button
                     onClick={handleBack}
@@ -666,7 +671,7 @@ const SigEditor = ({ value = '', setValue, onBack, onSave, showHeader = true, co
                 )}
                 <button
                   onClick={handleSave}
-                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center justify-center space-x-2"
+                  className={`${compact ? 'w-full' : 'px-8'} py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium flex items-center justify-center space-x-2`}
                 >
                   <Save size={20} />
                   <span>Save Sign Off</span>
