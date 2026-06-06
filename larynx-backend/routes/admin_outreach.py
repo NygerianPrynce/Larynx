@@ -51,14 +51,14 @@ async def admin_status(request: Request):
 class SearchReq(BaseModel):
     query: str = Field("catering companies", max_length=200)
     cities: List[str] = Field(default_factory=lambda: ["Nashville, TN"])
-    limit: int = Field(20, ge=1, le=100)
+    per_city: int = Field(10, ge=1, le=60)   # max results per city
 
 
 @router.post("/admin/outreach/search")
 @limiter.limit("5/hour")   # each run = many Places + scrape + OpenAI calls
 async def outreach_search(request: Request, req: SearchReq):
     _require_admin(request)
-    companies = await places_search(req.query, req.cities[:15], req.limit)
+    companies = await places_search(req.query, req.cities[:25], req.per_city)
     saved = 0
     for c in companies:
         try:

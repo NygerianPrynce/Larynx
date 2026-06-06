@@ -31,8 +31,13 @@ _JUNK_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".css", ".js
 _FREE_MAIL = ("gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "aol.com", "icloud.com")
 
 
-async def places_search(query: str, cities: list, limit: int = 20) -> list:
-    """Return [{name, website}] from Google Places text search across cities."""
+async def places_search(query: str, cities: list, per_city: int = 10, max_total: int = 400) -> list:
+    """
+    Return [{name, website}] from Google Places text search.
+    `per_city` caps results PER city (so a metro of N cities spreads coverage across
+    the whole ring instead of front-loading the first city); `max_total` is a global
+    safety cap on the run.
+    """
     key = os.getenv("GOOGLE_PLACES_API_KEY", "")
     if not key:
         logging.warning("GOOGLE_PLACES_API_KEY not set")
@@ -45,6 +50,7 @@ async def places_search(query: str, cities: list, limit: int = 20) -> list:
     }
     async with httpx.AsyncClient(timeout=20) as http:
         for city in cities:
+            city_count = 0
             token = None
             while True:
                 body = {"textQuery": f"{query} in {city}", "pageSize": 20}
@@ -69,8 +75,13 @@ async def places_search(query: str, cities: list, limit: int = 20) -> list:
                         continue
                     seen.add(k)
                     out.append({"name": p.get("displayName", {}).get("text", ""), "website": site})
-                    if limit and len(out) >= limit:
+                    city_count += 1
+                    if len(out) >= max_total:
                         return out
+                    if city_count >= per_city:
+                        break
+                if city_count >= per_city:
+                    break
                 token = data.get("nextPageToken")
                 if not token:
                     break
