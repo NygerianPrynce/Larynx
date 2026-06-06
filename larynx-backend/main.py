@@ -20,6 +20,7 @@ from routes.brand_scrape import router as brand_scrape
 from routes.inventory_routes import router as inventory_routes
 from routes.inbox_routes import router as inbox_router
 from routes.analytics_routes import router as analytics_router
+from routes.admin_outreach import router as admin_outreach_router
 
 from config import supabase
 from fastapi.middleware.cors import CORSMiddleware
@@ -115,6 +116,7 @@ app.include_router(brand_scrape)
 app.include_router(inventory_routes)
 app.include_router(inbox_router)
 app.include_router(analytics_router)
+app.include_router(admin_outreach_router)
 
 
 @app.on_event("startup")

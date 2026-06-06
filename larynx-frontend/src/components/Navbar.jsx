@@ -47,6 +47,13 @@ const LogOut = () => (
   </svg>
 )
 
+const Megaphone = () => (
+  <svg style={{ display: 'inline', width: '22px', height: '22px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 11l18-5v12L3 14v-3z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.6 16.8a3 3 0 11-5.8-1.6" />
+  </svg>
+)
+
 const Menu = () => (
   <svg style={{ display: 'inline', width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -64,6 +71,20 @@ const Navbar = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userProfileImage, setUserProfileImage] = useState(null)
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  // Check admin status (controls the Outreach link)
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(`${import.meta.env.VITE_API_URL}/admin/status`, { credentials: 'include' })
+        if (r.ok) {
+          const d = await r.json()
+          setIsAdmin(!!d.is_admin)
+        }
+      } catch (e) { /* ignore */ }
+    })()
+  }, [])
 
   // Fetch user profile image
   useEffect(() => {
@@ -280,6 +301,12 @@ const Navbar = () => {
               <span style={{...styles.linkIcon, color: '#f59e0b'}}><Settings /></span>
               <span>Settings</span>
             </Link>
+            {isAdmin && (
+              <Link to="/outreach" style={styles.link} className="navbar-link">
+                <span style={{...styles.linkIcon, color: '#ec4899'}}><Megaphone /></span>
+                <span>Outreach</span>
+              </Link>
+            )}
           </div>
         </div>
         
@@ -321,6 +348,12 @@ const Navbar = () => {
                 <span style={{...styles.dropdownIcon, color: '#f59e0b'}}><Settings /></span>
                 <span>Settings</span>
               </div>
+              {isAdmin && (
+                <div style={styles.dropdownItem} className="dropdown-item" onClick={() => navigate('/outreach')}>
+                  <span style={{...styles.dropdownIcon, color: '#ec4899'}}><Megaphone /></span>
+                  <span>Outreach</span>
+                </div>
+              )}
               <div style={styles.dropdownSeparator}></div>
               <div style={styles.dropdownItem} className="dropdown-item" onClick={handleLogout}>
                 <span style={{...styles.dropdownIcon, color: '#ef4444'}}><LogOut /></span>
@@ -361,7 +394,13 @@ const Navbar = () => {
               <span style={{...styles.mobileLinkIcon, color: '#f59e0b'}}><Settings /></span>
               <span>Settings</span>
             </Link>
-            
+            {isAdmin && (
+              <Link to="/outreach" style={styles.mobileLink} className="mobile-link" onClick={() => setMobileMenuOpen(false)}>
+                <span style={{...styles.mobileLinkIcon, color: '#ec4899'}}><Megaphone /></span>
+                <span>Outreach</span>
+              </Link>
+            )}
+
             {/* Divider */}
             <div style={styles.mobileDivider}></div>
             
