@@ -31,6 +31,10 @@ ADMIN_EMAILS = {
     if e.strip()
 }
 
+# Every outreach draft (and follow-up) is BCC'd here, so a copy lands in this inbox
+# when you hit send. Set OUTREACH_BCC="" to disable.
+OUTREACH_BCC = os.getenv("OUTREACH_BCC", "fadhil@larynxai.com").strip()
+
 
 def _is_admin(request: Request) -> bool:
     email = (request.session.get("user_email") or "").lower()
@@ -113,6 +117,8 @@ async def create_drafts(request: Request):
                 msg = MIMEText(l["body"])
                 msg["to"] = l["email"]
                 msg["subject"] = l["subject"]
+                if OUTREACH_BCC:
+                    msg["bcc"] = OUTREACH_BCC
                 raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
                 r = await http.post(
                     "https://gmail.googleapis.com/gmail/v1/users/me/drafts",
@@ -208,6 +214,8 @@ async def followup(request: Request, req: FollowupReq):
         thread = await _find_thread(http, token, lead["email"])
         msg = MIMEText(body)
         msg["to"] = lead["email"]
+        if OUTREACH_BCC:
+            msg["bcc"] = OUTREACH_BCC
         subj = (thread or {}).get("subject") or lead.get("subject") or "following up"
         msg["subject"] = subj if subj.lower().startswith("re:") else f"Re: {subj}"
         if thread and thread.get("message_id"):

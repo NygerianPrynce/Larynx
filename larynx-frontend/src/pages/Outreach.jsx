@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Navbar from '../components/Navbar'
-import { METROS, CITIES_BY_STATE, STATES } from '../data/usCities'
+import { METROS_BY_STATE, CITIES_BY_STATE, STATES } from '../data/usCities'
 
 const api = import.meta.env.VITE_API_URL
 
@@ -168,15 +168,6 @@ export default function Outreach() {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 mb-1" />
           <p className="text-xs text-gray-400 mb-4">Each email = <i>“Hey [Business] team, [AI opener about them]. {`{your pitch}`}”</i>. Saved automatically.</p>
 
-          {/* Metro presets */}
-          <label className="block text-sm font-medium text-gray-700 mb-2">Quick metros (covers the whole surrounding ring)</label>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {Object.entries(METROS).map(([name, cs]) => (
-              <button key={name} onClick={() => addMetro(cs)}
-                className="px-3 py-1.5 text-sm border border-purple-300 text-purple-700 rounded-full hover:bg-purple-50">+ {name}</button>
-            ))}
-          </div>
-
           {/* State -> cities */}
           <div className="grid sm:grid-cols-3 gap-4">
             <div>
@@ -200,6 +191,20 @@ export default function Outreach() {
                 })}
               </div>
             </div>
+          </div>
+
+          {/* Quick presets for the selected state */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            <button onClick={() => addMetro(CITIES_BY_STATE[state] || [])}
+              className="px-3 py-1.5 text-sm bg-white border border-purple-300 text-purple-700 rounded-full hover:bg-purple-50">
+              + All {state} cities
+            </button>
+            {Object.entries(METROS_BY_STATE[state] || {}).map(([name, cs]) => (
+              <button key={name} onClick={() => addMetro(cs)}
+                className="px-3 py-1.5 text-sm bg-white border border-purple-300 text-purple-700 rounded-full hover:bg-purple-50">
+                + {name}
+              </button>
+            ))}
           </div>
 
           {selectedCities.length > 0 && (

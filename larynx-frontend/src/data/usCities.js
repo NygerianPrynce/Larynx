@@ -5,26 +5,47 @@
 //   comprehensively (the current market); other states list major cities and can be
 //   expanded on request.
 
-export const METROS = {
-  'Nashville Metro (TN)': [
-    'Nashville, TN', 'Franklin, TN', 'Brentwood, TN', 'Murfreesboro, TN',
-    'Hendersonville, TN', 'Smyrna, TN', 'Gallatin, TN', 'Mount Juliet, TN',
-    'Nolensville, TN', 'Spring Hill, TN', 'Lebanon, TN', 'La Vergne, TN',
-    'Goodlettsville, TN', 'White House, TN', 'Springfield, TN', 'Dickson, TN',
-    'Columbia, TN', 'Gallatin, TN', 'Fairview, TN', 'Portland, TN',
-  ],
-  'Memphis Metro (TN)': [
-    'Memphis, TN', 'Germantown, TN', 'Collierville, TN', 'Bartlett, TN',
-    'Cordova, TN', 'Lakeland, TN', 'Arlington, TN', 'Millington, TN',
-  ],
-  'Knoxville Metro (TN)': [
-    'Knoxville, TN', 'Maryville, TN', 'Oak Ridge, TN', 'Farragut, TN',
-    'Alcoa, TN', 'Clinton, TN', 'Lenoir City, TN', 'Sevierville, TN',
-  ],
-  'Chattanooga Metro (TN)': [
-    'Chattanooga, TN', 'East Ridge, TN', 'Red Bank, TN', 'Soddy-Daisy, TN',
-    'Cleveland, TN', 'Collegedale, TN', 'Signal Mountain, TN',
-  ],
+// Metro presets per state. Picking a state shows its metros; each expands to the
+// whole surrounding ring. (States without a defined metro still get the universal
+// "All <State> cities" quick-pick in the UI.)
+export const METROS_BY_STATE = {
+  'Tennessee': {
+    'Nashville Metro': [
+      'Nashville, TN', 'Franklin, TN', 'Brentwood, TN', 'Murfreesboro, TN',
+      'Hendersonville, TN', 'Smyrna, TN', 'Gallatin, TN', 'Mount Juliet, TN',
+      'Nolensville, TN', 'Spring Hill, TN', 'Lebanon, TN', 'La Vergne, TN',
+      'Goodlettsville, TN', 'White House, TN', 'Springfield, TN', 'Dickson, TN',
+      'Columbia, TN', 'Fairview, TN', 'Portland, TN',
+    ],
+    'Memphis Metro': ['Memphis, TN', 'Germantown, TN', 'Collierville, TN', 'Bartlett, TN', 'Cordova, TN'],
+    'Knoxville Metro': ['Knoxville, TN', 'Maryville, TN', 'Oak Ridge, TN', 'Farragut, TN', 'Alcoa, TN', 'Sevierville, TN'],
+    'Chattanooga Metro': ['Chattanooga, TN', 'East Ridge, TN', 'Cleveland, TN'],
+  },
+  'Georgia': {
+    'Atlanta Metro': ['Atlanta, GA', 'Marietta, GA', 'Alpharetta, GA', 'Roswell, GA'],
+  },
+  'Texas': {
+    'Dallas–Fort Worth': ['Dallas, TX', 'Fort Worth, TX', 'Plano, TX', 'Frisco, TX', 'Arlington, TX'],
+    'Greater Houston': ['Houston, TX'],
+    'Austin Metro': ['Austin, TX'],
+  },
+  'North Carolina': {
+    'Charlotte Metro': ['Charlotte, NC'],
+    'Raleigh–Durham': ['Raleigh, NC', 'Durham, NC', 'Cary, NC'],
+  },
+  'Florida': {
+    'Miami Metro': ['Miami, FL', 'Fort Lauderdale, FL'],
+    'Orlando Metro': ['Orlando, FL'],
+    'Tampa Bay': ['Tampa, FL', 'St. Petersburg, FL'],
+  },
+  'California': {
+    'Los Angeles Metro': ['Los Angeles, CA', 'Long Beach, CA', 'Anaheim, CA', 'Irvine, CA'],
+    'Bay Area': ['San Francisco, CA', 'San Jose, CA', 'Oakland, CA'],
+    'San Diego Metro': ['San Diego, CA'],
+  },
+  'New York': {
+    'NYC Metro': ['New York, NY', 'Brooklyn, NY', 'Yonkers, NY'],
+  },
 }
 
 export const CITIES_BY_STATE = {
