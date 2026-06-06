@@ -469,7 +469,7 @@ async def monitor_user_emails(user_id: str):
                 
                 # Wait before next check
                 logging.info(f"⏰ User {user_id}: Waiting another 2 minutes...")
-                await asyncio.sleep(1800)  # CHANGE TO 30 mins -- 1800 // an hr -- 300 for testing -- demo is 60 secs/1min 
+                await asyncio.sleep(60)  # TESTING: 60s for fast end-to-end testing. SET BACK TO 1800 (30 min) BEFORE LAUNCH.
                 
             except Exception as e:
                 consecutive_errors += 1
