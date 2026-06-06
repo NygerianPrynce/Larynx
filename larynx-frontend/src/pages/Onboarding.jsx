@@ -890,43 +890,9 @@ const Onboarding = () => {
               </motion.div>
           )}
 
-            {/* Signature Step */}
+            {/* Signature Step — editor is the base; a modal pops over it if we
+                detected an existing signature. */}
           {step === 'signoff' && (
-            signatureDetected && sigMode === 'choosing' ? (
-              <motion.div
-                className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm max-w-2xl mx-auto"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  <h3 className="text-xl font-semibold text-gray-900">We found your email signature</h3>
-                </div>
-                <p className="text-gray-600 mb-4">
-                  We recognized this from your sent emails — logo and all. Use it as-is, or create a new one.
-                </p>
-                <div className="border border-gray-200 rounded-xl p-4 mb-6 bg-gray-50 overflow-x-auto">
-                  {detectedSigHtml
-                    ? <div dangerouslySetInnerHTML={{ __html: detectedSigHtml }} />
-                    : <pre className="whitespace-pre-wrap text-sm text-gray-800" style={{ fontFamily: 'inherit' }}>{signoff}</pre>}
-                </div>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <button
-                    onClick={() => { setSignoff(''); setSignatureDetected(false); setSigMode('editing') }}
-                    className="flex-1 px-6 py-3 border border-purple-300 text-purple-700 bg-white rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all duration-200 font-medium"
-                  >
-                    Create a new one
-                  </button>
-                  <button
-                    onClick={() => transitionToStep('inventory')}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
-                  >
-                    Use this signature
-                  </button>
-                </div>
-              </motion.div>
-            ) : (
               <div>
                 <SigEditor
                   value={signoff}
@@ -944,7 +910,6 @@ const Onboarding = () => {
                   </button>
                 </div>
               </div>
-            )
           )}
 
             {/* Inventory Step */}
@@ -1125,6 +1090,65 @@ const Onboarding = () => {
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                 >
                   Delete Account
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* Preexisting Signature Modal — pops over the signoff editor when we detect one */}
+    <AnimatePresence>
+      {step === 'signoff' && signatureDetected && sigMode === 'choosing' && (
+        <motion.div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className="bg-white rounded-xl max-w-lg w-full"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <h3 className="text-xl font-semibold text-gray-900">You already have a signature</h3>
+                </div>
+                <button
+                  onClick={() => transitionToStep('inventory')}
+                  title="Keep it and continue"
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <p className="text-gray-600 mb-4">
+                We found this in your sent emails — logo and all. Keep it, or change it.
+              </p>
+              <div className="border border-gray-200 rounded-xl p-4 mb-6 bg-gray-50 overflow-x-auto max-h-64">
+                {detectedSigHtml
+                  ? <div dangerouslySetInnerHTML={{ __html: detectedSigHtml }} />
+                  : <pre className="whitespace-pre-wrap text-sm text-gray-800" style={{ fontFamily: 'inherit' }}>{signoff}</pre>}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={() => setSigMode('editing')}
+                  className="flex-1 px-6 py-3 border border-purple-300 text-purple-700 bg-white rounded-xl hover:bg-purple-50 hover:border-purple-400 transition-all duration-200 font-medium"
+                >
+                  Change it
+                </button>
+                <button
+                  onClick={() => transitionToStep('inventory')}
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+                >
+                  Keep it
                 </button>
               </div>
             </div>
