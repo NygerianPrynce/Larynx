@@ -74,9 +74,34 @@ class EmailProcessingService:
             except Exception as e:
                 logging.error(f"Error converting HTML to text: {e}")
                 return html_text  # Return raw HTML as fallback
-        
+
         return ""
-    
+
+    @staticmethod
+    def extract_html_body(full_msg: dict) -> str:
+        """
+        Return the RAW HTML part of a Gmail message (not converted to text), or "".
+        Needed for signature extraction — extract_email_body prefers plain text, which
+        strips the <div class="gmail_signature"> + logo <img> we want to capture.
+        """
+        def walk(payload: dict) -> str:
+            html = ""
+            if payload.get("mimeType") == "text/html" and "data" in payload.get("body", {}):
+                try:
+                    html = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="ignore")
+                except Exception:
+                    pass
+            if "parts" in payload:
+                for part in payload["parts"]:
+                    h = walk(part)
+                    if h:
+                        html = h
+            return html
+        try:
+            return walk(full_msg.get("payload", {}))
+        except Exception:
+            return ""
+
     @staticmethod
     def clean_email_body(raw_body: str) -> Tuple[str, Optional[str]]:
         """

@@ -98,13 +98,21 @@ async def crawl_emails(request: Request):
             if _is_self_send(headers_list, email):
                 continue
 
-            # Extract and clean body using centralized service
+            # Body for VOICE analysis: the plain-text rendering.
             raw_body = EmailProcessingService.extract_email_body(full_msg)
-            # Try HTML signature extraction first if the body contains HTML
-            if '<' in raw_body and '>' in raw_body:
-                body, sig = EmailProcessingService.extract_html_signature(raw_body)
+            body, text_sig = EmailProcessingService.clean_email_body(raw_body)
+
+            # Signature: pull from the RAW HTML part so we capture the
+            # <div class="gmail_signature"> incl. the logo <img>. (extract_email_body
+            # returns plain text, so the old `'<' in raw_body` check never fired here.)
+            html_body = EmailProcessingService.extract_html_body(full_msg)
+            sig = None
+            if html_body:
+                _, html_sig = EmailProcessingService.extract_html_signature(html_body)
+                sig = html_sig or text_sig
             else:
-                body, sig = EmailProcessingService.clean_email_body(raw_body)
+                sig = text_sig
+
             if sig:
                 # sig may be HTML (Gmail's signature div, incl. the logo <img>) or plain
                 # text. Count by a clean-text key for the editor/plain part, but remember
@@ -191,8 +199,12 @@ async def crawl_emails(request: Request):
             store_style_card(user_id, generate_style_card([]))
             profile_type = "generic_fallback"
         
+        logging.info(
+            f"[signature] user={user_id}: {len(signature_counter)} distinct signature(s) "
+            f"detected across sent mail; {len(html_sig_by_text)} have an HTML form (logo)."
+        )
         if signature_counter:
-            signature, _ = signature_counter.most_common(1)[0]
+            signature, count = signature_counter.most_common(1)[0]
             # Store clean text in `signature` (editor / plain part) and the raw HTML
             # form (with logo) in `signature_html` (used for the HTML part of drafts).
             sig_update = {"signature": signature}
@@ -200,7 +212,13 @@ async def crawl_emails(request: Request):
                 sig_update["signature_html"] = html_sig_by_text[signature]
             supabase.table("users").update(sig_update).eq("id", user_id).execute()
             safe_signature = signature.strip()
+            logging.info(
+                f"[signature] user={user_id}: stored dominant signature "
+                f"(seen {count}x, has_html={'signature_html' in sig_update}, "
+                f"preview={signature[:60]!r})"
+            )
         else:
+            logging.warning(f"[signature] user={user_id}: NO signature detected in sent mail")
             safe_signature = None
 
         return {
@@ -457,6 +475,12 @@ async def get_signature(request: Request):
         current_signature = user_info.get("signature")
         signature_html = user_info.get("signature_html")
         user_name = user_info.get("name")
+
+        logging.info(
+            f"[get_signature] user={user_id}: has_signature={current_signature is not None}, "
+            f"has_html={bool(signature_html)}, "
+            f"signature_preview={(current_signature or '')[:80]!r}"
+        )
 
         return {
             "signature": current_signature,
