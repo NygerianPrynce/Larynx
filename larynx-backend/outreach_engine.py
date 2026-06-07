@@ -10,6 +10,7 @@ import asyncio
 import logging
 import os
 import re
+from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -240,9 +241,65 @@ def generate_opener(name: str, site_text: str, temperature: float = 0.4) -> str:
         return fallback
 
 
-def build_email(name: str, opener: str, pitch: str = None, subject: str = None) -> tuple:
+_GENERIC_MAIL = ("gmail", "yahoo", "outlook", "hotmail", "aol", "icloud", "ymail", "live", "msn")
+_NAME_CONNECTORS = {"&", "and", "the", "of", "for", "with", "by", "at", "to", "a", "an", "-", "+"}
+
+
+def clean_business_name(name: str, email: str = "") -> Optional[str]:
+    """
+    Clean a scraped business name for use in a greeting. Returns None if it looks too
+    messy/truncated (caller should fall back to a generic greeting).
+    A half/truncated name (e.g. "Flavor Catering & Special") is an instant automation
+    tell, so we (1) cut taglines at separators, (2) trim to the longest leading run
+    that matches the email's domain ("flavorcatering" -> "Flavor Catering"), and
+    (3) drop trailing connector words.
+    """
+    if not name:
+        return None
+    n = name.strip()
+
+    # 1) Cut marketing taglines at common separators.
+    for sep in ("|", "•", "·", "—", "–", ":"):
+        if sep in n:
+            n = n.split(sep)[0].strip()
+
+    # 2) Cross-reference the email domain (the brand is usually in it). Walk the leading
+    #    words while their concatenation stays a prefix of the domain. Only TRIM if those
+    #    words spell out the *entire* domain (domain exhausted but the name kept going) —
+    #    that's the real truncation signal ("flavorcatering" | "Flavor Catering & Special").
+    #    Otherwise leave the name alone, so a legit "Smith & Sons BBQ" (domain drops the
+    #    "&"/"and") isn't chopped down to "Smith".
+    if email and "@" in email:
+        dom = email.split("@")[1].split(".")[0].lower()
+        if dom and dom not in _GENERIC_MAIL:
+            acc, best, best_acc = "", "", ""
+            for w in n.split():
+                acc += re.sub(r"[^a-z0-9]", "", w.lower())
+                if acc and dom.startswith(acc):
+                    best = (best + " " + w).strip()
+                    best_acc = acc
+                else:
+                    break
+            if best and best_acc == dom and len(best) >= 3:
+                n = best
+
+    # 3) Drop trailing dangling connectors ("... & ", "... and").
+    tokens = n.split()
+    while tokens and tokens[-1].lower().strip(",.") in _NAME_CONNECTORS:
+        tokens.pop()
+    n = " ".join(tokens).strip(" ,&-+")
+
+    # 4) Sanity check.
+    if not n or len(n) < 2 or len(n) > 50 or not re.search(r"[A-Za-z]", n):
+        return None
+    return n
+
+
+def build_email(name: str, opener: str, pitch: str = None, subject: str = None, email: str = "") -> tuple:
     pitch = _no_dash((pitch or DEFAULT_PITCH).strip())
     opener = _no_dash((opener or "").strip())
     subject = (subject or DEFAULT_SUBJECT).strip()
-    body = f"Hey {name} team,\n\n{opener}. {pitch}"
+    clean = clean_business_name(name, email)
+    greeting = f"Hey {clean} team," if clean else "Hi there,"
+    body = f"{greeting}\n\n{opener}. {pitch}"
     return subject, body

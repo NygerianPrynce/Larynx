@@ -130,7 +130,7 @@ async def outreach_search(request: Request, req: SearchReq):
         try:
             email, text = await find_email_and_text(c["website"])
             opener = generate_opener(c["name"], text, req.temperature)
-            subject, body = build_email(c["name"], opener, req.pitch or None, req.subject or None)
+            subject, body = build_email(c["name"], opener, req.pitch or None, req.subject or None, email)
             supabase.table("outreach_leads").insert({
                 "name": c["name"], "website": c["website"], "email": email,
                 "subject": subject, "body": body, "status": "new",

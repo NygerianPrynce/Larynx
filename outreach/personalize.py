@@ -6,6 +6,8 @@ first line from the site content; falls back to a generic line if the key/site
 is unavailable. build_email() wraps it in the Vanderbilt / Nashville template.
 """
 
+import re
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -86,9 +88,45 @@ def generate_opener(business_name: str, site_text: str, temperature: float = 0.4
         return fallback
 
 
-def build_email(business_name: str, opener: str) -> tuple:
+_GENERIC_MAIL = ("gmail", "yahoo", "outlook", "hotmail", "aol", "icloud", "ymail", "live", "msn")
+_NAME_CONNECTORS = {"&", "and", "the", "of", "for", "with", "by", "at", "to", "a", "an", "-", "+"}
+
+
+def clean_business_name(name, email=""):
+    """Clean a scraped name for the greeting; None if too messy (caller falls back)."""
+    if not name:
+        return None
+    n = name.strip()
+    for sep in ("|", "•", "·", "—", "–", ":"):
+        if sep in n:
+            n = n.split(sep)[0].strip()
+    if email and "@" in email:
+        dom = email.split("@")[1].split(".")[0].lower()
+        if dom and dom not in _GENERIC_MAIL:
+            acc, best, best_acc = "", "", ""
+            for w in n.split():
+                acc += re.sub(r"[^a-z0-9]", "", w.lower())
+                if acc and dom.startswith(acc):
+                    best = (best + " " + w).strip()
+                    best_acc = acc
+                else:
+                    break
+            if best and best_acc == dom and len(best) >= 3:
+                n = best
+    tokens = n.split()
+    while tokens and tokens[-1].lower().strip(",.") in _NAME_CONNECTORS:
+        tokens.pop()
+    n = " ".join(tokens).strip(" ,&-+")
+    if not n or len(n) < 2 or len(n) > 50 or not re.search(r"[A-Za-z]", n):
+        return None
+    return n
+
+
+def build_email(business_name: str, opener: str, email: str = "") -> tuple:
     """Returns (subject, body)."""
-    body = f"""Hey {business_name} team,
+    clean = clean_business_name(business_name, email)
+    greeting = f"Hey {clean} team," if clean else "Hi there,"
+    body = f"""{greeting}
 
 {opener}. {DEFAULT_PITCH}
 
