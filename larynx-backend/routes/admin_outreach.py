@@ -108,6 +108,7 @@ class SearchReq(BaseModel):
     per_city: int = Field(10, ge=1, le=60)   # max results per city
     pitch: str = Field("", max_length=4000)  # editable email pitch (per region)
     subject: str = Field("", max_length=200)  # editable subject
+    temperature: float = Field(0.6, ge=0.0, le=1.0)  # opener warmth/creativity
 
 
 @router.post("/admin/outreach/search")
@@ -128,7 +129,7 @@ async def outreach_search(request: Request, req: SearchReq):
             continue
         try:
             email, text = await find_email_and_text(c["website"])
-            opener = generate_opener(c["name"], text)
+            opener = generate_opener(c["name"], text, req.temperature)
             subject, body = build_email(c["name"], opener, req.pitch or None, req.subject or None)
             supabase.table("outreach_leads").insert({
                 "name": c["name"], "website": c["website"], "email": email,

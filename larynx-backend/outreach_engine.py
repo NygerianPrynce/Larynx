@@ -190,11 +190,12 @@ def _no_dash(s: str) -> str:
              .replace(" – ", ", ").replace("–", "-"))
 
 
-def generate_opener(name: str, site_text: str) -> str:
+def generate_opener(name: str, site_text: str, temperature: float = 0.6) -> str:
     fallback = f"saw what {name} is putting out and really liked it"
     if not site_text:
         return fallback
     try:
+        temperature = max(0.0, min(1.0, float(temperature)))
         resp = _client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content":
@@ -206,7 +207,7 @@ def generate_opener(name: str, site_text: str) -> str:
                 "14 words max, plain and conversational. Never use em-dashes or hyphens as "
                 "dashes. Do NOT end with a period or any punctuation.\n"
                 f"Business: {name}. Site text: {site_text}"}],
-            temperature=0.6,
+            temperature=temperature,
             max_tokens=50,
         )
         line = resp.choices[0].message.content.strip().strip('"').rstrip(" .!?,;:")

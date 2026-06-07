@@ -18,6 +18,7 @@ export default function Outreach() {
   const [perCity, setPerCity] = useState(5)
   const [pitch, setPitch] = useState(() => localStorage.getItem('outreach_pitch_v3') || DEFAULT_PITCH)
   const [subject, setSubject] = useState(() => localStorage.getItem('outreach_subject_v3') || DEFAULT_SUBJECT)
+  const [temp, setTemp] = useState(() => Number(localStorage.getItem('outreach_temp_v3') ?? 0.6))
 
   const [leads, setLeads] = useState([])
   const [filter, setFilter] = useState('all')
@@ -37,6 +38,7 @@ export default function Outreach() {
 
   useEffect(() => { localStorage.setItem('outreach_pitch_v3', pitch) }, [pitch])
   useEffect(() => { localStorage.setItem('outreach_subject_v3', subject) }, [subject])
+  useEffect(() => { localStorage.setItem('outreach_temp_v3', String(temp)) }, [temp])
 
   const loadLeads = async () => {
     try {
@@ -55,7 +57,7 @@ export default function Outreach() {
     try {
       const r = await fetch(`${api}/admin/outreach/search`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ query, cities: selectedCities, per_city: Number(perCity), pitch, subject }),
+        body: JSON.stringify({ query, cities: selectedCities, per_city: Number(perCity), pitch, subject, temperature: Number(temp) }),
       })
       const d = await r.json()
       setMsg(`Found ${d.found} businesses · ${d.new} new added (duplicates skipped).`)
@@ -183,6 +185,22 @@ export default function Outreach() {
           <textarea value={pitch} onChange={e => setPitch(e.target.value)} rows={5}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 mb-1" />
           <p className="text-xs text-gray-400 mb-4">Each email = <i>“Hey [Business] team, [AI opener about them]. {`{your pitch}`}”</i>. Saved automatically.</p>
+
+          {/* Opener warmth (temperature) */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Opener warmth: <span className="text-purple-700 font-semibold">{Number(temp).toFixed(2)}</span>
+            </label>
+            <input type="range" min="0" max="1" step="0.05" value={temp}
+              onChange={e => setTemp(Number(e.target.value))}
+              className="w-full max-w-md accent-purple-600" />
+            <div className="flex justify-between max-w-md text-xs text-gray-400">
+              <span>0 · safe &amp; consistent</span>
+              <span>0.6 · balanced</span>
+              <span>1 · warm &amp; varied</span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Only affects the AI opener line. Higher = warmer but can get gushing.</p>
+          </div>
 
           {/* State -> cities */}
           <div className="grid sm:grid-cols-3 gap-4">
