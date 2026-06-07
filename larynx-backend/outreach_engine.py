@@ -169,14 +169,17 @@ async def find_email_and_text(website: str) -> tuple:
 # override this per region from the Outreach UI. No em-dashes (reads as AI); the
 # signature block is appended at draft time, so this ends with a simple sign-off.
 DEFAULT_PITCH = (
-    "I'm a Vanderbilt student here in Nashville and I built a tool that drafts replies "
-    "to your incoming emails (quotes, event requests, all the usual stuff) in your own "
-    "voice, so you just skim and send. I'm letting a few local teams try it free while I "
-    "keep making it better, and I'd love to show you how it works. Any chance you've got "
-    "10 minutes this week?\n\nBest,\nFadhil"
+    "I'm Fadhil, an engineering student at Vanderbilt, and I built a little tool called "
+    "Larynx that could save you a good chunk of time. It reads the emails landing in your "
+    "inbox, the quote requests and booking questions, and writes a draft reply in your "
+    "own voice so you're never starting from a blank page. You stay in charge the whole "
+    "way through. Larynx only writes the draft and leaves it in your inbox, and nothing "
+    "goes out unless you send it yourself. I'm letting a handful of local businesses try "
+    "it free right now while I keep improving it. If you're curious, I'd love to show you "
+    "how it works. No pressure at all."
 )
 
-DEFAULT_SUBJECT = "from a Vanderbilt student"
+DEFAULT_SUBJECT = "Free inbox help, from a Vanderbilt student"
 
 
 def _no_dash(s: str) -> str:
@@ -188,24 +191,25 @@ def _no_dash(s: str) -> str:
 
 
 def generate_opener(name: str, site_text: str) -> str:
-    fallback = f"saw {name} caught my eye"
+    fallback = f"saw what {name} is putting out and really liked it"
     if not site_text:
         return fallback
     try:
         resp = _client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content":
-                f"Write the FIRST line of a cold email to the owner of a local business. "
-                f"Make ONE specific, concrete observation about what they actually do or "
-                f"offer (a real detail from their site) — NOT a generic compliment like "
-                f"'your work is impressive.' 12 words max, plain and conversational. "
-                f"No greeting, no 'I came across', no flattery. "
-                f"NEVER use em-dashes or hyphens as dashes. "
+                "Write ONLY the first line of a warm cold email to a local business owner. "
+                "Make one specific, concrete observation about what they actually do or offer, "
+                "pulled from a real detail on their site. It should sound like a genuine person "
+                "who noticed it and liked it. Warm, not gushing. Not a generic compliment like "
+                "\"your work is impressive.\" No greeting, no \"I came across,\" no business name. "
+                "14 words max, plain and conversational. Never use em-dashes or hyphens as "
+                "dashes. Do NOT end with a period or any punctuation.\n"
                 f"Business: {name}. Site text: {site_text}"}],
-            temperature=0.5,
-            max_tokens=40,
+            temperature=0.6,
+            max_tokens=50,
         )
-        line = resp.choices[0].message.content.strip().strip('"').rstrip(".")
+        line = resp.choices[0].message.content.strip().strip('"').rstrip(" .!?,;:")
         return _no_dash(line) or fallback
     except Exception:
         return fallback

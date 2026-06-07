@@ -5,7 +5,8 @@ import { METROS_BY_STATE, CITIES_BY_STATE, STATES } from '../data/usCities'
 const api = import.meta.env.VITE_API_URL
 
 const DEFAULT_PITCH =
-  "I'm a Vanderbilt student here in Nashville, and I built a tool that drafts your email replies — quotes, requests, all of it — in your own voice, so you just skim and send. I'm rolling it out to a handful of local teams first and I'd genuinely love to show you what it does. Any chance you've got 10 minutes this week for a quick demo?\n\nBest,\nFadhil — Vanderbilt '28"
+  "I'm Fadhil, an engineering student at Vanderbilt, and I built a little tool called Larynx that could save you a good chunk of time. It reads the emails landing in your inbox, the quote requests and booking questions, and writes a draft reply in your own voice so you're never starting from a blank page. You stay in charge the whole way through. Larynx only writes the draft and leaves it in your inbox, and nothing goes out unless you send it yourself. I'm letting a handful of local businesses try it free right now while I keep improving it. If you're curious, I'd love to show you how it works. No pressure at all."
+const DEFAULT_SUBJECT = "Free inbox help, from a Vanderbilt student"
 
 export default function Outreach() {
   const [checked, setChecked] = useState(false)
@@ -15,8 +16,8 @@ export default function Outreach() {
   const [state, setState] = useState('Tennessee')
   const [selectedCities, setSelectedCities] = useState([])
   const [perCity, setPerCity] = useState(5)
-  const [pitch, setPitch] = useState(() => localStorage.getItem('outreach_pitch') || DEFAULT_PITCH)
-  const [subject, setSubject] = useState(() => localStorage.getItem('outreach_subject') || 'from a Vanderbilt student')
+  const [pitch, setPitch] = useState(() => localStorage.getItem('outreach_pitch_v3') || DEFAULT_PITCH)
+  const [subject, setSubject] = useState(() => localStorage.getItem('outreach_subject_v3') || DEFAULT_SUBJECT)
 
   const [leads, setLeads] = useState([])
   const [filter, setFilter] = useState('all')
@@ -34,8 +35,8 @@ export default function Outreach() {
     })()
   }, [])
 
-  useEffect(() => { localStorage.setItem('outreach_pitch', pitch) }, [pitch])
-  useEffect(() => { localStorage.setItem('outreach_subject', subject) }, [subject])
+  useEffect(() => { localStorage.setItem('outreach_pitch_v3', pitch) }, [pitch])
+  useEffect(() => { localStorage.setItem('outreach_subject_v3', subject) }, [subject])
 
   const loadLeads = async () => {
     try {
