@@ -10,7 +10,9 @@ the app already holds for them (gmail.compose — drafts only, never sends).
 import base64
 import logging
 import os
+import re
 from datetime import datetime
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import List, Optional
 
@@ -36,6 +38,53 @@ ADMIN_EMAILS = {
 OUTREACH_BCC = os.getenv("OUTREACH_BCC", "fadhil@larynxai.com").strip()
 
 
+def _html_to_text(html: str) -> str:
+    if not html:
+        return ""
+    t = re.sub(r"<br\s*/?>", "\n", html, flags=re.I)
+    t = re.sub(r"</p>", "\n", t, flags=re.I)
+    t = re.sub(r"<[^>]+>", "", t)
+    return re.sub(r"\n{3,}", "\n\n", t).strip()
+
+
+def _build_message(to, subject, body, sig_html, sig_text, bcc=None, in_reply_to=None):
+    """Multipart (plain + HTML) so the signature's logo renders. Signature appended."""
+    msg = MIMEMultipart("alternative")
+    msg["to"] = to
+    msg["subject"] = subject
+    if bcc:
+        msg["bcc"] = bcc
+    if in_reply_to:
+        msg["In-Reply-To"] = in_reply_to
+        msg["References"] = in_reply_to
+
+    plain = body
+    if sig_html:
+        plain += "\n\n" + _html_to_text(sig_html)
+    elif sig_text:
+        plain += "\n\n" + sig_text
+
+    html_body = body.replace("\n", "<br>\n")
+    if sig_html:
+        html_body += "<br><br>" + sig_html
+    elif sig_text:
+        html_body += "<br><br>" + sig_text.replace("\n", "<br>")
+    html = f"<html><body>{html_body}</body></html>"
+
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+    return msg
+
+
+def _get_signature(user_id):
+    try:
+        u = supabase.table("users").select("signature, signature_html").eq("id", user_id).execute()
+        row = u.data[0] if u.data else {}
+        return (row.get("signature_html") or "", row.get("signature") or "")
+    except Exception:
+        return ("", "")
+
+
 def _is_admin(request: Request) -> bool:
     email = (request.session.get("user_email") or "").lower()
     return bool(email and email in ADMIN_EMAILS)
@@ -58,6 +107,7 @@ class SearchReq(BaseModel):
     cities: List[str] = Field(default_factory=lambda: ["Nashville, TN"])
     per_city: int = Field(10, ge=1, le=60)   # max results per city
     pitch: str = Field("", max_length=4000)  # editable email pitch (per region)
+    subject: str = Field("", max_length=200)  # editable subject
 
 
 @router.post("/admin/outreach/search")
@@ -79,7 +129,7 @@ async def outreach_search(request: Request, req: SearchReq):
         try:
             email, text = await find_email_and_text(c["website"])
             opener = generate_opener(c["name"], text)
-            subject, body = build_email(c["name"], opener, req.pitch or None)
+            subject, body = build_email(c["name"], opener, req.pitch or None, req.subject or None)
             supabase.table("outreach_leads").insert({
                 "name": c["name"], "website": c["website"], "email": email,
                 "subject": subject, "body": body, "status": "new",
@@ -108,17 +158,14 @@ async def create_drafts(request: Request):
     except Exception:
         raise HTTPException(status_code=401, detail="Reconnect your Google account.")
 
+    sig_html, sig_text = _get_signature(user_id)
     res = supabase.table("outreach_leads").select("*").eq("draft_created", False).execute()
     leads = [l for l in (res.data or []) if l.get("email")]
     made = 0
     async with httpx.AsyncClient(timeout=20) as http:
         for l in leads:
             try:
-                msg = MIMEText(l["body"])
-                msg["to"] = l["email"]
-                msg["subject"] = l["subject"]
-                if OUTREACH_BCC:
-                    msg["bcc"] = OUTREACH_BCC
+                msg = _build_message(l["email"], l["subject"], l["body"], sig_html, sig_text, OUTREACH_BCC)
                 raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
                 r = await http.post(
                     "https://gmail.googleapis.com/gmail/v1/users/me/drafts",
@@ -210,17 +257,13 @@ async def followup(request: Request, req: FollowupReq):
         raise HTTPException(status_code=400, detail="Lead has no email")
 
     body = _FOLLOWUP_BODY.format(name=lead["name"])
+    sig_html, sig_text = _get_signature(user_id)
     async with httpx.AsyncClient(timeout=20) as http:
         thread = await _find_thread(http, token, lead["email"])
-        msg = MIMEText(body)
-        msg["to"] = lead["email"]
-        if OUTREACH_BCC:
-            msg["bcc"] = OUTREACH_BCC
         subj = (thread or {}).get("subject") or lead.get("subject") or "following up"
-        msg["subject"] = subj if subj.lower().startswith("re:") else f"Re: {subj}"
-        if thread and thread.get("message_id"):
-            msg["In-Reply-To"] = thread["message_id"]
-            msg["References"] = thread["message_id"]
+        subj = subj if subj.lower().startswith("re:") else f"Re: {subj}"
+        in_reply_to = thread.get("message_id") if thread else None
+        msg = _build_message(lead["email"], subj, body, sig_html, sig_text, OUTREACH_BCC, in_reply_to=in_reply_to)
         raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
         draft_body = {"message": {"raw": raw}}
         if thread and thread.get("threadId"):
@@ -236,6 +279,14 @@ async def followup(request: Request, req: FollowupReq):
 
     supabase.table("outreach_leads").update({"followup_drafted": True}).eq("id", req.id).execute()
     return {"ok": True, "threaded": bool(thread and thread.get("threadId"))}
+
+
+@router.delete("/admin/outreach/lead/{lead_id}")
+async def delete_lead(request: Request, lead_id: str):
+    """Delete a single lead (e.g., when testing generated emails)."""
+    _require_admin(request)
+    supabase.table("outreach_leads").delete().eq("id", lead_id).execute()
+    return {"ok": True}
 
 
 @router.delete("/admin/outreach/leads")

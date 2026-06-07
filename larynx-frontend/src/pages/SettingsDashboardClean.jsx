@@ -110,7 +110,9 @@ const SettingsDashboardClean = () => {
 
         setSummary(summaryData.summary || '')
         setName(nameData.name || '')
-        setSignoff(sigData.signature || '')
+        // Prefer the HTML signature (logo + real formatting) so settings matches the
+        // onboarding modal; fall back to the plain-text version.
+        setSignoff(sigData.signature_html || sigData.signature || '')
         setIsMonitoringEnabled(monitoringData.is_monitoring || false)
         setEmailFormatTemplate(formatData.email_format_template || '')
         setEmailInstructions(instructionsData.email_instructions || '')

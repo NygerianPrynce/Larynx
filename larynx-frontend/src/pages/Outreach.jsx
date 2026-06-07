@@ -16,6 +16,7 @@ export default function Outreach() {
   const [selectedCities, setSelectedCities] = useState([])
   const [perCity, setPerCity] = useState(5)
   const [pitch, setPitch] = useState(() => localStorage.getItem('outreach_pitch') || DEFAULT_PITCH)
+  const [subject, setSubject] = useState(() => localStorage.getItem('outreach_subject') || 'from a Vanderbilt student')
 
   const [leads, setLeads] = useState([])
   const [filter, setFilter] = useState('all')
@@ -34,6 +35,7 @@ export default function Outreach() {
   }, [])
 
   useEffect(() => { localStorage.setItem('outreach_pitch', pitch) }, [pitch])
+  useEffect(() => { localStorage.setItem('outreach_subject', subject) }, [subject])
 
   const loadLeads = async () => {
     try {
@@ -52,7 +54,7 @@ export default function Outreach() {
     try {
       const r = await fetch(`${api}/admin/outreach/search`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ query, cities: selectedCities, per_city: Number(perCity), pitch }),
+        body: JSON.stringify({ query, cities: selectedCities, per_city: Number(perCity), pitch, subject }),
       })
       const d = await r.json()
       setMsg(`Found ${d.found} businesses · ${d.new} new added (duplicates skipped).`)
@@ -76,6 +78,14 @@ export default function Outreach() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ id, status }),
       })
+      await loadLeads()
+    } catch (e) { /* ignore */ }
+  }
+
+  const removeLead = async (id) => {
+    if (!window.confirm('Delete this lead?')) return
+    try {
+      await fetch(`${api}/admin/outreach/lead/${id}`, { method: 'DELETE', credentials: 'include' })
       await loadLeads()
     } catch (e) { /* ignore */ }
   }
@@ -149,10 +159,15 @@ export default function Outreach() {
 
         {/* Controls */}
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mb-6">
-          <div className="grid sm:grid-cols-2 gap-4 mb-4">
+          <div className="grid sm:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">What are you searching for?</label>
               <input value={query} onChange={e => setQuery(e.target.value)} placeholder="catering companies"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email subject</label>
+              <input value={subject} onChange={e => setSubject(e.target.value)} placeholder="from a Vanderbilt student"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
             </div>
             <div>
@@ -299,7 +314,8 @@ export default function Outreach() {
                           {busy === 'fu' + l.id ? 'Drafting…' : 'Draft follow-up'}
                         </button>
                       )}
-                      {l.status === 'new' && <span className="text-xs text-gray-400">{l.email ? 'draft first' : '—'}</span>}
+                      {l.status === 'new' && <span className="text-xs text-gray-400">{l.email ? 'draft first' : 'no email'}</span>}
+                      <button onClick={() => removeLead(l.id)} className={`${btn} border-red-200 text-red-600 hover:bg-red-50`}>Delete</button>
                     </div>
                   </td>
                 </tr>

@@ -507,14 +507,17 @@ async def update_signature(request: Request, signature_data: SignatureUpdateRequ
         raise HTTPException(status_code=401, detail="User not authenticated -- lacking User ID")
     
     try:
-        # If the user actually CHANGED the signature text (vs. keeping the detected one),
-        # their text replaces the auto-detected HTML/logo signature. A no-op save — e.g.
-        # keeping the prefilled signature in onboarding — preserves the logo.
-        update = {"signature": signature_data.signature}
-        current = supabase.table("users").select("signature").eq("id", user_id).execute()
-        current_sig = (current.data[0].get("signature") if current.data else "") or ""
-        if signature_data.signature.strip() != current_sig.strip():
-            update["signature_html"] = None
+        # The editor works in HTML. If the saved content contains markup, treat it as
+        # the rich signature: store it in signature_html (preserving the logo/formatting)
+        # AND derive a clean text version for plain-text contexts. If it's plain text,
+        # store text and clear the HTML (the user replaced the rich signature).
+        content = signature_data.signature or ""
+        is_html = ("<" in content and ">" in content)
+        if is_html:
+            from routes.inbox_routes import clean_html_to_text
+            update = {"signature_html": content, "signature": clean_html_to_text(content)}
+        else:
+            update = {"signature": content, "signature_html": None}
 
         result = supabase.table("users").update(update).eq("id", user_id).execute()
 
