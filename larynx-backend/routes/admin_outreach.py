@@ -108,7 +108,7 @@ class SearchReq(BaseModel):
     per_city: int = Field(10, ge=1, le=60)   # max results per city
     pitch: str = Field("", max_length=4000)  # editable email pitch (per region)
     subject: str = Field("", max_length=200)  # editable subject
-    temperature: float = Field(0.6, ge=0.0, le=1.0)  # opener warmth/creativity
+    temperature: float = Field(0.4, ge=0.0, le=1.0)  # opener warmth/creativity
 
 
 @router.post("/admin/outreach/search")

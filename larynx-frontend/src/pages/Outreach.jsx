@@ -5,7 +5,7 @@ import { METROS_BY_STATE, CITIES_BY_STATE, STATES } from '../data/usCities'
 const api = import.meta.env.VITE_API_URL
 
 const DEFAULT_PITCH =
-  "I'm Fadhil, an engineering student at Vanderbilt, and I built a little tool called Larynx that could save you a good chunk of time. It reads the emails landing in your inbox, the quote requests and booking questions, and writes a draft reply in your own voice so you're never starting from a blank page. You stay in charge the whole way through. Larynx only writes the draft and leaves it in your inbox, and nothing goes out unless you send it yourself. I'm letting a handful of local businesses try it free right now while I keep improving it. If you're curious, I'd love to show you how it works. No pressure at all."
+  "I'm Fadhil, an engineering student at Vanderbilt, and I built a little tool called Larynx to take some of the email load off your plate. When a quote request or booking question comes in, it writes a draft reply in your own voice, so you're not starting from scratch.\n\nYou stay in control the whole time. Larynx only writes the draft and leaves it in your inbox. Nothing sends unless you send it. I'm letting a few local businesses try it free while I keep improving it.\n\nIf you're curious, I'd love to show you how it works. No pressure at all."
 const DEFAULT_SUBJECT = "Free inbox help, from a Vanderbilt student"
 
 export default function Outreach() {
@@ -16,9 +16,9 @@ export default function Outreach() {
   const [state, setState] = useState('Tennessee')
   const [selectedCities, setSelectedCities] = useState([])
   const [perCity, setPerCity] = useState(5)
-  const [pitch, setPitch] = useState(() => localStorage.getItem('outreach_pitch_v3') || DEFAULT_PITCH)
-  const [subject, setSubject] = useState(() => localStorage.getItem('outreach_subject_v3') || DEFAULT_SUBJECT)
-  const [temp, setTemp] = useState(() => Number(localStorage.getItem('outreach_temp_v3') ?? 0.6))
+  const [pitch, setPitch] = useState(() => localStorage.getItem('outreach_pitch_v4') || DEFAULT_PITCH)
+  const [subject, setSubject] = useState(() => localStorage.getItem('outreach_subject_v4') || DEFAULT_SUBJECT)
+  const [temp, setTemp] = useState(() => Number(localStorage.getItem('outreach_temp_v4') ?? 0.4))
 
   const [leads, setLeads] = useState([])
   const [filter, setFilter] = useState('all')
@@ -36,9 +36,9 @@ export default function Outreach() {
     })()
   }, [])
 
-  useEffect(() => { localStorage.setItem('outreach_pitch_v3', pitch) }, [pitch])
-  useEffect(() => { localStorage.setItem('outreach_subject_v3', subject) }, [subject])
-  useEffect(() => { localStorage.setItem('outreach_temp_v3', String(temp)) }, [temp])
+  useEffect(() => { localStorage.setItem('outreach_pitch_v4', pitch) }, [pitch])
+  useEffect(() => { localStorage.setItem('outreach_subject_v4', subject) }, [subject])
+  useEffect(() => { localStorage.setItem('outreach_temp_v4', String(temp)) }, [temp])
 
   const loadLeads = async () => {
     try {
@@ -196,7 +196,7 @@ export default function Outreach() {
               className="w-full max-w-md accent-purple-600" />
             <div className="flex justify-between max-w-md text-xs text-gray-400">
               <span>0 · safe &amp; consistent</span>
-              <span>0.6 · balanced</span>
+              <span>0.4 · default</span>
               <span>1 · warm &amp; varied</span>
             </div>
             <p className="text-xs text-gray-400 mt-1">Only affects the AI opener line. Higher = warmer but can get gushing.</p>

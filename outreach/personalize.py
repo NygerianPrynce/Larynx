@@ -37,40 +37,51 @@ def scrape_site_text(website: str, max_chars: int = 3000) -> str:
 
 DEFAULT_PITCH = (
     "I'm Fadhil, an engineering student at Vanderbilt, and I built a little tool called "
-    "Larynx that could save you a good chunk of time. It reads the emails landing in your "
-    "inbox, the quote requests and booking questions, and writes a draft reply in your own "
-    "voice so you're never starting from a blank page. You stay in charge the whole way "
-    "through. Larynx only writes the draft and leaves it in your inbox, and nothing goes "
-    "out unless you send it yourself. I'm letting a handful of local businesses try it free "
-    "right now while I keep improving it. If you're curious, I'd love to show you how it "
-    "works. No pressure at all."
+    "Larynx to take some of the email load off your plate. When a quote request or booking "
+    "question comes in, it writes a draft reply in your own voice, so you're not starting "
+    "from scratch.\n\n"
+    "You stay in control the whole time. Larynx only writes the draft and leaves it in your "
+    "inbox. Nothing sends unless you send it. I'm letting a few local businesses try it free "
+    "while I keep improving it.\n\n"
+    "If you're curious, I'd love to show you how it works. No pressure at all."
 )
 
+_BANNED = ("impressive", "amazing", "great", "truly", "passion", "passionate", "commitment",
+           "committed", "dedication", "dedicated", "incredible", "fantastic", "wonderful", "mission")
 
-def generate_opener(business_name: str, site_text: str) -> str:
-    """Warm + specific first line about the business. Falls back gracefully."""
-    fallback = f"saw what {business_name} is putting out and really liked it"
+
+def generate_opener(business_name: str, site_text: str, temperature: float = 0.4) -> str:
+    """Warm + specific first line; regenerates if it slips into banned flattery."""
+    fallback = "wanted to reach out after taking a look at your site"
     if not _client or not site_text:
         return fallback
     prompt = (
         "Write ONLY the first line of a warm cold email to a local business owner. "
-        "Make one specific, concrete observation about what they actually do or offer, "
-        "pulled from a real detail on their site. It should sound like a genuine person "
-        "who noticed it and liked it. Warm, not gushing. Not a generic compliment like "
-        "\"your work is impressive.\" No greeting, no \"I came across,\" no business name. "
-        "14 words max, plain and conversational. Never use em-dashes or hyphens as dashes. "
-        "Do NOT end with a period or any punctuation.\n"
+        "Point to ONE concrete, specific thing they actually do, make, or offer, taken "
+        "straight from a real detail on their site: a named dish or product, a type of event "
+        "they cater, a cuisine, a place they serve, a number of years in business. Then add a "
+        "light, genuine reaction to it.\n\n"
+        "It MUST name a real specific. Do NOT describe their \"commitment\", \"passion\", "
+        "\"dedication\", or \"mission\", and never call anything \"impressive\", \"amazing\", "
+        "\"great\", or \"truly\" anything. If the site text is vague, pick the most concrete "
+        "noun you can find and react to that, not their values.\n\n"
+        "No greeting, no business name, no \"I came across\". Warm and plain, like one person "
+        "talking to another. 14 words max. Never use em-dashes or hyphens as dashes. "
+        "Do NOT end with a period or punctuation.\n\n"
         f"Business: {business_name}. Site text: {site_text}"
     )
     try:
-        resp = _client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.6,
-            max_tokens=50,
-        )
-        line = resp.choices[0].message.content.strip().strip('"').rstrip(" .!?,;:")
-        return line or fallback
+        for _ in range(3):
+            resp = _client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=50,
+            )
+            line = resp.choices[0].message.content.strip().strip('"').rstrip(" .!?,;:")
+            if line and not any(b in line.lower() for b in _BANNED):
+                return line
+        return fallback
     except Exception:
         return fallback
 
