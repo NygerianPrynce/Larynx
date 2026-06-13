@@ -22,7 +22,9 @@ from pydantic import BaseModel, Field
 
 from config import supabase
 from functions import refresh_access_token_if_needed
-from outreach_engine import places_search, find_email_and_text, generate_opener, build_email
+from outreach_engine import (
+    places_search, find_email_and_text, generate_opener, build_email, clean_business_name,
+)
 from rate_limiter import limiter
 
 router = APIRouter()
@@ -199,6 +201,39 @@ async def update_lead(request: Request, req: UpdateReq):
     patch = {"status": req.status}
     if req.status == "sent":
         patch["sent_at"] = datetime.utcnow().isoformat()
+    supabase.table("outreach_leads").update(patch).eq("id", req.id).execute()
+    return {"ok": True}
+
+
+_EMAIL_OK = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+class EmailReq(BaseModel):
+    id: str
+    email: str = Field("", max_length=200)
+
+
+@router.post("/admin/outreach/set-email")
+async def set_email(request: Request, req: EmailReq):
+    """Manually add/replace a lead's email (e.g., when the scrape found none).
+    Also re-cleans the draft greeting, since the email's domain lets us trim a
+    truncated business name ("Flavor Catering & Special" -> "Flavor Catering")."""
+    _require_admin(request)
+    email = req.email.strip().lower()
+    if email and not _EMAIL_OK.match(email):
+        raise HTTPException(status_code=400, detail="Invalid email address")
+    res = supabase.table("outreach_leads").select("name, body").eq("id", req.id).execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    lead = res.data[0]
+    patch = {"email": email}
+    body = lead.get("body") or ""
+    if email and body:
+        clean = clean_business_name(lead.get("name") or "", email)
+        greeting = f"Hey {clean} team," if clean else "Hi there,"
+        head, _, rest = body.partition("\n")
+        if head.startswith("Hey ") or head.startswith("Hi there"):
+            patch["body"] = greeting + ("\n" + rest if rest else "")
     supabase.table("outreach_leads").update(patch).eq("id", req.id).execute()
     return {"ok": True}
 

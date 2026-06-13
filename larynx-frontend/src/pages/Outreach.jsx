@@ -8,6 +8,54 @@ const DEFAULT_PITCH =
   "I'm Fadhil, an engineering student at Vanderbilt, and I built a little tool called Larynx to take some of the email load off your plate. When a quote request or booking question comes in, it writes a draft reply in your own voice, so you're not starting from scratch.\n\nYou stay in control the whole time. Larynx only writes the draft and leaves it in your inbox. Nothing sends unless you send it. I'm letting a few local businesses try it free while I keep improving it.\n\nIf you're curious, I'd love to show you how it works. No pressure at all."
 const DEFAULT_SUBJECT = "Free inbox help, from a Vanderbilt student"
 
+const BTN = "px-2.5 py-1 text-xs rounded-md border font-medium"
+
+// Email cell: shows the address (with edit), or an inline add-box when none was scraped.
+function EmailCell({ l, onSave }) {
+  const [val, setVal] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState('')
+
+  const submit = async () => {
+    const v = val.trim()
+    if (!v) return
+    setSaving(true); setErr('')
+    try { await onSave(l.id, v); setEditing(false) }
+    catch (e) { setErr(e.message || 'error') }
+    finally { setSaving(false) }
+  }
+
+  if (l.email && !editing) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-gray-700">{l.email}</span>
+        <button onClick={() => { setVal(l.email); setEditing(true) }}
+          className="text-xs text-gray-400 hover:text-gray-600">edit</button>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <div className="flex items-center gap-1">
+        <input value={val} onChange={e => setVal(e.target.value)} autoFocus
+          type="email" placeholder="name@business.com"
+          onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setEditing(false) }}
+          className="w-44 px-2 py-1 text-xs border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-purple-400" />
+        <button onClick={submit} disabled={saving || !val.trim()}
+          className={`${BTN} border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-40`}>
+          {saving ? '…' : 'Save'}
+        </button>
+        {l.email && (
+          <button onClick={() => setEditing(false)}
+            className="text-xs text-gray-400 hover:text-gray-600">cancel</button>
+        )}
+      </div>
+      {err && <div className="text-xs text-red-500 mt-0.5">{err}</div>}
+    </div>
+  )
+}
+
 export default function Outreach() {
   const [checked, setChecked] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -83,6 +131,15 @@ export default function Outreach() {
       })
       await loadLeads()
     } catch (e) { /* ignore */ }
+  }
+
+  const saveEmail = async (id, email) => {
+    const r = await fetch(`${api}/admin/outreach/set-email`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ id, email }),
+    })
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Failed to save email')
+    await loadLeads()
   }
 
   const removeLead = async (id) => {
@@ -310,7 +367,7 @@ export default function Outreach() {
                     <div className="font-medium text-gray-900">{l.name}</div>
                     <a href={l.website} target="_blank" rel="noreferrer" className="text-xs text-blue-600">{l.website}</a>
                   </td>
-                  <td className="p-3">{l.email || <span className="text-red-500">none</span>}</td>
+                  <td className="p-3"><EmailCell l={l} onSave={saveEmail} /></td>
                   <td className="p-3"><Badge l={l} /></td>
                   <td className="p-3 text-gray-500 whitespace-nowrap">{fmt(l.created_at)}</td>
                   <td className="p-3">
