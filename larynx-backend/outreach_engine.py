@@ -32,17 +32,22 @@ _JUNK_SUFFIXES = (".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".css", ".js
 _FREE_MAIL = ("gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "aol.com", "icloud.com")
 
 
-async def places_search(query: str, cities: list, per_city: int = 10, max_total: int = 400) -> list:
+async def places_search(query: str, cities: list, per_city: int = 10,
+                        max_total: int = 400, skip: set = None) -> list:
     """
     Return [{name, website}] from Google Places text search.
-    `per_city` caps results PER city (so a metro of N cities spreads coverage across
+    `per_city` caps NEW results PER city (so a metro of N cities spreads coverage across
     the whole ring instead of front-loading the first city); `max_total` is a global
     safety cap on the run.
+    `skip` is a set of already-known/blacklisted normalized websites — those don't count
+    toward `per_city`, so the search keeps paginating (up to the Places ~60/query ceiling)
+    until it actually finds `per_city` FRESH businesses, instead of returning duplicates.
     """
     key = os.getenv("GOOGLE_PLACES_API_KEY", "")
     if not key:
         logging.warning("GOOGLE_PLACES_API_KEY not set")
         return []
+    skip = skip or set()
     out, seen = [], set()
     headers = {
         "Content-Type": "application/json",
@@ -72,7 +77,7 @@ async def places_search(query: str, cities: list, per_city: int = 10, max_total:
                     if not site:
                         continue
                     k = site.lower().rstrip("/")
-                    if k in seen:
+                    if k in seen or k in skip:   # already collected, or already known/blacklisted
                         continue
                     seen.add(k)
                     out.append({"name": p.get("displayName", {}).get("text", ""), "website": site})

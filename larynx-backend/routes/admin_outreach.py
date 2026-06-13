@@ -122,15 +122,17 @@ class SearchReq(BaseModel):
 @limiter.limit("5/hour")   # each run = many Places + scrape + OpenAI calls
 async def outreach_search(request: Request, req: SearchReq):
     _require_admin(request)
-    companies = await places_search(req.query, req.cities[:25], req.per_city)
 
-    # Skip companies already in the table — no duplicates, and re-running surfaces only
-    # NEW businesses. Also protects existing leads' status (sent/replied) from being reset.
+    # Build the skip-set FIRST and hand it to the search, so already-known and blacklisted
+    # sites don't count toward per_city — the search paginates until it finds that many
+    # FRESH businesses, instead of "finding 10" that are all already in the system.
     existing = supabase.table("outreach_leads").select("website").execute()
     existing_sites = {_norm_site(r.get("website")) for r in (existing.data or [])}
-    # …and skip anything the admin has blacklisted (so it never comes back on re-search).
     bl = supabase.table("outreach_blacklist").select("website").execute()
     blacklisted = {_norm_site(r.get("website")) for r in (bl.data or [])}
+    skip = existing_sites | blacklisted
+
+    companies = await places_search(req.query, req.cities[:25], req.per_city, skip=skip)
 
     saved = 0
     for c in companies:
