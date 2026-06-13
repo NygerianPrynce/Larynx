@@ -40,6 +40,11 @@ ADMIN_EMAILS = {
 OUTREACH_BCC = os.getenv("OUTREACH_BCC", "fadhil@larynxai.com").strip()
 
 
+def _norm_site(s: str) -> str:
+    """Normalize a website to a stable dedupe/blacklist key."""
+    return (s or "").strip().lower().rstrip("/")
+
+
 def _html_to_text(html: str) -> str:
     if not html:
         return ""
@@ -122,12 +127,15 @@ async def outreach_search(request: Request, req: SearchReq):
     # Skip companies already in the table — no duplicates, and re-running surfaces only
     # NEW businesses. Also protects existing leads' status (sent/replied) from being reset.
     existing = supabase.table("outreach_leads").select("website").execute()
-    existing_sites = {(r.get("website") or "").lower().rstrip("/") for r in (existing.data or [])}
+    existing_sites = {_norm_site(r.get("website")) for r in (existing.data or [])}
+    # …and skip anything the admin has blacklisted (so it never comes back on re-search).
+    bl = supabase.table("outreach_blacklist").select("website").execute()
+    blacklisted = {_norm_site(r.get("website")) for r in (bl.data or [])}
 
     saved = 0
     for c in companies:
-        site_key = (c["website"] or "").lower().rstrip("/")
-        if site_key in existing_sites:
+        site_key = _norm_site(c["website"])
+        if site_key in existing_sites or site_key in blacklisted:
             continue
         try:
             email, text = await find_email_and_text(c["website"])
@@ -322,6 +330,52 @@ async def delete_lead(request: Request, lead_id: str):
     """Delete a single lead (e.g., when testing generated emails)."""
     _require_admin(request)
     supabase.table("outreach_leads").delete().eq("id", lead_id).execute()
+    return {"ok": True}
+
+
+class BlacklistReq(BaseModel):
+    id: Optional[str] = None        # blacklist an existing lead by id…
+    website: Optional[str] = None   # …or directly by website
+    name: Optional[str] = None
+    reason: str = Field("", max_length=300)
+
+
+@router.post("/admin/outreach/blacklist")
+async def add_blacklist(request: Request, req: BlacklistReq):
+    """Blacklist a company so it's dropped from the CRM and never re-added by a future
+    search (e.g., a business with no findable email). Keyed by normalized website."""
+    _require_admin(request)
+    website, name = req.website, req.name
+    if req.id:
+        res = supabase.table("outreach_leads").select("website, name").eq("id", req.id).execute()
+        if res.data:
+            website = website or res.data[0].get("website")
+            name = name or res.data[0].get("name")
+    website = _norm_site(website)
+    if not website:
+        raise HTTPException(status_code=400, detail="No website to blacklist")
+    supabase.table("outreach_blacklist").upsert(
+        {"website": website, "name": name, "reason": req.reason or None},
+        on_conflict="website",
+    ).execute()
+    # Drop the matching lead(s) from the active CRM.
+    if req.id:
+        supabase.table("outreach_leads").delete().eq("id", req.id).execute()
+    return {"ok": True}
+
+
+@router.get("/admin/outreach/blacklist")
+async def list_blacklist(request: Request):
+    _require_admin(request)
+    res = supabase.table("outreach_blacklist").select("*").order("created_at", desc=True).execute()
+    return {"blacklist": res.data or []}
+
+
+@router.delete("/admin/outreach/blacklist/{entry_id}")
+async def remove_blacklist(request: Request, entry_id: str):
+    """Un-blacklist a company (it can resurface on the next search)."""
+    _require_admin(request)
+    supabase.table("outreach_blacklist").delete().eq("id", entry_id).execute()
     return {"ok": True}
 
 

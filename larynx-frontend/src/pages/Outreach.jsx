@@ -72,6 +72,8 @@ export default function Outreach() {
   const [filter, setFilter] = useState('all')
   const [busy, setBusy] = useState('')
   const [msg, setMsg] = useState('')
+  const [blacklist, setBlacklist] = useState([])
+  const [showBlacklist, setShowBlacklist] = useState(false)
 
   useEffect(() => {
     (async () => {
@@ -79,7 +81,7 @@ export default function Outreach() {
         const r = await fetch(`${api}/admin/status`, { credentials: 'include' })
         const d = await r.json()
         setIsAdmin(!!d.is_admin)
-        if (d.is_admin) loadLeads()
+        if (d.is_admin) { loadLeads(); loadBlacklist() }
       } catch (e) { /* ignore */ } finally { setChecked(true) }
     })()
   }, [])
@@ -93,6 +95,31 @@ export default function Outreach() {
       const r = await fetch(`${api}/admin/outreach/leads`, { credentials: 'include' })
       const d = await r.json()
       setLeads(d.leads || [])
+    } catch (e) { /* ignore */ }
+  }
+
+  const loadBlacklist = async () => {
+    try {
+      const r = await fetch(`${api}/admin/outreach/blacklist`, { credentials: 'include' })
+      const d = await r.json()
+      setBlacklist(d.blacklist || [])
+    } catch (e) { /* ignore */ }
+  }
+
+  const blacklistLead = async (id) => {
+    try {
+      await fetch(`${api}/admin/outreach/blacklist`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ id }),
+      })
+      await Promise.all([loadLeads(), loadBlacklist()])
+    } catch (e) { /* ignore */ }
+  }
+
+  const unblacklist = async (entryId) => {
+    try {
+      await fetch(`${api}/admin/outreach/blacklist/${entryId}`, { method: 'DELETE', credentials: 'include' })
+      await loadBlacklist()
     } catch (e) { /* ignore */ }
   }
 
@@ -391,6 +418,8 @@ export default function Outreach() {
                         </button>
                       )}
                       {l.status === 'new' && <span className="text-xs text-gray-400">{l.email ? 'draft first' : 'no email'}</span>}
+                      <button onClick={() => blacklistLead(l.id)} title="Hide and never re-add on future searches"
+                        className={`${btn} border-gray-300 text-gray-600 hover:bg-gray-100`}>Block</button>
                       <button onClick={() => removeLead(l.id)} className={`${btn} border-red-200 text-red-600 hover:bg-red-50`}>Delete</button>
                     </div>
                   </td>
@@ -401,6 +430,46 @@ export default function Outreach() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Blacklist — companies hidden from the CRM and skipped on future searches */}
+        <div className="mt-6">
+          <button onClick={() => setShowBlacklist(s => !s)}
+            className="text-sm text-gray-500 hover:text-gray-800">
+            {showBlacklist ? '▾' : '▸'} Blacklist ({blacklist.length})
+          </button>
+          {showBlacklist && (
+            <div className="mt-2 overflow-x-auto border border-gray-200 rounded-lg">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="text-left p-3">Business</th>
+                    <th className="text-left p-3">Website</th>
+                    <th className="text-left p-3">Reason</th>
+                    <th className="text-left p-3">Blocked</th>
+                    <th className="text-left p-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {blacklist.map(b => (
+                    <tr key={b.id} className="border-t border-gray-100">
+                      <td className="p-3 text-gray-900">{b.name || <span className="text-gray-400">—</span>}</td>
+                      <td className="p-3"><a href={b.website} target="_blank" rel="noreferrer" className="text-blue-600">{b.website}</a></td>
+                      <td className="p-3 text-gray-500">{b.reason || '—'}</td>
+                      <td className="p-3 text-gray-500 whitespace-nowrap">{fmt(b.created_at)}</td>
+                      <td className="p-3">
+                        <button onClick={() => unblacklist(b.id)}
+                          className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50`}>Remove</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {blacklist.length === 0 && (
+                    <tr><td colSpan="5" className="p-6 text-center text-gray-400">Nothing blacklisted.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
