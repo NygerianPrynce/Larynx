@@ -135,7 +135,7 @@ export default function Outreach() {
         body: JSON.stringify({ query, cities: selectedCities, per_city: Number(perCity), pitch, subject, temperature: Number(temp) }),
       })
       const d = await r.json()
-      setMsg(`Found ${d.found} businesses · ${d.new} new added (duplicates skipped).`)
+      setMsg(`Added ${d.new} new leads — up to ${perCity}/city across ${selectedCities.length} ${selectedCities.length === 1 ? 'city' : 'cities'} (duplicates & blacklisted skipped).`)
       await loadLeads()
     } catch (e) { setMsg('Search failed.') } finally { setBusy('') }
   }
@@ -258,9 +258,12 @@ export default function Outreach() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Max results per city</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New leads per city</label>
               <input type="number" min="1" max="60" value={perCity} onChange={e => setPerCity(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500" />
+              <p className="text-xs text-gray-400 mt-1">
+                Per <i>each</i> selected city. {selectedCities.length > 0 && `${selectedCities.length} selected → up to ${(Number(perCity) || 0) * selectedCities.length} total.`}
+              </p>
             </div>
           </div>
 
@@ -380,6 +383,7 @@ export default function Outreach() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-700">
               <tr>
+                <th className="text-left p-3 w-10">#</th>
                 <th className="text-left p-3">Business</th>
                 <th className="text-left p-3">Email</th>
                 <th className="text-left p-3">Status</th>
@@ -388,8 +392,9 @@ export default function Outreach() {
               </tr>
             </thead>
             <tbody>
-              {shown.map(l => (
+              {shown.map((l, i) => (
                 <tr key={l.id} className="border-t border-gray-100 align-top">
+                  <td className="p-3 text-gray-400 tabular-nums">{i + 1}</td>
                   <td className="p-3">
                     <div className="font-medium text-gray-900">{l.name}</div>
                     <a href={l.website} target="_blank" rel="noreferrer" className="text-xs text-blue-600">{l.website}</a>
@@ -426,7 +431,7 @@ export default function Outreach() {
                 </tr>
               ))}
               {shown.length === 0 && (
-                <tr><td colSpan="5" className="p-6 text-center text-gray-400">No leads — run a search above.</td></tr>
+                <tr><td colSpan="6" className="p-6 text-center text-gray-400">No leads — run a search above.</td></tr>
               )}
             </tbody>
           </table>
@@ -443,6 +448,7 @@ export default function Outreach() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-gray-700">
                   <tr>
+                    <th className="text-left p-3 w-10">#</th>
                     <th className="text-left p-3">Business</th>
                     <th className="text-left p-3">Website</th>
                     <th className="text-left p-3">Reason</th>
@@ -451,8 +457,9 @@ export default function Outreach() {
                   </tr>
                 </thead>
                 <tbody>
-                  {blacklist.map(b => (
+                  {blacklist.map((b, i) => (
                     <tr key={b.id} className="border-t border-gray-100">
+                      <td className="p-3 text-gray-400 tabular-nums">{i + 1}</td>
                       <td className="p-3 text-gray-900">{b.name || <span className="text-gray-400">—</span>}</td>
                       <td className="p-3"><a href={b.website} target="_blank" rel="noreferrer" className="text-blue-600">{b.website}</a></td>
                       <td className="p-3 text-gray-500">{b.reason || '—'}</td>
@@ -464,7 +471,7 @@ export default function Outreach() {
                     </tr>
                   ))}
                   {blacklist.length === 0 && (
-                    <tr><td colSpan="5" className="p-6 text-center text-gray-400">Nothing blacklisted.</td></tr>
+                    <tr><td colSpan="6" className="p-6 text-center text-gray-400">Nothing blacklisted.</td></tr>
                   )}
                 </tbody>
               </table>

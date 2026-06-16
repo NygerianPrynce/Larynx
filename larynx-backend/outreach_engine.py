@@ -165,8 +165,10 @@ async def find_email_and_text(website: str) -> tuple:
                             emails |= _emails_from_html(rr.text)
                     except Exception:
                         continue
-        except Exception:
-            logging.warning(f"find_email_and_text failed for {website}", exc_info=True)
+        except Exception as e:
+            # Dead/unreachable site (bad DNS, refused, timeout) is expected and harmless —
+            # the lead is still saved without an email. Log a one-liner, not a stack trace.
+            logging.info(f"find_email_and_text: couldn't reach {website} ({type(e).__name__})")
     ranked = _clean_rank(emails, site_domain)
     return (ranked[0] if ranked else ""), text
 
