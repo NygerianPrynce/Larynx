@@ -213,6 +213,7 @@ export default function Outreach() {
   const shown = leads.filter(l =>
     filter === 'all' ? true :
     filter === 'email' ? !!l.email :
+    filter === 'noemail' ? !l.email :
     filter === 'undrafted' ? (l.email && !l.draft_created) :
     filter === 'drafted' ? l.status === 'drafted' :
     filter === 'sent' ? l.status === 'sent' :
@@ -371,6 +372,7 @@ export default function Outreach() {
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white">
             <option value="all">All</option>
             <option value="email">With email</option>
+            <option value="noemail">No email</option>
             <option value="undrafted">Not yet drafted</option>
             <option value="drafted">Drafted</option>
             <option value="sent">Sent</option>
