@@ -170,7 +170,6 @@ export default function Outreach() {
   }
 
   const removeLead = async (id) => {
-    if (!window.confirm('Delete this lead?')) return
     try {
       await fetch(`${api}/admin/outreach/lead/${id}`, { method: 'DELETE', credentials: 'include' })
       await loadLeads()
