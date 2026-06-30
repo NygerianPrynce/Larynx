@@ -25,6 +25,9 @@
  *       Function: runOutreach
  *       Event source: Time-driven → Hour timer → Every hour
  *    Defaults below yield ~15–20 sends/day, 9am–5pm only.
+ * 6. (Recommended) For follow-ups that thread properly into the original conversation:
+ *    Editor → Services (+ next to "Services") → Gmail API → Add. Without it, follow-ups
+ *    still send to the prospect, just possibly as a new thread.
  *
  * ── Backend setup (so the webhook works) ─────────────────────────────────────────
  *  - On Render, set env var  OUTREACH_WEBHOOK_SECRET  to a long random string.
@@ -117,16 +120,60 @@ function sendFollowups() {
     // More than one message means they replied — don't follow up; just mark it done.
     if (t.getMessageCount() > 1) { t.addLabel(label); continue; }
 
+    // NOTE: do NOT use thread.reply() here. reply() replies to the SENDER of the last
+    // message — which is us, since we sent it — so it would email ourselves. Send
+    // explicitly to the prospect instead.
     const to = t.getMessages()[0].getTo();
-    const opts = { name: FROM_NAME };
-    if (REQUIRE_BCC) opts.bcc = REQUIRE_BCC;
-    t.reply(FOLLOWUP_BODY, opts);   // in-thread reply to the last message
+    sendThreadedReply(t, to);
     t.addLabel(label);
     n++;
     notifyWebhook(to, 'followup');
     Utilities.sleep(1000 + Math.floor(Math.random() * 3000));
   }
   Logger.log('Follow-ups: sent ' + n + ' this run.');
+}
+
+// Send a follow-up TO THE PROSPECT, kept in the same thread.
+// Prefers the Gmail advanced service (real threading via threadId + In-Reply-To).
+// If that service isn't enabled, falls back to a plain email that still reaches them.
+function sendThreadedReply(thread, to) {
+  const myEmail = Session.getEffectiveUser().getEmail();
+
+  if (typeof Gmail !== 'undefined' && Gmail.Users && Gmail.Users.Messages) {
+    try {
+      const first = thread.getMessages()[0];
+      let inReplyTo = '';
+      try {
+        const meta = Gmail.Users.Messages.get('me', first.getId(),
+          { format: 'metadata', metadataHeaders: ['Message-ID'] });
+        const h = (meta.payload.headers || []).filter(function (x) {
+          return x.name.toLowerCase() === 'message-id';
+        })[0];
+        inReplyTo = h ? h.value : '';
+      } catch (e) { /* no header, threadId+subject still threads it */ }
+
+      const headers = [
+        'To: ' + to,
+        'From: ' + (FROM_NAME ? FROM_NAME + ' <' + myEmail + '>' : myEmail),
+        'Subject: Re: ' + TARGET_SUBJECT,
+        'Content-Type: text/plain; charset=UTF-8',
+      ];
+      if (REQUIRE_BCC) headers.push('Bcc: ' + REQUIRE_BCC);
+      if (inReplyTo) { headers.push('In-Reply-To: ' + inReplyTo); headers.push('References: ' + inReplyTo); }
+
+      const raw = Utilities.base64EncodeWebSafe(headers.join('\r\n') + '\r\n\r\n' + FOLLOWUP_BODY)
+        .replace(/=+$/, '');
+      Gmail.Users.Messages.send({ raw: raw, threadId: thread.getId() }, 'me');
+      return;
+    } catch (e) {
+      Logger.log('threaded reply failed, falling back to plain send: ' + e);
+    }
+  }
+
+  // Fallback: plain email straight to the prospect (reaches them; may start a new thread).
+  const opts = { name: FROM_NAME };
+  if (REQUIRE_BCC) opts.bcc = REQUIRE_BCC;
+  GmailApp.sendEmail(to, 'Re: ' + TARGET_SUBJECT, FOLLOWUP_BODY, opts);
 }
 
 // ── 3. Nudge me when the draft supply runs low ───────────────────────────────────
