@@ -215,6 +215,47 @@ async def update_lead(request: Request, req: UpdateReq):
     return {"ok": True}
 
 
+# ── Webhook for the standalone Apps Script auto-sender ────────────────────────────
+# The script sends outreach/follow-up drafts from outside the app, so it pings this to
+# keep the CRM in sync. NOT session-gated (the script has no login) — guarded by a
+# shared secret in OUTREACH_WEBHOOK_SECRET. Returns 404 unless the secret matches.
+OUTREACH_WEBHOOK_SECRET = os.getenv("OUTREACH_WEBHOOK_SECRET", "").strip()
+_ADDR_RE = re.compile(r"[^<\s,;]+@[^>\s,;]+")
+
+
+class WebhookSentReq(BaseModel):
+    token: str
+    email: str                      # recipient (may be "Name <addr>" — we extract the addr)
+    kind: str = "initial"           # 'initial' | 'followup'
+
+
+@router.post("/admin/outreach/webhook/sent")
+async def webhook_sent(req: WebhookSentReq):
+    if not OUTREACH_WEBHOOK_SECRET or req.token != OUTREACH_WEBHOOK_SECRET:
+        raise HTTPException(status_code=404, detail="Not found")
+    m = _ADDR_RE.search(req.email or "")
+    email = m.group(0).lower() if m else ""
+    if not email:
+        raise HTTPException(status_code=400, detail="No email")
+    res = supabase.table("outreach_leads").select("id, status").eq("email", email).execute()
+    if not res.data:
+        return {"ok": True, "matched": 0}   # not one of our leads; nothing to do
+    now = datetime.utcnow().isoformat()
+    matched = 0
+    for lead in res.data:
+        if req.kind == "followup":
+            patch = {"followup_sent_at": now, "followup_drafted": True}
+        elif lead.get("status") in ("new", "drafted"):
+            # initial send — but never downgrade a lead already marked sent/replied
+            patch = {"status": "sent", "sent_at": now}
+        else:
+            patch = {}
+        if patch:
+            supabase.table("outreach_leads").update(patch).eq("id", lead["id"]).execute()
+            matched += 1
+    return {"ok": True, "matched": matched}
+
+
 _EMAIL_OK = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 

@@ -411,10 +411,14 @@ export default function Outreach() {
                       {l.status === 'sent' && (
                         <>
                           <button onClick={() => update(l.id, 'replied')} className={`${btn} border-blue-300 text-blue-700 hover:bg-blue-50`}>Mark replied</button>
-                          <button onClick={() => followup(l.id)} disabled={busy === 'fu' + l.id || l.followup_drafted}
-                            className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50`}>
-                            {l.followup_drafted ? 'Follow-up drafted' : busy === 'fu' + l.id ? 'Drafting…' : 'Draft follow-up'}
-                          </button>
+                          {l.followup_sent_at ? (
+                            <span className="text-xs text-green-600 self-center">Followed up · {ago(l.followup_sent_at)}</span>
+                          ) : (
+                            <button onClick={() => followup(l.id)} disabled={busy === 'fu' + l.id || l.followup_drafted}
+                              className={`${btn} border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50`}>
+                              {l.followup_drafted ? 'Follow-up drafted' : busy === 'fu' + l.id ? 'Drafting…' : 'Draft follow-up'}
+                            </button>
+                          )}
                         </>
                       )}
                       {l.status === 'replied' && (
