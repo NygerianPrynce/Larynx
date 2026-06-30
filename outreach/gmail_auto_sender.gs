@@ -54,8 +54,12 @@ const FOLLOWUP_BODY =
   "minutes. No pressure at all if now isn't the time.\n\nBest,\nFadhil";
 
 // ── Config: webhook back to Larynx ───────────────────────────────────────────────
-const WEBHOOK_URL    = '';  // e.g. https://larynx-backend.onrender.com/admin/outreach/webhook/sent
+const WEBHOOK_URL    = '';  // e.g. https://api.larynxai.com/admin/outreach/webhook/sent
 const WEBHOOK_SECRET = '';  // must equal OUTREACH_WEBHOOK_SECRET on the backend
+
+// ── Config: low-draft alert ──────────────────────────────────────────────────────
+const LOW_DRAFT_THRESHOLD = 5;   // email me when this many (or fewer) sendable drafts remain
+const ALERT_EMAIL         = '';  // where to send the nudge ('' = the account running the script)
 
 // ── Entry point (point the trigger at this) ──────────────────────────────────────
 function runOutreach() {
@@ -63,6 +67,7 @@ function runOutreach() {
   if (hour < SEND_START_HOUR || hour >= SEND_END_HOUR) return;  // business hours only
   sendInitialDrafts();
   sendFollowups();
+  maybeAlertLowDrafts();
 }
 
 // ── 1. Send the initial outreach drafts ──────────────────────────────────────────
@@ -122,6 +127,45 @@ function sendFollowups() {
     Utilities.sleep(1000 + Math.floor(Math.random() * 3000));
   }
   Logger.log('Follow-ups: sent ' + n + ' this run.');
+}
+
+// ── 3. Nudge me when the draft supply runs low ───────────────────────────────────
+function maybeAlertLowDrafts() {
+  const remaining = countSendableDrafts();
+  if (remaining > LOW_DRAFT_THRESHOLD) return;
+
+  // Only nag once per day, even though this runs hourly.
+  const props = PropertiesService.getScriptProperties();
+  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const alertKey = 'lowdraft_alert_' + today;
+  if (props.getProperty(alertKey)) return;
+
+  const to = ALERT_EMAIL || Session.getEffectiveUser().getEmail();
+  if (!to) return;
+  const subject = remaining === 0
+    ? 'Larynx outreach: out of drafts — sending has stopped'
+    : 'Larynx outreach: only ' + remaining + ' drafts left';
+  const body =
+    'Heads up — your outreach queue is running low.\n\n' +
+    'Sendable drafts remaining: ' + remaining + '\n\n' +
+    'Go to Larynx → Outreach, run a search, and hit "Create drafts" to refill the queue. ' +
+    'The auto-sender will pick them up on its next run.';
+  MailApp.sendEmail(to, subject, body);
+  props.setProperty(alertKey, '1');
+  Logger.log('Low-draft alert sent to ' + to + ' (' + remaining + ' left).');
+}
+
+// Count drafts that this script would actually send (subject + BCC match).
+function countSendableDrafts() {
+  const drafts = GmailApp.getDrafts();
+  let n = 0;
+  for (let i = 0; i < drafts.length; i++) {
+    const msg = drafts[i].getMessage();
+    if ((msg.getSubject() || '').trim() !== TARGET_SUBJECT) continue;
+    if (REQUIRE_BCC && (msg.getBcc() || '').indexOf(REQUIRE_BCC) === -1) continue;
+    n++;
+  }
+  return n;
 }
 
 // ── Tell Larynx what went out, so the CRM updates itself ─────────────────────────
