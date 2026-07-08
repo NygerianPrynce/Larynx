@@ -58,12 +58,12 @@ const FOLLOWUP_BODY =
   "minutes. No pressure at all if now isn't the time.\n\nBest,\nFadhil";
 
 // ── Config: webhook back to Larynx ───────────────────────────────────────────────
-const WEBHOOK_URL    = '';  // e.g. https://api.larynxai.com/admin/outreach/webhook/sent
-const WEBHOOK_SECRET = '';  // must equal OUTREACH_WEBHOOK_SECRET on the backend
+const WEBHOOK_URL    = 'https://api.larynxai.com/admin/outreach/webhook/sent';
+const WEBHOOK_SECRET = 'uH2jGPLA8rE0FWQzQF_MUFK10yOThPy4W84Qb9jlkjk';  // must equal OUTREACH_WEBHOOK_SECRET on the backend
 
 // ── Config: low-draft alert ──────────────────────────────────────────────────────
 const LOW_DRAFT_THRESHOLD = 5;   // email me when this many (or fewer) sendable drafts remain
-const ALERT_EMAIL         = '';  // where to send the nudge ('' = the account running the script)
+const ALERT_EMAIL         = 'fadhillawal06@gmail.com';  // where to send the low-draft nudge
 
 // ── Entry point (point the trigger at this) ──────────────────────────────────────
 function runOutreach() {
