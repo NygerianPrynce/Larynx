@@ -42,8 +42,9 @@ const TARGET_SUBJECT   = 'Free inbox help, from a Vanderbilt student'; // exact 
 const REQUIRE_BCC      = 'fadhil@larynxai.com';  // only send drafts BCC'd here ('' to disable)
 const MAX_PER_RUN      = 3;     // initial sends per trigger run
 const DAILY_CAP        = 20;    // hard stop per calendar day (initial sends)
-const SEND_START_HOUR  = 9;     // local hour to start (24h)
-const SEND_END_HOUR    = 17;    // local hour to stop (exclusive)
+const SEND_TZ          = 'America/Chicago';  // Central time (auto CST/CDT) — the send window is measured in THIS zone, regardless of the Apps Script project timezone
+const SEND_START_HOUR  = 9;     // start hour in SEND_TZ (24h)
+const SEND_END_HOUR    = 17;    // stop hour in SEND_TZ (exclusive) — 17 = 5pm
 const SKIP_PROBABILITY = 0.15;  // randomly skip a draft now and then (human-like jitter)
 
 // ── Config: follow-ups ───────────────────────────────────────────────────────────
@@ -65,20 +66,26 @@ const WEBHOOK_SECRET = 'uH2jGPLA8rE0FWQzQF_MUFK10yOThPy4W84Qb9jlkjk';  // must e
 const LOW_DRAFT_THRESHOLD = 5;   // email me when this many (or fewer) sendable drafts remain
 const ALERT_EMAIL         = 'fadhillawal06@gmail.com';  // where to send the low-draft nudge
 
+// True only during the send window, measured in SEND_TZ (Central) — independent of the
+// Apps Script project's own timezone setting.
+function withinSendWindow() {
+  const hour = Number(Utilities.formatDate(new Date(), SEND_TZ, 'H'));
+  return hour >= SEND_START_HOUR && hour < SEND_END_HOUR;
+}
+
 // ── Entry point (point the trigger at this) ──────────────────────────────────────
 function runOutreach() {
-  const hour = new Date().getHours();
-  if (hour < SEND_START_HOUR || hour >= SEND_END_HOUR) return;  // business hours only
-  sendInitialDrafts();
-  checkReplies();        // detect + report replies BEFORE deciding follow-ups
-  sendFollowups();
+  sendInitialDrafts();   // self-gated to the send window
+  checkReplies();        // reply tracking is read-only — fine to run anytime
+  sendFollowups();       // self-gated to the send window
   maybeAlertLowDrafts();
 }
 
 // ── 1. Send the initial outreach drafts ──────────────────────────────────────────
 function sendInitialDrafts() {
+  if (!withinSendWindow()) return;   // never send outside 9am–5pm Central
   const props = PropertiesService.getScriptProperties();
-  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const today = Utilities.formatDate(new Date(), SEND_TZ, 'yyyy-MM-dd');
   const key = 'sent_' + today;
   let sentToday = Number(props.getProperty(key) || 0);
   if (sentToday >= DAILY_CAP) return;
@@ -127,6 +134,7 @@ function checkReplies() {
 
 // ── 3. Send follow-ups to sent threads with no reply ─────────────────────────────
 function sendFollowups() {
+  if (!withinSendWindow()) return;   // never send outside 9am–5pm Central
   const myEmail = (Session.getEffectiveUser().getEmail() || '').toLowerCase();
   const label = getLabel(FOLLOWUP_LABEL);
   // Sent outreach threads, older than the cutoff, not yet followed up, not replied.
@@ -225,7 +233,7 @@ function maybeAlertLowDrafts() {
 
   // Only nag once per day, even though this runs hourly.
   const props = PropertiesService.getScriptProperties();
-  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const today = Utilities.formatDate(new Date(), SEND_TZ, 'yyyy-MM-dd');
   const alertKey = 'lowdraft_alert_' + today;
   if (props.getProperty(alertKey)) return;
 
