@@ -226,7 +226,7 @@ _ADDR_RE = re.compile(r"[^<\s,;]+@[^>\s,;]+")
 class WebhookSentReq(BaseModel):
     token: str
     email: str                      # recipient (may be "Name <addr>" — we extract the addr)
-    kind: str = "initial"           # 'initial' | 'followup'
+    kind: str = "initial"           # 'initial' | 'followup' | 'replied'
 
 
 @router.post("/admin/outreach/webhook/sent")
@@ -243,9 +243,13 @@ async def webhook_sent(req: WebhookSentReq):
     now = datetime.utcnow().isoformat()
     matched = 0
     for lead in res.data:
-        if req.kind == "followup":
+        status = lead.get("status")
+        if req.kind == "replied":
+            # they wrote back — the goal. Record once (idempotent via the script's label).
+            patch = {} if status == "replied" else {"status": "replied", "replied_at": now}
+        elif req.kind == "followup":
             patch = {"followup_sent_at": now, "followup_drafted": True}
-        elif lead.get("status") in ("new", "drafted"):
+        elif status in ("new", "drafted"):
             # initial send — but never downgrade a lead already marked sent/replied
             patch = {"status": "sent", "sent_at": now}
         else:

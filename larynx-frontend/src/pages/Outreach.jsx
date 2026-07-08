@@ -191,8 +191,8 @@ export default function Outreach() {
 
   const downloadCsv = () => {
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
-    const header = ['Name', 'Website', 'Email', 'Status', 'Sent At', 'Added']
-    const rows = leads.map(l => [l.name, l.website, l.email, l.status, l.sent_at, l.created_at].map(esc).join(','))
+    const header = ['Name', 'Website', 'Email', 'Status', 'Sent At', 'Followed Up At', 'Replied At', 'Added']
+    const rows = leads.map(l => [l.name, l.website, l.email, l.status, l.sent_at, l.followup_sent_at, l.replied_at, l.created_at].map(esc).join(','))
     const blob = new Blob([header.join(',') + '\n' + rows.join('\n')], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a'); a.href = url; a.download = 'outreach_leads.csv'; a.click()
@@ -206,17 +206,23 @@ export default function Outreach() {
     </div>
   )
 
+  // Milestone-cumulative counts: reaching a later stage still counts the earlier ones
+  // (a replied lead was obviously also sent), so the funnel reads top-to-bottom.
   const withEmail = leads.filter(l => l.email).length
   const drafted = leads.filter(l => l.draft_created).length
-  const sent = leads.filter(l => l.status === 'sent').length
+  const sent = leads.filter(l => l.sent_at || l.status === 'sent' || l.status === 'replied').length
+  const followedUp = leads.filter(l => l.followup_sent_at).length
   const replied = leads.filter(l => l.status === 'replied').length
+  const replyRate = sent ? Math.round((replied / sent) * 100) : 0
   const shown = leads.filter(l =>
     filter === 'all' ? true :
     filter === 'email' ? !!l.email :
     filter === 'noemail' ? !l.email :
     filter === 'undrafted' ? (l.email && !l.draft_created) :
     filter === 'drafted' ? l.status === 'drafted' :
-    filter === 'sent' ? l.status === 'sent' :
+    filter === 'sent' ? (l.sent_at || l.status === 'sent' || l.status === 'replied') :
+    filter === 'followedup' ? !!l.followup_sent_at :
+    filter === 'noreply' ? ((l.sent_at || l.status === 'sent') && l.status !== 'replied') :
     filter === 'replied' ? l.status === 'replied' : true
   )
 
@@ -228,8 +234,13 @@ export default function Outreach() {
   }
 
   const Badge = ({ l }) => {
-    if (l.status === 'replied') return <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">Replied 🎉</span>
-    if (l.status === 'sent') return <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700">Sent · {ago(l.sent_at)}</span>
+    if (l.status === 'replied') return <span className="px-2 py-0.5 text-xs rounded-full bg-blue-100 text-blue-700">Replied 🎉{l.replied_at ? ` · ${ago(l.replied_at)}` : ''}</span>
+    if (l.status === 'sent' || l.sent_at) return (
+      <span className="inline-flex flex-col gap-0.5">
+        <span className="px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 w-fit">Sent · {ago(l.sent_at)}</span>
+        {l.followup_sent_at && <span className="text-[11px] text-gray-500">↳ followed up · {ago(l.followup_sent_at)}</span>}
+      </span>
+    )
     if (l.status === 'drafted' || l.draft_created) return <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700">Draft created</span>
     if (l.email) return <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">Ready</span>
     return <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500">No email</span>
@@ -359,14 +370,31 @@ export default function Outreach() {
           {msg && <p className="text-sm text-gray-600 mt-3">{msg}</p>}
         </div>
 
-        {/* Tracker */}
+        {/* Funnel summary */}
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-5">
+          {[
+            { label: 'Leads', val: leads.length, color: 'text-gray-900', f: 'all' },
+            { label: 'With email', val: withEmail, color: 'text-gray-900', f: 'email' },
+            { label: 'Drafted', val: drafted, color: 'text-green-600', f: 'drafted' },
+            { label: 'Sent', val: sent, color: 'text-purple-600', f: 'sent' },
+            { label: 'Followed up', val: followedUp, color: 'text-amber-600', f: 'followedup' },
+            { label: 'Replied', val: replied, color: 'text-blue-600', f: 'replied' },
+          ].map(s => (
+            <button key={s.label} onClick={() => setFilter(s.f)}
+              className={`text-left bg-white border rounded-xl px-3 py-2.5 transition ${filter === s.f ? 'border-purple-400 ring-1 ring-purple-200' : 'border-gray-200 hover:border-gray-300'}`}>
+              <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
+              <div className="text-xs text-gray-500">{s.label}</div>
+            </button>
+          ))}
+        </div>
+
+        {/* Tracker toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div className="flex flex-wrap gap-5 text-sm text-gray-600">
-            <span><b className="text-gray-900">{leads.length}</b> leads</span>
-            <span><b className="text-gray-900">{withEmail}</b> w/ email</span>
-            <span><b className="text-green-600">{drafted}</b> drafted</span>
-            <span><b className="text-purple-600">{sent}</b> sent</span>
-            <span><b className="text-blue-600">{replied}</b> replied</span>
+          <div className="text-sm text-gray-600">
+            {sent > 0
+              ? <span><b className="text-blue-600">{replyRate}%</b> reply rate · {replied} of {sent} sent replied{followedUp > 0 ? ` · ${followedUp} followed up` : ''}</span>
+              : <span>No emails sent yet.</span>}
+            {filter !== 'all' && <button onClick={() => setFilter('all')} className="ml-3 text-purple-600 hover:underline">clear filter</button>}
           </div>
           <select value={filter} onChange={e => setFilter(e.target.value)}
             className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white">
@@ -376,6 +404,8 @@ export default function Outreach() {
             <option value="undrafted">Not yet drafted</option>
             <option value="drafted">Drafted</option>
             <option value="sent">Sent</option>
+            <option value="followedup">Followed up</option>
+            <option value="noreply">Sent · no reply</option>
             <option value="replied">Replied</option>
           </select>
         </div>

@@ -50,6 +50,7 @@ const SKIP_PROBABILITY = 0.15;  // randomly skip a draft now and then (human-lik
 const FOLLOWUP_DAYS         = 4;   // days of no reply before following up
 const MAX_FOLLOWUPS_PER_RUN = 2;   // follow-ups per trigger run
 const FOLLOWUP_LABEL        = 'Outreach-FollowedUp';  // applied so we never double-up
+const REPLIED_LABEL         = 'Outreach-Replied';     // applied once a reply is reported
 const FROM_NAME             = 'Fadhil';
 const FOLLOWUP_BODY =
   "Just floating this back up in case it got buried. Still happy to show you the tool " +
@@ -69,6 +70,7 @@ function runOutreach() {
   const hour = new Date().getHours();
   if (hour < SEND_START_HOUR || hour >= SEND_END_HOUR) return;  // business hours only
   sendInitialDrafts();
+  checkReplies();        // detect + report replies BEFORE deciding follow-ups
   sendFollowups();
   maybeAlertLowDrafts();
 }
@@ -104,12 +106,32 @@ function sendInitialDrafts() {
   Logger.log('Initial: sent ' + sentThisRun + ' this run; ' + sentToday + ' today.');
 }
 
-// ── 2. Send follow-ups to sent threads with no reply ─────────────────────────────
+// ── 2. Detect replies and report them to Larynx ──────────────────────────────────
+// A reply = any message in the thread NOT sent by me. (Can't use message COUNT: my own
+// threaded follow-up also adds a message, so count > 1 doesn't mean they wrote back.)
+function checkReplies() {
+  const myEmail = (Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  const label = getLabel(REPLIED_LABEL);
+  const query = 'in:sent subject:"' + TARGET_SUBJECT + '" -label:' + REPLIED_LABEL;
+  const threads = GmailApp.search(query, 0, 100);
+  let n = 0;
+  for (let i = 0; i < threads.length; i++) {
+    const t = threads[i];
+    if (!threadHasReply(t, myEmail)) continue;
+    notifyWebhook(firstRecipient(t), 'replied');
+    t.addLabel(label);
+    n++;
+  }
+  Logger.log('Replies: found ' + n + ' new this run.');
+}
+
+// ── 3. Send follow-ups to sent threads with no reply ─────────────────────────────
 function sendFollowups() {
-  const label = GmailApp.getUserLabelByName(FOLLOWUP_LABEL) || GmailApp.createLabel(FOLLOWUP_LABEL);
-  // Sent outreach threads, older than the cutoff, not yet followed up.
+  const myEmail = (Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  const label = getLabel(FOLLOWUP_LABEL);
+  // Sent outreach threads, older than the cutoff, not yet followed up, not replied.
   const query = 'in:sent subject:"' + TARGET_SUBJECT + '" older_than:' + FOLLOWUP_DAYS +
-                'd -label:' + FOLLOWUP_LABEL;
+                'd -label:' + FOLLOWUP_LABEL + ' -label:' + REPLIED_LABEL;
   const threads = GmailApp.search(query, 0, 50);
   let n = 0;
 
@@ -117,13 +139,16 @@ function sendFollowups() {
     if (n >= MAX_FOLLOWUPS_PER_RUN) break;
     const t = threads[i];
 
-    // More than one message means they replied — don't follow up; just mark it done.
-    if (t.getMessageCount() > 1) { t.addLabel(label); continue; }
+    // Safety net: if they replied, report it and skip (don't bump someone who wrote back).
+    if (threadHasReply(t, myEmail)) {
+      notifyWebhook(firstRecipient(t), 'replied');
+      t.addLabel(getLabel(REPLIED_LABEL));
+      continue;
+    }
 
-    // NOTE: do NOT use thread.reply() here. reply() replies to the SENDER of the last
-    // message — which is us, since we sent it — so it would email ourselves. Send
-    // explicitly to the prospect instead.
-    const to = t.getMessages()[0].getTo();
+    // NOTE: do NOT use thread.reply() — it replies to the SENDER of the last message
+    // (us), so it would email ourselves. Send explicitly to the prospect.
+    const to = firstRecipient(t);
     sendThreadedReply(t, to);
     t.addLabel(label);
     n++;
@@ -131,6 +156,23 @@ function sendFollowups() {
     Utilities.sleep(1000 + Math.floor(Math.random() * 3000));
   }
   Logger.log('Follow-ups: sent ' + n + ' this run.');
+}
+
+// True if any message in the thread was sent by someone other than me.
+function threadHasReply(thread, myEmail) {
+  const msgs = thread.getMessages();
+  for (let i = 0; i < msgs.length; i++) {
+    if ((msgs[i].getFrom() || '').toLowerCase().indexOf(myEmail) === -1) return true;
+  }
+  return false;
+}
+
+function firstRecipient(thread) {
+  return thread.getMessages()[0].getTo();
+}
+
+function getLabel(name) {
+  return GmailApp.getUserLabelByName(name) || GmailApp.createLabel(name);
 }
 
 // Send a follow-up TO THE PROSPECT, kept in the same thread.
