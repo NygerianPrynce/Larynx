@@ -258,16 +258,67 @@ function countSendableDrafts() {
 }
 
 // ── Tell Larynx what went out, so the CRM updates itself ─────────────────────────
-function notifyWebhook(to, kind) {
+// `at` is an optional ISO timestamp — used by reconcileCrm() to backfill real dates.
+function notifyWebhook(to, kind, at) {
   if (!WEBHOOK_URL || !WEBHOOK_SECRET) return;
+  const payload = { token: WEBHOOK_SECRET, email: to, kind: kind };
+  if (at) payload.at = at;
   try {
     UrlFetchApp.fetch(WEBHOOK_URL, {
       method: 'post',
       contentType: 'application/json',
       muteHttpExceptions: true,
-      payload: JSON.stringify({ token: WEBHOOK_SECRET, email: to, kind: kind }),
+      payload: JSON.stringify(payload),
     });
   } catch (e) {
     Logger.log('webhook failed for ' + to + ': ' + e);
   }
+}
+
+// ── ONE-TIME BACKFILL — run this manually to correct the CRM from Gmail history ───
+// Walks your sent outreach threads and reports the true state (sent / followed-up /
+// replied) WITH REAL DATES, and applies the labels so the hourly script stays in sync.
+// Safe to run repeatedly and resumable: each processed thread gets an "Outreach-Reconciled"
+// label and is skipped next time. Run it, check the log, and run again until it says
+// "processed 0" (handles large mailboxes within Apps Script's 6-minute limit).
+const RECONCILED_LABEL   = 'Outreach-Reconciled';
+const RECONCILE_PER_RUN  = 150;   // threads per run (re-run until 0 remain)
+
+function reconcileCrm() {
+  const myEmail = (Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  const doneLabel = getLabel(RECONCILED_LABEL);
+  const fLabel = getLabel(FOLLOWUP_LABEL);
+  const rLabel = getLabel(REPLIED_LABEL);
+
+  const threads = GmailApp.search(
+    'in:sent subject:"' + TARGET_SUBJECT + '" -label:' + RECONCILED_LABEL, 0, RECONCILE_PER_RUN);
+
+  let sent = 0, fups = 0, replies = 0;
+  for (let i = 0; i < threads.length; i++) {
+    const t = threads[i];
+    const msgs = t.getMessages();
+    const to = msgs[0].getTo();
+
+    // Classify each message by sender: my 1st = initial, my 2nd+ = follow-up, theirs = reply.
+    let initialDate = null, followupDate = null, replyDate = null;
+    for (let j = 0; j < msgs.length; j++) {
+      const fromMe = (msgs[j].getFrom() || '').toLowerCase().indexOf(myEmail) !== -1;
+      if (fromMe) {
+        if (!initialDate) initialDate = msgs[j].getDate();
+        else if (!followupDate) followupDate = msgs[j].getDate();
+      } else if (!replyDate) {
+        replyDate = msgs[j].getDate();
+      }
+    }
+
+    if (initialDate) { notifyWebhook(to, 'initial', initialDate.toISOString()); sent++; }
+    if (followupDate) { notifyWebhook(to, 'followup', followupDate.toISOString()); t.addLabel(fLabel); fups++; }
+    if (replyDate) { notifyWebhook(to, 'replied', replyDate.toISOString()); t.addLabel(rLabel); replies++; }
+
+    t.addLabel(doneLabel);
+    Utilities.sleep(150);
+  }
+  Logger.log('Reconcile: processed ' + threads.length + ' threads — ' +
+             sent + ' sent, ' + fups + ' follow-ups, ' + replies + ' replies. ' +
+             (threads.length === RECONCILE_PER_RUN ? 'Run again — more remain.' : 'Done.'));
 }

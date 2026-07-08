@@ -227,6 +227,11 @@ class WebhookSentReq(BaseModel):
     token: str
     email: str                      # recipient (may be "Name <addr>" — we extract the addr)
     kind: str = "initial"           # 'initial' | 'followup' | 'replied'
+    at: Optional[str] = None        # optional ISO timestamp (for backfilling real dates)
+
+
+# Accept a plausible ISO timestamp only; otherwise fall back to "now".
+_ISO_RE = re.compile(r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}")
 
 
 @router.post("/admin/outreach/webhook/sent")
@@ -240,18 +245,18 @@ async def webhook_sent(req: WebhookSentReq):
     res = supabase.table("outreach_leads").select("id, status").eq("email", email).execute()
     if not res.data:
         return {"ok": True, "matched": 0}   # not one of our leads; nothing to do
-    now = datetime.utcnow().isoformat()
+    when = req.at if (req.at and _ISO_RE.match(req.at)) else datetime.utcnow().isoformat()
     matched = 0
     for lead in res.data:
         status = lead.get("status")
         if req.kind == "replied":
             # they wrote back — the goal. Record once (idempotent via the script's label).
-            patch = {} if status == "replied" else {"status": "replied", "replied_at": now}
+            patch = {} if status == "replied" else {"status": "replied", "replied_at": when}
         elif req.kind == "followup":
-            patch = {"followup_sent_at": now, "followup_drafted": True}
+            patch = {"followup_sent_at": when, "followup_drafted": True}
         elif status in ("new", "drafted"):
             # initial send — but never downgrade a lead already marked sent/replied
-            patch = {"status": "sent", "sent_at": now}
+            patch = {"status": "sent", "sent_at": when}
         else:
             patch = {}
         if patch:
